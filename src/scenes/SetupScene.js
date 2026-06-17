@@ -6,6 +6,7 @@ import {
   COLORS,
   ROUND_OPTIONS,
 } from '../config/constants.js';
+import { BIOMES } from '../config/biomes.js';
 
 const MAX_NAME_LENGTH = 12;
 
@@ -21,10 +22,12 @@ export default class SetupScene extends Phaser.Scene {
   }
 
   create() {
+    this.sfx = this.registry.get('sfx');
     this.fields = [
       { type: 'name', label: 'Player 1', value: 'Player 1', color: COLORS.towerP1 },
       { type: 'name', label: 'Player 2', value: 'Player 2', color: COLORS.towerP2 },
       { type: 'rounds', label: 'Rounds', index: 1 },
+      { type: 'biome', label: 'Biome', index: 0 },
     ];
     this.selected = 0;
 
@@ -58,11 +61,13 @@ export default class SetupScene extends Phaser.Scene {
       return { label, value };
     });
 
+    this.preview = this.add.graphics();
+
     this.add
       .text(
         cx,
         GAME_HEIGHT - 120,
-        'Up / Down: select field      Left / Right: change rounds      Type: edit name',
+        'Up / Down: select field      Left / Right: change value      Type: edit name',
         {
           fontFamily: 'Trebuchet MS, sans-serif',
           fontSize: '22px',
@@ -96,19 +101,17 @@ export default class SetupScene extends Phaser.Scene {
     switch (event.key) {
       case 'ArrowDown':
         this.selected = (this.selected + 1) % this.fields.length;
+        this.sfx.blip(520);
         break;
       case 'ArrowUp':
         this.selected = (this.selected - 1 + this.fields.length) % this.fields.length;
+        this.sfx.blip(520);
         break;
       case 'ArrowLeft':
-        if (field.type === 'rounds') {
-          field.index = (field.index - 1 + ROUND_OPTIONS.length) % ROUND_OPTIONS.length;
-        }
+        this.cycle(field, -1);
         break;
       case 'ArrowRight':
-        if (field.type === 'rounds') {
-          field.index = (field.index + 1) % ROUND_OPTIONS.length;
-        }
+        this.cycle(field, 1);
         break;
       case 'Backspace':
         if (field.type === 'name') {
@@ -116,6 +119,7 @@ export default class SetupScene extends Phaser.Scene {
         }
         break;
       case 'Enter':
+        this.sfx.blip(880);
         this.start();
         return;
       default:
@@ -133,6 +137,18 @@ export default class SetupScene extends Phaser.Scene {
     this.refresh();
   }
 
+  cycle(field, dir) {
+    if (field.type === 'rounds') {
+      field.index = (field.index + dir + ROUND_OPTIONS.length) % ROUND_OPTIONS.length;
+      this.sfx.blip(620);
+      this.refresh();
+    } else if (field.type === 'biome') {
+      field.index = (field.index + dir + BIOMES.length) % BIOMES.length;
+      this.sfx.blip(700);
+      this.refresh();
+    }
+  }
+
   refresh() {
     this.fields.forEach((field, i) => {
       const row = this.rowTexts[i];
@@ -144,20 +160,46 @@ export default class SetupScene extends Phaser.Scene {
         const caret = active ? '_' : '';
         row.value.setText(`${field.value || ''}${caret}`);
         row.value.setColor(`#${field.color.toString(16).padStart(6, '0')}`);
-      } else {
+      } else if (field.type === 'rounds') {
         row.value.setText(`< ${ROUND_OPTIONS[field.index]} >`);
+        row.value.setColor(active ? COLORS.hud : COLORS.hudDim);
+      } else {
+        row.value.setText(`< ${BIOMES[field.index].name} >`);
         row.value.setColor(active ? COLORS.hud : COLORS.hudDim);
       }
     });
+
+    this.drawBiomePreview();
+  }
+
+  drawBiomePreview() {
+    const biome = BIOMES[this.fields[3].index];
+    const g = this.preview;
+    const x = GAME_WIDTH / 2 + 320;
+    const y = 240;
+    const w = 200;
+    const h = 130;
+    g.clear();
+    g.fillStyle(biome.sky[0], 1);
+    g.fillRect(x, y, w, h * 0.6);
+    g.fillStyle(biome.sky[1], 1);
+    g.fillRect(x, y + h * 0.6, w, h * 0.18);
+    g.fillStyle(biome.terrain.fill, 1);
+    g.fillRect(x, y + h * 0.78, w, h * 0.22);
+    g.lineStyle(3, biome.terrain.edge, 1);
+    g.strokeRect(x, y, w, h);
+    g.fillStyle(biome.celestial.color, 1);
+    g.fillCircle(x + w * 0.78, y + h * 0.28, 14);
   }
 
   start() {
-    const [p1, p2, rounds] = this.fields;
+    const [p1, p2, rounds, biome] = this.fields;
     this.input.keyboard.off('keydown', this.onKey, this);
     this.scene.start('Game', {
       names: [p1.value.trim() || 'Player 1', p2.value.trim() || 'Player 2'],
       colors: [p1.color, p2.color],
       totalRounds: ROUND_OPTIONS[rounds.index],
+      biome: BIOMES[biome.index],
     });
   }
 }

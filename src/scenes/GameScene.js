@@ -11,7 +11,9 @@ import Terrain from '../objects/Terrain.js';
 import Tower from '../objects/Tower.js';
 import Projectile from '../objects/Projectile.js';
 import Hud from '../objects/Hud.js';
+import Background from '../objects/Background.js';
 import Wind from '../systems/Wind.js';
+import { BIOMES } from '../config/biomes.js';
 
 const STATE = {
   AIMING: 'aiming',
@@ -30,16 +32,18 @@ export default class GameScene extends Phaser.Scene {
     this.names = data.names;
     this.playerColors = data.colors;
     this.totalRounds = data.totalRounds;
+    this.biome = data.biome || BIOMES[0];
     this.scores = [0, 0];
     this.roundsPlayed = 0;
     this.currentRound = 1;
   }
 
   create() {
-    this.drawSky();
+    this.sfx = this.registry.get('sfx');
+    this.background = new Background(this, this.biome);
 
     this.wind = new Wind();
-    this.terrain = new Terrain(this);
+    this.terrain = new Terrain(this, this.biome.terrain);
     this.terrain.generate();
 
     this.towers = [
@@ -52,9 +56,12 @@ export default class GameScene extends Phaser.Scene {
         -1,
       ),
     ];
+    this.towers.forEach((t) => t.gfx.setDepth(1));
 
-    this.aimGfx = this.add.graphics();
-    this.shotGfx = this.add.graphics();
+    this.createEmitters();
+
+    this.aimGfx = this.add.graphics().setDepth(4);
+    this.shotGfx = this.add.graphics().setDepth(5);
 
     this.hud = new Hud(this, this.names, this.playerColors);
     this.hud.updateScores(this.scores);
@@ -86,24 +93,64 @@ export default class GameScene extends Phaser.Scene {
         fire: 'ENTER',
       }),
     ];
+
+    this.input.keyboard.on('keydown-M', () => {
+      const on = this.sfx.toggle();
+      this.hud.showBanner(on ? 'Sound on' : 'Sound off', 700);
+    });
   }
 
-  drawSky() {
-    // Simple vertical gradient via stacked bands. Lot 2 will replace this.
-    const g = this.add.graphics();
-    const bands = 32;
-    const top = Phaser.Display.Color.IntegerToColor(COLORS.skyTop);
-    const bottom = Phaser.Display.Color.IntegerToColor(COLORS.skyBottom);
-    for (let i = 0; i < bands; i += 1) {
-      const t = i / (bands - 1);
-      const c = Phaser.Display.Color.Interpolate.ColorWithColor(top, bottom, 1, t);
-      g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1);
-      g.fillRect(0, (GAME_HEIGHT / bands) * i, GAME_WIDTH, GAME_HEIGHT / bands + 1);
-    }
+  // Persistent particle emitters, reused for muzzle flashes and explosions.
+  createEmitters() {
+    this.flashEmitter = this.add
+      .particles(0, 0, 'flash', {
+        lifespan: 220,
+        scale: { start: 1.4, end: 0 },
+        alpha: { start: 1, end: 0 },
+        blendMode: 'ADD',
+        emitting: false,
+      })
+      .setDepth(6);
+
+    this.sparkEmitter = this.add
+      .particles(0, 0, 'spark', {
+        lifespan: { min: 250, max: 650 },
+        speed: { min: 90, max: 340 },
+        scale: { start: 1, end: 0 },
+        alpha: { start: 1, end: 0 },
+        gravityY: 420,
+        blendMode: 'ADD',
+        emitting: false,
+      })
+      .setDepth(6);
+
+    this.debrisEmitter = this.add
+      .particles(0, 0, 'spark', {
+        lifespan: { min: 400, max: 950 },
+        speed: { min: 60, max: 280 },
+        angle: { min: 190, max: 350 },
+        scale: { start: 1.3, end: 0 },
+        alpha: { start: 1, end: 0 },
+        gravityY: 700,
+        tint: this.biome.terrain.dark,
+        emitting: false,
+      })
+      .setDepth(6);
+
+    this.smokeEmitter = this.add
+      .particles(0, 0, 'smoke', {
+        lifespan: { min: 500, max: 1100 },
+        speed: { min: 10, max: 60 },
+        scale: { start: 0.6, end: 2.4 },
+        alpha: { start: 0.45, end: 0 },
+        emitting: false,
+      })
+      .setDepth(6);
   }
 
   update(_time, delta) {
     const dt = Math.min(delta / 1000, 0.05);
+    this.background.update(dt);
 
     if (this.state === STATE.AIMING) {
       this.handleAiming(dt);
@@ -158,8 +205,13 @@ export default class GameScene extends Phaser.Scene {
       const v = tower.aimVector;
       const speed = tower.power * PHYSICS.speedScale;
       const m = tower.muzzle;
+      this.flashEmitter.emitParticleAt(m.x, m.y, 1);
+      this.sparkEmitter.emitParticleAt(m.x, m.y, 6);
+      this.smokeEmitter.emitParticleAt(m.x, m.y, 2);
       return new Projectile(m.x, m.y, v.x * speed, v.y * speed, i);
     });
+    this.sfx.boom();
+    this.cameras.main.shake(110, 0.004);
     this.turnHits = [false, false];
     this.state = STATE.FIRING;
   }
@@ -190,26 +242,41 @@ export default class GameScene extends Phaser.Scene {
     if (Phaser.Geom.Rectangle.Contains(opponent.bounds, p.x, p.y)) {
       p.alive = false;
       this.turnHits[p.owner] = true;
-      this.spawnImpact(p.x, p.y, opponent.color);
+      this.explodeAt(p.x, p.y, opponent.color, true);
       return;
     }
 
     // Ground hit (only once the shell is on screen, to avoid edge artefacts).
     if (p.y > 0 && this.terrain.collides(p.x, p.y)) {
       p.alive = false;
-      this.spawnImpact(p.x, p.y, COLORS.terrainDark);
+      this.explodeAt(p.x, p.y, this.biome.terrain.edge, false);
     }
   }
 
-  spawnImpact(x, y, color) {
-    const ring = this.add.circle(x, y, 6, color, 0.9);
+  explodeAt(x, y, ringColor, isTowerHit) {
+    // Expanding shockwave ring.
+    const ring = this.add.circle(x, y, 6, ringColor, 0.9).setDepth(7);
     this.tweens.add({
       targets: ring,
-      radius: 34,
+      radius: isTowerHit ? 60 : 38,
       alpha: 0,
-      duration: 320,
+      duration: isTowerHit ? 420 : 320,
       onComplete: () => ring.destroy(),
     });
+
+    this.flashEmitter.emitParticleAt(x, y, 1);
+    this.smokeEmitter.emitParticleAt(x, y, isTowerHit ? 5 : 3);
+    this.debrisEmitter.emitParticleAt(x, y, isTowerHit ? 16 : 10);
+
+    if (isTowerHit) {
+      this.sparkEmitter.emitParticleAt(x, y, 18);
+      this.sfx.hit();
+      this.cameras.main.shake(260, 0.012);
+    } else {
+      this.sparkEmitter.emitParticleAt(x, y, 8);
+      this.sfx.explosion();
+      this.cameras.main.shake(150, 0.006);
+    }
   }
 
   drawShots() {

@@ -8,8 +8,9 @@ export default class Hud {
   constructor(scene, names, colors) {
     this.scene = scene;
     const cx = GAME_WIDTH / 2;
+    const D = 1000; // HUD renders above scenery, particles and explosions
 
-    this.bar = scene.add.graphics();
+    this.bar = scene.add.graphics().setDepth(D);
     this.bar.fillStyle(0x000000, 0.32);
     this.bar.fillRect(0, 0, GAME_WIDTH, 74);
 
@@ -26,11 +27,17 @@ export default class Hud {
       fontStyle: 'bold',
     };
 
-    scene.add.text(28, 14, names[0], nameStyle(colors[0])).setOrigin(0, 0);
-    scene.add.text(GAME_WIDTH - 28, 14, names[1], nameStyle(colors[1])).setOrigin(1, 0);
+    scene.add.text(28, 14, names[0], nameStyle(colors[0])).setOrigin(0, 0).setDepth(D);
+    scene.add
+      .text(GAME_WIDTH - 28, 14, names[1], nameStyle(colors[1]))
+      .setOrigin(1, 0)
+      .setDepth(D);
 
-    this.scoreP1 = scene.add.text(28, 40, '0', scoreStyle).setOrigin(0, 0);
-    this.scoreP2 = scene.add.text(GAME_WIDTH - 28, 40, '0', scoreStyle).setOrigin(1, 0);
+    this.scoreP1 = scene.add.text(28, 40, '0', scoreStyle).setOrigin(0, 0).setDepth(D);
+    this.scoreP2 = scene.add
+      .text(GAME_WIDTH - 28, 40, '0', scoreStyle)
+      .setOrigin(1, 0)
+      .setDepth(D);
 
     this.roundText = scene.add
       .text(cx, 14, '', {
@@ -38,7 +45,8 @@ export default class Hud {
         fontSize: '24px',
         color: COLORS.hudDim,
       })
-      .setOrigin(0.5, 0);
+      .setOrigin(0.5, 0)
+      .setDepth(D);
 
     this.windText = scene.add
       .text(cx, 44, '', {
@@ -46,13 +54,14 @@ export default class Hud {
         fontSize: '20px',
         color: COLORS.hud,
       })
-      .setOrigin(0.5, 0);
-    this.windArrow = scene.add.graphics();
+      .setOrigin(0.5, 0)
+      .setDepth(D);
+    this.windArrow = scene.add.graphics().setDepth(D);
 
     // Per-tower aiming readouts.
     this.aimTexts = [
-      scene.add.text(150, 96, '', this.aimStyle()).setOrigin(0.5, 0),
-      scene.add.text(GAME_WIDTH - 150, 96, '', this.aimStyle()).setOrigin(0.5, 0),
+      scene.add.text(150, 96, '', this.aimStyle()).setOrigin(0.5, 0).setDepth(D),
+      scene.add.text(GAME_WIDTH - 150, 96, '', this.aimStyle()).setOrigin(0.5, 0).setDepth(D),
     ];
 
     this.banner = scene.add
@@ -65,7 +74,8 @@ export default class Hud {
         strokeThickness: 6,
       })
       .setOrigin(0.5)
-      .setAlpha(0);
+      .setAlpha(0)
+      .setDepth(D);
   }
 
   aimStyle() {

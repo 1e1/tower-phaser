@@ -8,7 +8,7 @@ the two shots fire together.
 
 ## Gameplay
 
-- Pick player names and a round count on the setup screen.
+- Pick player names, a round count and a biome on the setup screen.
 - Each turn, the wind (strength and direction) changes and is shown at the top.
 - Both players adjust their cannon simultaneously, then validate their shot.
 - Once both shots are locked, the volley fires at once.
@@ -23,6 +23,15 @@ the two shots fire together.
 | Power up/down | `W` / `S`       | `↑` / `↓`        |
 | Angle down/up | `A` / `D`       | `←` / `→`        |
 | Validate shot | `Space`         | `Enter`          |
+
+Press `M` during a match to toggle sound.
+
+## Biomes
+
+Four selectable biomes, each with its own sky, palette, parallax scenery and
+ambient particles: **Meadow**, **Desert**, **Tundra** and **Volcano**. Sound
+effects (cannon fire, explosions, impacts, menu tones) are synthesized at
+runtime with the Web Audio API, so the project ships no binary audio assets.
 
 ## Run locally (Node)
 
@@ -44,8 +53,8 @@ Then open http://localhost:8080.
 
 ## Roadmap
 
-- **Lot 1** — Dockerized single-page game (this release).
-- **Lot 2** — Selectable biome themes, modernized graphics and sound.
+- **Lot 1** — Dockerized single-page game. *(done)*
+- **Lot 2** — Selectable biome themes, modernized graphics and sound. *(done)*
 - **Lot 3** — TV spectator view plus phone/tablet controllers.
 - **Lot 4** — Worms-style destructible terrain.
 
@@ -55,7 +64,8 @@ Then open http://localhost:8080.
 src/
   main.js              Phaser game bootstrap and configuration
   config/constants.js  Shared tuning values (sizes, physics, palette)
+  config/biomes.js     Biome theme definitions
   scenes/              Boot, Setup, Game and Result scenes
-  objects/             Terrain, Tower, Projectile, Hud
-  systems/             Wind
+  objects/             Terrain, Tower, Projectile, Hud, Background
+  systems/             Wind, Sfx, texture generation
 ```

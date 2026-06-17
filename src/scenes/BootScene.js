@@ -1,16 +1,23 @@
 import Phaser from 'phaser';
 
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/constants.js';
+import { generateTextures } from '../systems/textures.js';
+import Sfx from '../systems/Sfx.js';
 
-// Minimal boot scene. Lot 1 draws everything procedurally, so no external
-// assets are loaded yet; the scene simply shows a title card and hands over
-// to the setup screen on a key press.
+// Boot scene. Everything is drawn procedurally, so instead of loading assets it
+// generates the reusable particle textures and prepares the shared audio
+// system, then shows a title card and hands over to the setup screen.
 export default class BootScene extends Phaser.Scene {
   constructor() {
     super('Boot');
   }
 
   create() {
+    generateTextures(this);
+    if (!this.registry.get('sfx')) {
+      this.registry.set('sfx', new Sfx());
+    }
+
     const cx = GAME_WIDTH / 2;
 
     this.add
@@ -46,7 +53,11 @@ export default class BootScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    this.input.keyboard.once('keydown', () => this.scene.start('Setup'));
-    this.input.once('pointerdown', () => this.scene.start('Setup'));
+    const go = () => {
+      this.registry.get('sfx').unlock();
+      this.scene.start('Setup');
+    };
+    this.input.keyboard.once('keydown', go);
+    this.input.once('pointerdown', go);
   }
 }
