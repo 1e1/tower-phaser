@@ -1,0 +1,54 @@
+{
+  "title": "Chapter 5 — The sound of wind, synthesized live",
+  "meta.desc": "An audio annex: how Tower Duel builds its wind entirely with the Web Audio API (no sound files), four wind characters, adapting to strength, and the stereo cue for direction — with an interactive simulator.",
+
+  "hero.badge": "Batch 5 · Storm",
+  "hero.kicker": "Chapter 5",
+  "hero.title": "The sound of wind, without a single file",
+  "hero.lead": "All of <strong>Tower Duel</strong>'s sound is <strong>synthesized live</strong> with the Web Audio API — not one audio file. Here's how the wind is born, how it adapts to strength, and how it tells your ears which way it blows. With a <strong>simulator</strong> to try it all.",
+
+  "s1.h2": "Zero assets, all oscillators",
+  "s1.lead": "The game ships no .mp3 or .wav. Every noise — shot, explosion, whistle, fanfare — is generated on the fly from filtered noise and oscillators.",
+  "s1.p1": "Wind is no exception. Rather than looping a recording, we build a <b>continuous sound bed</b> that reacts in real time to the simulated wind value. The payoff: zero download, and a sound that matches exactly what's happening on screen.",
+  "s1.callout.nerd": "<b>For the curious.</b> A browser's audio context starts <em>suspended</em>: it only makes sound after a user gesture (click, key). That's why the simulator below stays silent until you press “Start the wind”.",
+
+  "s2.h2": "Four wind characters",
+  "s2.p1": "The simulator offers four synths, from the most neutral to the most distinctive:",
+  "s2.v.whoosh.t": "Whoosh",
+  "s2.v.whoosh.d": "lowpass-filtered pink noise. Airy, soft, neutral — the underlying bed.",
+  "s2.v.howl.t": "Howl",
+  "s2.v.howl.d": "whoosh + a bandpass resonance that “blooms” with strength. Whistly.",
+  "s2.v.gusty.t": "Gusty",
+  "s2.v.gusty.d": "whoosh + resonance + two slow oscillators that make the volume breathe. The liveliest.",
+  "s2.v.aeolian.t": "Aeolian",
+  "s2.v.aeolian.d": "highly resonant voices, like taut wires. Tonal; it only really sings in a strong wind.",
+  "s2.callout.tip": "<b>Tip.</b> All four share the same pink-noise bed: only the layers on top change. So switching character costs almost nothing — it's just a fresh wiring of filters.",
+
+  "s3.h2": "Your turn: the wind test bench",
+  "s3.try": "<b>Your turn!</b> Put on headphones, start the wind, then drag the strength left and right. Try the four characters, tick “directional gust” to hear the heading, and “random play” to let them cycle on their own.",
+  "s3.title": "Wind-sound test bench",
+  "s3.play": "▶︎ Start the wind",
+  "s3.stop": "⏸ Stop the wind",
+  "s3.volume": "Volume",
+  "s3.v.whoosh": "1 · Whoosh",
+  "s3.v.howl": "2 · Howl",
+  "s3.v.gusty": "3 · Gusty",
+  "s3.v.aeolian": "4 · Aeolian",
+  "s3.strength": "Strength &amp; heading",
+  "s3.flip": "⇄ Flip",
+  "s3.directional": "Directional gust (stereo)",
+  "s3.random": "Random play",
+  "s3.cycle": "duration",
+  "s3.hint": "Headphones recommended. The bottom bar shows the left/right levels and the position in the stereo field.",
+
+  "s4.h2": "You've heard the wind come to life",
+  "s4.lead": "Four characters, a single value driving everything, and direction delivered straight to your ears — all without a single file.",
+  "s4.p1": "Want to look under the hood? The <b>Intermediate</b> level opens up the airflow recipe and the TV spatialization; the <b>Expert</b> level shows how we chain ambiences without ever cutting a gust. The level switcher is at the top of the page.",
+  "s4.callout.tip": "<b>The moral.</b> A sound that “sticks” to the game doesn't come from a big bank of files, but from a handful of parameters wired straight into the simulation.",
+  "s4.back": "↩ Back to home",
+
+  "footer.suffix": "chapter {n}/{total} · the sound 🌬️",
+
+  "pager.prev": "← Chapter 4",
+  "pager.next": "The end 🎉"
+}

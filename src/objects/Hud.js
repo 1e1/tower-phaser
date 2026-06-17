@@ -105,8 +105,8 @@ export default class Hud {
     this.scoreP2.setText(String(scores[1]));
   }
 
-  updateRound(current, total) {
-    this.roundText.setText(`ROUND ${current} / ${total}`);
+  updateRound(current, winsNeeded) {
+    this.roundText.setText(`ROUND ${current} · FIRST TO ${winsNeeded}`);
   }
 
   updateWind(wind) {

@@ -1,0 +1,48 @@
+{
+  "title": "Kapitel 5 (Mittel) — Das Rezept des Windhauchs &amp; die TV-Spatialisierung",
+
+  "hero.badge": "Mittel · Lot 5 · Sturm",
+  "hero.kicker": "Kapitel 5 · mittleres Niveau",
+  "hero.title": "Unter der Haube des Windes",
+  "hero.lead": "Der Klang des Windes als <strong>Signalgraph</strong> betrachtet: rosa Rauschen in einem <strong>Tiefpassfilter</strong>, ein einziger Wert, der alles steuert, und ein <strong>Stereo-Panorama</strong>, das die Richtung verrät. Und auf der TV-Seite, wie man einen Klang im Raum platziert.",
+
+  "s1.h2": "Das Rezept für einen Windhauch",
+  "s1.p1": "Die Basis ist <b>rosa Rauschen</b> (sanfter als weißes Rauschen, es „klingt“ mehr nach Luft), das durch einen <b>Tiefpassfilter</b> läuft. Je stärker der Wind, desto weiter öffnet sich der Filter und desto höher die Lautstärke — das Rauschen wird zugleich präsenter und heller.",
+  "s1.code.cap": "src/systems/Sfx.js — das Grund-Rauschen",
+  "s1.code.c1": "// Schleife aus rosa Rauschen",
+  "s1.code.c2": "// ein Tiefpassfilter",
+  "s1.code.c3": "// k = |Wind| / MAX_WIND, 0 bis 1",
+  "s1.p2": "Auf diese Basis legen wir je nach Fall eine <b>Resonanz</b> (ein singender Bandpass) für das Heulen oder <b>Böen</b>, die von langsamen Oszillatoren gesteuert werden. Vier Kombinationen ergeben vier Charaktere.",
+
+  "s2.h2": "An die Stärke anpassen, die Richtung zeigen",
+  "s2.p1": "Ein einziger Wert steuert alles: der Wind des Spiels, von <code class=\"inline\">−95</code> bis <code class=\"inline\">+95</code> px/s². Sein <b>Betrag</b> (0 bis 1) öffnet den Filter, erhöht die Lautstärke und verstärkt die Böen; sein <b>Vorzeichen</b> gibt die Richtung an (positiv = nach rechts).",
+  "s2.p2": "Um diese Richtung zu hören, <b>neigt sich</b> der Klang im Stereofeld zu der Seite, in die der Wind weht (je stärker, desto mehr). Und im Modus „gerichtete Bö“ <b>wandert</b> eine Bö durch deine Kopfhörer von links nach rechts (oder umgekehrt) und schwillt beim Vorbeiziehen an: Das Ohr kann sich nicht irren.",
+  "s2.callout.nerd": "<b>Für Neugierige.</b> Die Richtung wird mit einem einzigen <code class=\"inline\">StereoPannerNode</code> eingestellt: <code class=\"inline\">pan = Vorzeichen · Stärke</code>, von −1 (ganz links) bis +1 (ganz rechts). Die wandernde Bö animiert einfach diesen <code class=\"inline\">pan</code> über die Zeit.",
+
+  "s3.h2": "TV-Spatialisierung — Stereo, Tiefe &amp; Timbre",
+  "s3.try": "Setz Kopfhörer auf, um links/rechts zu hören.",
+  "s3.p1": "Konvention der TV: <b>links/rechts</b> über das Stereo-Panorama (X-Position), <b>vorne-hinten</b> über die Tiefenlautstärke und <b>oben-unten</b> über eine leichte Timbre-Verschiebung — oben höhenbetont, unten basslastig. Wähle einen Klang und klicke dann auf das Schlachtfeld, um ihn an dieser Position auszugeben.",
+  "s3.snd.boom": "💥 Boom",
+  "s3.snd.impact": "🌋 Impact",
+  "s3.snd.rubble": "🧱 Geröll",
+  "s3.snd.clang": "🛡 Clang",
+  "s3.snd.bird": "🐦 Vogel",
+  "s3.snd.wind": "🌬 Bö",
+  "s3.read0": "Klicke auf das Schlachtfeld, um auszugeben.",
+  "s3.depth": "Tiefe (vorne → hinten)",
+  "s3.panMax": "Pan max (Ränder)",
+  "s3.bgVol": "Lautstärke des Hintergrunds",
+  "s3.tiltDb": "Timbre-Verschiebung (dB)",
+  "s3.tiltHi": "Höhen-Pivot (Hz)",
+  "s3.tiltLo": "Bass-Pivot (Hz)",
+  "s3.cfgCap": "validierte Konfiguration (zurück ins Spiel kopieren)",
+  "s3.cv.treble": "Höhen ↑",
+  "s3.cv.bass": "Bass ↓",
+  "s3.cv.right": "rechts →",
+  "s3.cv.left": "← links",
+
+  "footer.suffix": "Kapitel {n}/{total} · mittleres Niveau",
+
+  "pager.prev": "← Kapitel 4 · Zerstörbares Terrain",
+  "pager.next": "Das Ende 🎉"
+}

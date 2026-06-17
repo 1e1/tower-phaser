@@ -1,12 +1,10 @@
 {
   "title": "Kapitel 4 (Mittel) — Zerstörbares Terrain &amp; geteilter Zustand",
   "meta.desc": "Mittleres Niveau: das Heightfield und die Krater, Determinismus per Seed, Festigkeit per quadrierter Distanz, der kompakte Snapshot mit Seed plus Kraterliste und ein Ausblick auf den kontinuierlichen Turbo-Wind.",
-
   "hero.badge": "Mittel · Lot 4 · Vulkan",
   "hero.kicker": "Kapitel 4 · mittleres Niveau",
   "hero.title": "Zerstörbares Terrain &amp; geteilter Zustand",
   "hero.lead": "Ein Schlachtfeld, das seine Narben behält — und das überall identisch aussieht: ein <strong>Heightfield</strong> plus eine Liste von <strong>Kratern</strong>, ein <strong>Seed</strong> für den Determinismus, ein <strong>kompakter</strong> Snapshot und ein erster Blick auf den kontinuierlichen <strong>Turbo-Wind</strong>.",
-
   "s1.h2": "Das Gelände: ein Heightfield + Krater",
   "s1.lead": "Das Gelände ist kein riesiges Bild im Speicher. Es ist eine schlanke Datenstruktur: ein <b>Heightfield</b> (die Bodenhöhe an jeder Stelle) plus eine wachsende <b>Liste von Kratern</b>.",
   "s1.code.cap": "src/sim/terrain.js — das Heightfield aus dem Seed erzeugen",
@@ -14,19 +12,16 @@
   "s1.code.c2": "// Summe mehrerer Sinuswellen → ein natürliches Relief",
   "s1.p1": "Jeder Einschlag fügt der Liste einfach einen Krater hinzu: <code class=\"inline\">{ x, y, r }</code>. Das Relief bleibt unangetastet — wir merken uns nur, was weggesprengt wurde.",
   "s1.callout.tip": "<b>Zustand = Höhen + Krater.</b> Das ganze Schlachtfeld sind zwei Datenstücke. Alles, was das Spiel fragen muss — „ist dieser Punkt fest?“, „ist die Kugel gelandet?“ — leitet sich daraus ab.",
-
   "s2.h2": "Fest oder leer? Quadrierte Distanz",
   "s2.p1": "Um zu wissen, ob ein Punkt fest ist, fragen wir zwei Dinge: Liegt er <b>unter der Oberfläche</b>? Und ist er in <b>keinem Krater</b>? Der Kratertest ist eine Distanzfrage — die wir <b>ohne Wurzel</b> beantworten, durch Vergleich der Quadrate.",
   "s2.code.cap": "src/sim/terrain.js — in einem Krater? &amp; Festigkeit",
   "s2.p2": "Diese kleine Regel erlaubt <b>Höhlen</b> und <b>Überhänge</b>: Ein Krater tief unter einem Buckel lässt die Materie darüber „schweben“.",
   "s2.callout.nerd": "<b>Für Neugierige.</b> Warum die Quadrate vergleichen, statt die echte Distanz? Weil die Quadratwurzel teuer ist und hier unnötig — die Details stehen im <a href=\"annex-math.html\">Mathe-Anhang</a>.",
-
   "s2.xsec.title": "Fest minus Krater",
   "s2.xsec.solid": "fest",
   "s2.xsec.crater": "leer (Krater)",
   "s2.xsec.overhang": "↑ Überhang, der „schwebt“",
   "s2.xsec.cap": "Fest = unter der Oberfläche <em>minus</em> die Krater. Ein Krater unter der Oberfläche kann Material darüber stehen lassen: so entstehen Höhlen und Überhänge.",
-
   "s3.h2": "Determinismus per Seed",
   "s3.p1": "Das Heightfield ist eine <b>reine Funktion des Seeds</b>: gleicher Seed, gleiches Relief, überall. Damit Server und Clients dieselbe Welt sehen, genügt es, diesen einen Seed zu teilen.",
   "s3.code.cap": "src/sim/Simulation.js — der Snapshot trägt Seed + Krater",
@@ -36,16 +31,13 @@
   "s3.p2": "Da das Relief sich aus dem Seed neu erzeugt, muss der Snapshot es <b>nie</b> mitschicken. Er trägt nur den <b>Seed</b> und die <b>Kraterliste</b> — beides winzig.",
   "s3.code2.cap": "src/sim/Simulation.js — das Gelände hängt nur am Seed",
   "s3.callout.tip": "<b>Merke dir.</b> Kein <code class=\"inline\">Math.random()</code> im geteilten Code: nur der geseedete Generator. So bleibt die Welt reproduzierbar und für jeden gleich.",
-
   "s4.h2": "Ausblick: der kontinuierliche Turbo-Wind",
   "s4.p1": "Im Turbo-Modus steht der Wind nicht mehr still. Er <b>gleitet sanft</b> zwischen zufälligen Keypoints (alle 10 s), geglättet per <b>smoothstep</b>, mit einer leichten <b>Böenwelle</b> obendrauf.",
   "s4.code.cap": "src/sim/Simulation.js — updateTurboWind (Auszug)",
   "s4.code.c1": "// smoothstep zwischen Keypoints",
   "s4.p2": "Das ist das Architekturmuster des ganzen Projekts in Kleinformat: kein teurer Sinus, wo ein Polynom genügt; ein deterministischer, geteilter Zustand; und das Profi-Niveau für die Details.",
   "s4.callout.nerd": "<b>Merke dir.</b> Lot 4 vollendet das Bild: ein zerstörbares, aber kompakt beschreibbares Gelände, deterministisch per Seed — und ein lebendiger Wind, der dieselbe sparsame Philosophie atmet.",
-
   "footer.suffix": "Kapitel {n}/{total} · mittleres Niveau",
-
   "pager.prev": "← Kapitel 3 · Echtzeit Client/Server",
-  "pager.next": "Das Ende 🎉"
+  "pager.next": "Kapitel 5 →"
 }

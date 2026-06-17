@@ -1,12 +1,10 @@
 {
   "title": "Capítulo 4 (intermedio) — Terreno destructible &amp; estado compartido",
   "meta.desc": "Nivel intermedio: el heightfield y los cráteres, el determinismo por semilla, la solidez de un punto por distancia al cuadrado, el snapshot compacto y un vistazo al viento continuo del modo turbo.",
-
   "hero.badge": "Intermedio · Fase 4 · Volcán",
   "hero.kicker": "Capítulo 4 · nivel intermedio",
   "hero.title": "Terreno destructible &amp; estado compartido",
   "hero.lead": "Cada disparo cava un cráter. ¿Cómo modelar un suelo que se deforma — y, sobre todo, cómo <strong>compartirlo</strong> entre el servidor y todas las pantallas sin saturar la red?",
-
   "s1.h2": "El terreno como heightfield",
   "s1.lead": "El suelo no es una imagen: es un <b>campo de alturas</b> (heightfield) — una sola altura por columna de píxeles. Sencillo de generar, sencillo de consultar.",
   "s1.code.cap": "src/sim/terrain.js — una altura por columna",
@@ -14,19 +12,16 @@
   "s1.code.c2": "// suma de senos → relieve ondulado",
   "s1.p1": "Cuando una bala impacta, no « borramos » píxeles: registramos un <b>cráter</b> (un centro y un radio). El suelo existe por debajo de la superficie, <b>menos</b> los cráteres — una resta calculada al vuelo, nunca materializada.",
   "s1.callout.tip": "<b>La idea.</b> Un heightfield es ligero y rápido: « ¿está este punto bajo el suelo? » se responde con una sola lectura. Es el truco que hace barato saber dónde aterriza una bala.",
-
   "s2.h2": "Cráteres: restar discos al suelo",
   "s2.p1": "Cuando una bala impacta, no « borramos » píxeles: registramos un <b>cráter</b> (un centro y un radio). El suelo existe por debajo de la superficie, <b>menos</b> los cráteres. Saber si un punto es sólido es entonces una resta geométrica.",
   "s2.code.cap": "src/sim/terrain.js — ¿un punto dentro de un cráter? (distancia al cuadrado)",
   "s2.p2": "Comparamos la distancia al centro con el radio… pero <b>al cuadrado</b> en ambos lados, para evitar la costosa raíz cuadrada. Como un cráter puede estar enteramente <b>bajo</b> la superficie, la materia de arriba « flota » → cuevas y voladizos, estilo Worms.",
   "s2.callout.nerd": "<b>Para los curiosos.</b> ¿Por qué evitar la raíz cuadrada? Porque es costosa y no hace falta para <em>comparar</em> distancias. Es un clásico de los motores de juego — el <a href=\"annex-math.html\">anexo de Mates</a> cuenta toda la historia (Pitágoras y la legendaria astucia de Quake).",
-
   "s2.xsec.title": "Sólido menos cráteres",
   "s2.xsec.solid": "sólido",
   "s2.xsec.crater": "vacío (cráter)",
   "s2.xsec.overhang": "↑ saliente que « flota »",
   "s2.xsec.cap": "Sólido = bajo la superficie <em>menos</em> los cráteres. Un cráter bajo la superficie puede dejar material por encima: así aparecen cuevas y salientes.",
-
   "s3.h2": "Determinismo por semilla &amp; snapshot compacto",
   "s3.p1": "El servidor genera el terreno a partir de una <b>semilla</b> aleatoria. La misma semilla produce siempre el mismo relieve, así que el servidor solo necesita enviar <b>la semilla</b>, no las miles de alturas — y cada cliente regenera un terreno idéntico.",
   "s3.code.cap": "src/sim/Simulation.js — el snapshot lleva la semilla, no el terreno",
@@ -36,16 +31,13 @@
   "s3.p2": "Del lado de la creación de cráteres es igual de ligero: cuando un proyectil se vuelve sólido, simplemente se añade un disco a la lista.",
   "s3.code2.cap": "src/sim/Simulation.js — un impacto = un disco más",
   "s3.callout.tip": "<b>Para los curiosos.</b> El estado del terreno = una semilla (un entero) + una lista de cráteres. Eso son unos pocos números por mensaje, en lugar de un mapa de píxeles completo treinta veces por segundo. Economía de ancho de banda <em>y</em> coherencia garantizada.",
-
   "s4.h2": "Vistazo: el viento continuo del modo turbo",
   "s4.p1": "En modo clásico el viento se sortea una vez por turno. En <b>turbo</b>, el viento <b>fluye sin cortes</b>: pasa suavemente de un punto de referencia (keypoint) a otro cada 10 segundos, con una ligera onda de rachas encima.",
   "s4.code.cap": "src/sim/Simulation.js — el viento se desliza entre keypoints",
   "s4.code.c1": "// smoothstep: arranque y llegada suaves",
   "s4.p2": "Encima se superpone una ligera <b>onda de rachas</b> (dos senos), cuya amplitud depende de un rasgo propio de la partida (<code class=\"inline\">gustiness</code>). El resultado: un viento que deriva suavemente entre keypoints pero que « respira » en vez de deslizarse mecánicamente. El nivel experto detalla la fórmula completa.",
   "s4.callout.nerd": "<b>Recuerda.</b> El terreno destructible es un <b>estado compartido</b> minúsculo (semilla + cráteres) regenerado idéntico en todas partes. El nivel experto desmonta la generación del relieve, la matemática rápida de los cráteres y la onda de rachas del viento turbo.",
-
   "footer.suffix": "capítulo {n}/{total} · nivel intermedio",
-
   "pager.prev": "← Capítulo 3 · Tiempo real",
-  "pager.next": "Anexo · Mates rápidas →"
+  "pager.next": "Capítulo 5 →"
 }

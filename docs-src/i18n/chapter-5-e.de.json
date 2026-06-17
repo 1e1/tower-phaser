@@ -1,0 +1,32 @@
+{
+  "title": "Kapitel 5 (Profi) — Stimmungen verketten &amp; die Tonspur pro Biom",
+
+  "hero.badge": "Profi · Lot 5 · Sturm",
+  "hero.kicker": "Kapitel 5 · Profi-Niveau",
+  "hero.title": "Der richtige Moment, nicht nur der richtige Klang",
+  "hero.lead": "Der Feinschliff des prozeduralen Sounds: zwei Stimmungen verketten, <strong>ohne eine Bö zu kappen</strong>, indem man auf eine Flaute wartet, dann die <strong>Tonspur pro Biom</strong> und ihr Rundenübergang — Überblendung der Lautstärken <strong>und</strong> Gleiten des Tempos auf derselben Kurve.",
+
+  "s1.h2": "Wechseln, ohne eine Bö zu kappen",
+  "s1.p1": "Bei der Zufallswiedergabe spielt jeder Charakter eine Weile, dann übernimmt ein <b>anderer</b>. Da Wind eine durchgehende Schleife ist, vermeiden wir es, ihn mitten im Anschwellen zu kappen: Ist die Dauer abgelaufen, <b>warten wir auf eine Flaute</b> (einen Pegeleinbruch), bevor wir umschalten, mit einer Überblendung von etwa 1,4 s. Eine Obergrenze von 2,5 s stellt sicher, dass es am Ende immer wechselt.",
+  "s1.code.cap": "der Charakterwechsel, getaktet auf eine Flaute",
+  "s1.code.c1": "// ist die Dauer abgelaufen?",
+  "s1.code.c2": "// sanfte Überblendung zu einem anderen Charakter",
+  "s1.p2": "Das Ergebnis: Man hört nie eine abrupt abgeschnittene Bö — der Übergang schlüpft in die relativen Ruhephasen des Windes.",
+  "s1.callout.tip": "<b>Die Moral.</b> Guter prozeduraler Sound ist nicht nur Synthese: Es geht auch darum, <em>wann</em> man Dinge auslöst. Auf den richtigen Moment zu warten schlägt oft eine längere Blende.",
+
+  "s3.h2": "Und damit ist das Notizbuch komplett!",
+  "s3.lead": "Von der Spielschleife bis zum synthetisierten Klang hast du die komplette Runde durch Tower Duel gedreht.",
+  "s3.p1": "Fünf Etappen, drei Leseniveaus, eine Handvoll Simulatoren: Du weißt jetzt, wie ein kleines Web-Spiel zum Leben erwacht, Bildschirm für Bildschirm, Windhauch für Windhauch. Danke, dass du bis zum Ende gelesen hast.",
+  "s3.back": "↩ Zurück zur Startseite",
+
+  "s2.h2": "Tonspur pro Biom — Vorschläge &amp; Rundenübergang",
+  "s2.try": "Schalt den Ton ein: Alles wird live synthetisiert, keine Audiodatei.",
+  "s2.p1": "Jedes Biom hat sein klangliches Klima, das in mehreren Vorschlägen ausgeprägt ist. Während eines Matchs wechseln sich die <b>beiden Stimmungen</b> eines Bioms in jeder Runde ab; die <b>letzte Runde</b> hat ihre eigene Musik. Wenn die Szene zum nächsten Hügel gleitet, folgt die Musik: <b>Überblendung</b> der Lautstärken <i>und</i> <b>Gleiten des Tempos</b> (BPM) auf derselben Smoothstep-Kurve, damit beide Spuren während des Übergangs synchron bleiben.",
+  "s2.p2": "Der Katalog bewahrt alle Vorschläge — darunter die fünf der Wüste. Das Mischpult spielt die pro Biom gewählte Playlist (Wüste: <b>Mirage</b> und <b>Fournaise</b> im Wechsel, <b>Simoun</b> im Finale). Wähle ein Biom und spiele dann die Runden nacheinander durch.",
+  "s2.frameTitle": "Simulator der Tonspur pro Biom",
+
+  "footer.suffix": "Kapitel {n}/{total} · Profi-Niveau",
+
+  "pager.prev": "← Kapitel 4 · Zerstörbares Terrain",
+  "pager.next": "Das Ende 🎉"
+}

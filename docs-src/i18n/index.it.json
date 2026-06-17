@@ -1,14 +1,11 @@
 {
   "title": "Costruisci il tuo gioco web — il quaderno di Tower Duel",
   "meta.desc": "Un tutorial illustrato per capire come si costruisce un videogioco che gira in un browser, usando il gioco Tower Duel.",
-
   "nav.brandExtra": "il quaderno",
-
   "hero.badge": "Il quaderno del creatore",
   "hero.kicker": "Come si costruisce…",
   "hero.title": "…un vero videogioco dentro un browser",
   "hero.lead": "Segui passo dopo passo la realizzazione di <strong>Tower Duel</strong>, un duello a cannonate fra due giocatori. Con diagrammi, codice vero e piccoli giochi con cui puoi divertirti per capire.",
-
   "s1.h2": "Che cos'è un “gioco web”?",
   "s1.lead": "Un gioco web è un gioco che gira in un <b>browser</b> (Chrome, Firefox, Safari…) senza installare nulla. Fai clic su un link e si gioca!",
   "s1.p1": "Perché funzioni, mettiamo insieme tre ingredienti che forse conosci già:",
@@ -22,10 +19,9 @@
   "s1.fig.youPlay": "tu giochi",
   "s1.fig.cap": "Dal codice allo schermo: JavaScript disegna il gioco dentro il canvas, e tu giochi.",
   "s1.callout": "<b>Ricorda.</b> Il browser sa già come mostrare le pagine. Un gioco web è “solo” una pagina molto vivace dove JavaScript ridisegna l'immagine decine di volte al secondo.",
-
   "s2.h2": "Il gioco che stiamo costruendo",
   "s2.p1": "Due torri, una su ciascun lato di un paesaggio. Ogni giocatore imposta l'<b>angolo</b> e la <b>potenza</b> del proprio cannone, tenendo conto del <b>vento</b>. Il colpo di scena: i due giocatori mirano <b>nello stesso momento</b>, poi i due colpi partono insieme. Il primo che colpisce la torre avversaria vince il round!",
-  "s2.p2": "Abbiamo costruito il gioco in <b>4 passi</b> (li chiamiamo “lotti”). Ogni capitolo racconta un passo, con l'atmosfera del suo bioma:",
+  "s2.p2": "Abbiamo costruito il gioco in <b>5 passi</b> (li chiamiamo “lotti”). Ogni capitolo racconta un passo, con l'atmosfera del suo bioma:",
   "s2.c1.lot": "LOTTO 1 · Prato",
   "s2.c1.title": "Far muovere un cannone",
   "s2.c1.desc": "Il ciclo di gioco, la traiettoria di una palla di cannone e come “impacchettiamo” il gioco con Docker.",
@@ -38,7 +34,9 @@
   "s2.c4.lot": "LOTTO 4 · Vulcano",
   "s2.c4.title": "Distruggere il paesaggio",
   "s2.c4.desc": "Come in Worms: ogni colpo scava un cratere. Vedremo il trucco magico per “bucare” un'immagine.",
-
+  "s2.c5.lot": "LOTTO 5 · Tempesta",
+  "s2.c5.title": "Il suono del vento",
+  "s2.c5.desc": "Suono sintetizzato al 100 % in Web Audio: quattro caratteri di vento, adattamento alla forza e indizio stereo sulla direzione — con un simulatore.",
   "s3.h2": "Scegli il tuo livello",
   "s3.p1": "Ogni capitolo esiste in <b>tre livelli</b> di lettura. Inizia dove ti senti a tuo agio: puoi sempre passare da uno all'altro con la barra in cima a ogni capitolo.",
   "s3.l1.tag": "Livello 1",
@@ -50,7 +48,6 @@
   "s3.l3.tag": "Livello 3",
   "s3.l3.title": "Esperto",
   "s3.l3.desc": "In profondità. Integrazione numerica, determinismo, protocollo di rete e matematica veloce del terreno.",
-
   "s4.h2": "Come leggere questo quaderno",
   "s4.p1": "Incontrerai delle piccole scatole colorate. Ecco cosa significano:",
   "s4.callout.tip": "<b>Ricorda</b> — l'idea importante da tenere a mente.",
@@ -60,7 +57,6 @@
   "s4.code.cap": "un po' di JavaScript",
   "s4.code.c1": "// quando entrambi i giocatori hanno confermato, spariamo!",
   "s4.cta": "Inizia il capitolo 1 →",
-
   "s5.h2": "Appendici",
   "s5.p1": "Dei bonus per andare oltre: distribuire il gioco da solo, una deviazione nella matematica e il dietro le quinte del brief di partenza.",
   "s5.li1.label": "Distribuzione",
@@ -70,6 +66,5 @@
   "s5.li3.label": "Il brief di partenza",
   "s5.li3.desc": " — il capitolato che ha avviato tutto, commentato e criticato.",
   "s5.cta": "Vedi tutte le appendici →",
-
   "footer.suffix": "fatto per menti curiose di tutte le età 🛠️"
 }

@@ -1,14 +1,11 @@
 {
   "title": "Build your own web game — the Tower Duel notebook",
   "meta.desc": "An illustrated tutorial to understand how a video game that runs in a browser is built, using the game Tower Duel.",
-
   "nav.brandExtra": "the notebook",
-
   "hero.badge": "Maker's notebook",
   "hero.kicker": "How you build…",
   "hero.title": "…a real video game inside a browser",
   "hero.lead": "Follow the making of <strong>Tower Duel</strong>, a two-player cannon duel, step by step. With diagrams, real code, and little games you can play with to understand.",
-
   "s1.h2": "What is a “web game”?",
   "s1.lead": "A web game is a game that runs in a <b>browser</b> (Chrome, Firefox, Safari…) without installing anything. You click a link, and it plays!",
   "s1.p1": "For that to work, we put together three ingredients you may already know:",
@@ -22,10 +19,9 @@
   "s1.fig.youPlay": "you play",
   "s1.fig.cap": "From code to the screen: JavaScript draws the game inside the canvas, and you play.",
   "s1.callout": "<b>Remember.</b> The browser already knows how to display pages. A web game is “just” a very lively page where JavaScript redraws the image dozens of times per second.",
-
   "s2.h2": "The game we're building",
   "s2.p1": "Two towers, one on each side of a landscape. Each player sets the <b>angle</b> and the <b>power</b> of their cannon, taking the <b>wind</b> into account. The twist: both players aim <b>at the same time</b>, then both shots fire together. The first to hit the opposite tower wins the round!",
-  "s2.p2": "We built the game in <b>4 steps</b> (we call them “batches”). Each chapter tells one step, with its own biome mood:",
+  "s2.p2": "We built the game in <b>5 steps</b> (we call them “batches”). Each chapter tells one step, with its own biome mood:",
   "s2.c1.lot": "BATCH 1 · Meadow",
   "s2.c1.title": "Make a cannon move",
   "s2.c1.desc": "The game loop, the path of a cannonball, and how we “wrap up” the game with Docker.",
@@ -38,7 +34,9 @@
   "s2.c4.lot": "BATCH 4 · Volcano",
   "s2.c4.title": "Destroy the landscape",
   "s2.c4.desc": "Like in Worms: every shot digs a crater. We'll see the magic trick to “punch a hole” in an image.",
-
+  "s2.c5.lot": "BATCH 5 · Storm",
+  "s2.c5.title": "The sound of wind",
+  "s2.c5.desc": "Sound 100% synthesized in Web Audio: four wind characters, adapting to strength, and a stereo cue for direction — with a simulator.",
   "s3.h2": "Choose your level",
   "s3.p1": "Every chapter comes in <b>three depths</b>. Read the one that fits — or climb from one to the next as your curiosity grows. (The level switcher sits at the top of each chapter, so you can jump anytime.)",
   "s3.l1.tag": "Discovery",
@@ -50,7 +48,6 @@
   "s3.l3.tag": "Expert",
   "s3.l3.title": "In depth",
   "s3.l3.desc": "The engine internals: numerical integration, determinism, netcode, procedural synthesis and fast maths.",
-
   "s4.h2": "How to read this notebook",
   "s4.p1": "You'll come across little coloured boxes. Here's what they mean:",
   "s4.callout.tip": "<b>Remember</b> — the important idea to keep in mind.",
@@ -60,7 +57,6 @@
   "s4.code.cap": "a bit of JavaScript",
   "s4.code.c1": "// once both players have confirmed, we fire!",
   "s4.cta": "Start chapter 1 →",
-
   "s5.h2": "Annexes",
   "s5.p1": "Extras to go further: deploy the game yourself, a detour through the maths, and the behind-the-scenes of the starting brief.",
   "s5.li1.label": "Deployment",
@@ -70,6 +66,5 @@
   "s5.li3.label": "The starting brief",
   "s5.li3.desc": " — the spec that started it all, annotated and critiqued.",
   "s5.cta": "See all the annexes →",
-
   "footer.suffix": "made for curious minds of all ages 🛠️"
 }

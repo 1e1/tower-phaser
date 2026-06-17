@@ -1,0 +1,14 @@
+    <style>
+      /* TV spatialiser — reuses the shared .sim card. */
+      .tvspat .tv-snds { flex-wrap: wrap; }
+      .tvspat .tv-snd {
+        cursor: pointer; font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 14px;
+        padding: 8px 11px; border-radius: 9px; color: var(--ink);
+        background: #fff; border: 1px solid #b9d3ff; transition: .12s;
+      }
+      .tvspat .tv-snd:hover { border-color: var(--accent); }
+      .tvspat .tv-snd.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+      .tvspat canvas { width: 100%; height: auto; display: block; margin: 12px 0; border-radius: 10px; cursor: crosshair; touch-action: none; }
+      .tvspat pre { white-space: pre; margin: 0; }
+    </style>
+

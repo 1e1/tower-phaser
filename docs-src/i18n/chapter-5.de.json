@@ -1,0 +1,54 @@
+{
+  "title": "Kapitel 5 — Der Klang des Windes, live synthetisiert",
+  "meta.desc": "Ein Audio-Anhang: wie Tower Duel seinen Wind komplett mit der Web Audio API erzeugt (ohne Sounddateien), vier Wind-Charaktere, die Anpassung an die Stärke und der Stereo-Hinweis auf die Richtung — mit einem interaktiven Simulator.",
+
+  "hero.badge": "Etappe 5 · Sturm",
+  "hero.kicker": "Kapitel 5",
+  "hero.title": "Der Klang des Windes — ganz ohne Datei",
+  "hero.lead": "Der gesamte Sound von <strong>Tower Duel</strong> wird <strong>live synthetisiert</strong> mit der Web Audio API — keine einzige Audiodatei. So entsteht das Windrauschen, so passt es sich der Stärke an und verrät deinem Ohr, aus welcher Richtung er weht. Mit einem <strong>Simulator</strong> zum Ausprobieren.",
+
+  "s1.h2": "Null Assets, nur Oszillatoren",
+  "s1.lead": "Das Spiel liefert keine .mp3 oder .wav aus. Jedes Geräusch — Schuss, Explosion, Pfeifen, Fanfare — wird zur Laufzeit aus gefiltertem Rauschen und Oszillatoren erzeugt.",
+  "s1.p1": "Der Wind bildet keine Ausnahme. Statt eine Aufnahme zu loopen, bauen wir ein <b>durchgehendes Klangbett</b>, das in Echtzeit auf den simulierten Windwert reagiert. Der Vorteil: kein Download und ein Klang, der genau zu dem passt, was auf dem Bildschirm geschieht.",
+  "s1.callout.nerd": "<b>Für Neugierige.</b> Der Audiokontext des Browsers startet <em>angehalten</em>: Er erzeugt erst nach einer Nutzeraktion (Klick, Taste) Klang. Deshalb bleibt der Simulator unten stumm, bis du auf „Wind starten“ drückst.",
+
+  "s2.h2": "Vier Wind-Charaktere",
+  "s2.p1": "Der Simulator bietet vier Synthesen, von der neutralsten bis zur markantesten:",
+  "s2.v.whoosh.t": "Rauschen",
+  "s2.v.whoosh.d": "tiefpassgefiltertes rosa Rauschen. Luftig, weich, neutral — das Grundbett.",
+  "s2.v.howl.t": "Heulen",
+  "s2.v.howl.d": "Rauschen + eine Bandpass-Resonanz, die mit der Stärke „aufblüht“. Pfeifend.",
+  "s2.v.gusty.t": "Böen",
+  "s2.v.gusty.d": "Rauschen + Resonanz + zwei langsame Oszillatoren, die die Lautstärke atmen lassen. Am lebendigsten.",
+  "s2.v.aeolian.t": "Pfeifen",
+  "s2.v.aeolian.d": "stark resonante Stimmen, wie gespannte Drähte. Tonal; es singt erst bei starkem Wind richtig.",
+  "s2.callout.tip": "<b>Tipp.</b> Alle vier teilen sich dasselbe rosa Rauschbett: Nur die Schichten darüber ändern sich. Der Wechsel des Charakters kostet daher fast nichts — es ist nur eine neue Verschaltung von Filtern.",
+
+  "s3.h2": "Du bist dran: der Wind-Prüfstand",
+  "s3.try": "<b>Du bist dran!</b> Setz Kopfhörer auf, starte den Wind und zieh dann die Stärke nach links und rechts. Probier die vier Charaktere, hak „gerichtete Bö“ an, um die Richtung zu hören, und „Zufallswiedergabe“, damit sie von selbst wechseln.",
+  "s3.title": "Wind-Sound-Prüfstand",
+  "s3.play": "▶︎ Wind starten",
+  "s3.stop": "⏸ Wind stoppen",
+  "s3.volume": "Lautstärke",
+  "s3.v.whoosh": "1 · Rauschen",
+  "s3.v.howl": "2 · Heulen",
+  "s3.v.gusty": "3 · Böen",
+  "s3.v.aeolian": "4 · Pfeifen",
+  "s3.strength": "Stärke &amp; Richtung",
+  "s3.flip": "⇄ Umkehren",
+  "s3.directional": "Gerichtete Bö (Stereo)",
+  "s3.random": "Zufallswiedergabe",
+  "s3.cycle": "Dauer",
+  "s3.hint": "Kopfhörer empfohlen. Die untere Leiste zeigt die Links-/Rechts-Pegel und die Position im Stereofeld.",
+
+  "s4.h2": "Du hast den Wind zum Leben erwachen hören",
+  "s4.lead": "Vier Charaktere, ein einziger Wert, der alles steuert, und die Richtung fürs Ohr — und das alles ohne eine einzige Datei.",
+  "s4.p1": "Lust, unter die Haube zu schauen? Das Niveau <b>Mittel</b> öffnet das Rezept des Windhauchs und die TV-Spatialisierung; das Niveau <b>Profi</b> zeigt, wie wir die Stimmungen verketten, ohne je eine Bö zu kappen. Die Niveau-Auswahl steht oben auf der Seite.",
+  "s4.callout.tip": "<b>Die Moral.</b> Ein Sound, der zum Spiel „passt“, kommt nicht aus einer großen Dateibank, sondern aus einer Handvoll Parametern, die gut an die Simulation angeschlossen sind.",
+  "s4.back": "↩ Zurück zur Startseite",
+
+  "footer.suffix": "Kapitel {n}/{total} · der Sound 🌬️",
+
+  "pager.prev": "← Kapitel 4",
+  "pager.next": "Das Ende 🎉"
+}

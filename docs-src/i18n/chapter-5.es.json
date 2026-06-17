@@ -1,0 +1,54 @@
+{
+  "title": "Capítulo 5 — El sonido del viento, sintetizado en directo",
+  "meta.desc": "Un anexo de audio: cómo Tower Duel fabrica su viento enteramente con la Web Audio API (sin archivos de sonido), cuatro caracteres de soplo, la adaptación a la fuerza y la pista estéreo de dirección — con un simulador interactivo.",
+
+  "hero.badge": "Fase 5 · Tormenta",
+  "hero.kicker": "Capítulo 5",
+  "hero.title": "El sonido del viento, sin un solo archivo",
+  "hero.lead": "Todo el sonido de <strong>Tower Duel</strong> está <strong>sintetizado en directo</strong> con la Web Audio API — ni un solo archivo de audio. Aquí ves cómo nace el soplo del viento, cómo se adapta a la fuerza y cómo le dice a tu oído hacia qué lado empuja. Con un <strong>simulador</strong> para probarlo todo.",
+
+  "s1.h2": "Cero assets, todo osciladores",
+  "s1.lead": "El juego no incluye ningún .mp3 ni .wav. Cada ruido — disparo, explosión, silbido, fanfarria — se genera al vuelo a partir de ruido filtrado y osciladores.",
+  "s1.p1": "El viento no es una excepción. En lugar de repetir una grabación en bucle, construimos un <b>lecho sonoro continuo</b> que reacciona en tiempo real al valor del viento simulado. La ventaja: cero descarga y un sonido que encaja exactamente con lo que ocurre en pantalla.",
+  "s1.callout.nerd": "<b>Para los curiosos.</b> El contexto de audio de los navegadores arranca <em>suspendido</em>: solo produce sonido tras un gesto del usuario (clic, tecla). Por eso el simulador de abajo permanece en silencio hasta que pulsas «Arrancar el viento».",
+
+  "s2.h2": "Cuatro caracteres de viento",
+  "s2.p1": "El simulador ofrece cuatro síntesis, de la más neutra a la más marcada:",
+  "s2.v.whoosh.t": "Soplo",
+  "s2.v.whoosh.d": "ruido rosa con filtro paso bajo. Aireado, suave, neutro — el lecho de fondo.",
+  "s2.v.howl.t": "Aullido",
+  "s2.v.howl.d": "soplo + una resonancia paso banda que «florece» con la fuerza. Silbante.",
+  "s2.v.gusty.t": "Ráfagas",
+  "s2.v.gusty.d": "soplo + resonancia + dos osciladores lentos que hacen respirar el volumen. El más vivo.",
+  "s2.v.aeolian.t": "Silbido",
+  "s2.v.aeolian.d": "voces muy resonantes, como cables tensos. Tonal; solo canta de verdad con viento fuerte.",
+  "s2.callout.tip": "<b>Truco.</b> Las cuatro comparten el mismo lecho de ruido rosa: solo cambian las capas de encima. Cambiar de carácter cuesta casi nada — es solo un nuevo cableado de filtros.",
+
+  "s3.h2": "Te toca: el banco de pruebas del viento",
+  "s3.try": "<b>¡Te toca!</b> Ponte los auriculares, arranca el viento y desliza la fuerza de izquierda a derecha. Prueba los cuatro caracteres, marca «ráfaga direccional» para oír el sentido y «reproducción aleatoria» para encadenarlos solos.",
+  "s3.title": "Banco de pruebas del sonido de viento",
+  "s3.play": "▶︎ Arrancar el viento",
+  "s3.stop": "⏸ Detener el viento",
+  "s3.volume": "Volumen",
+  "s3.v.whoosh": "1 · Soplo",
+  "s3.v.howl": "2 · Aullido",
+  "s3.v.gusty": "3 · Ráfagas",
+  "s3.v.aeolian": "4 · Silbido",
+  "s3.strength": "Fuerza y sentido",
+  "s3.flip": "⇄ Invertir",
+  "s3.directional": "Ráfaga direccional (estéreo)",
+  "s3.random": "Reproducción aleatoria",
+  "s3.cycle": "duración",
+  "s3.hint": "Auriculares recomendados. La barra inferior muestra los niveles izquierda/derecha y la posición en el campo estéreo.",
+
+  "s4.h2": "Has oído el viento cobrar vida",
+  "s4.lead": "Cuatro caracteres, un solo valor que lo gobierna todo y la dirección dada al oído — todo ello sin un solo archivo.",
+  "s4.p1": "¿Te apetece mirar bajo el capó? El nivel <b>Intermedio</b> abre la receta del soplo y la espacialización en la TV; el nivel <b>Experto</b> muestra cómo se encadenan las ambientaciones sin cortar nunca un soplo. El selector de nivel está en la parte superior de la página.",
+  "s4.callout.tip": "<b>La moraleja.</b> Un sonido que «encaja» con el juego no viene de una gran biblioteca de archivos, sino de un puñado de parámetros bien conectados a la simulación.",
+  "s4.back": "↩ Volver al inicio",
+
+  "footer.suffix": "capítulo {n}/{total} · el sonido 🌬️",
+
+  "pager.prev": "← Capítulo 4",
+  "pager.next": "El final 🎉"
+}

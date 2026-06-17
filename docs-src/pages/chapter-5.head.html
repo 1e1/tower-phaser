@@ -1,0 +1,28 @@
+    <style>
+      /* Wind-sound lab — sits inside the shared .sim card, adds a few bits. */
+      .windlab .wl-play { font-weight: 800; }
+      .windlab .wl-play.on { background: #d8552f; }
+
+      .windlab .wl-variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 12px 0; }
+      .windlab .wl-variant {
+        cursor: pointer; font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 14px;
+        padding: 9px 10px; border-radius: 9px; color: var(--ink);
+        background: #fff; border: 1px solid #b9d3ff; transition: .12s;
+      }
+      .windlab .wl-variant:hover { filter: brightness(0.98); border-color: var(--accent); }
+      .windlab .wl-variant.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+      .windlab .wl-field-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-top: 10px; }
+      .windlab .wl-field-row .cap { font-weight: 800; color: var(--ink-soft); font-size: 13px; }
+      .windlab .wl-field-row canvas { height: 26px; }
+
+      .windlab .wl-readout { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent); }
+      .windlab .grow { flex: 1 1 240px; }
+      .windlab .chk { flex-direction: row !important; align-items: center; gap: 7px; min-width: 0 !important; font-weight: 700; }
+      .windlab .chk input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); }
+      .windlab input[type=number] {
+        width: 56px; font: inherit; padding: 5px 7px; border-radius: 7px;
+        border: 1px solid #b9d3ff; background: #fff; color: var(--ink);
+      }
+    </style>
+

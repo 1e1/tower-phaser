@@ -1,14 +1,11 @@
 {
   "title": "Crea tu propio juego web — el cuaderno de Tower Duel",
   "meta.desc": "Un tutorial ilustrado para entender cómo se construye un videojuego que funciona en un navegador, usando el juego Tower Duel.",
-
   "nav.brandExtra": "el cuaderno",
-
   "hero.badge": "Cuaderno del creador",
   "hero.kicker": "Cómo se construye…",
   "hero.title": "…un videojuego de verdad dentro de un navegador",
   "hero.lead": "Sigue la creación de <strong>Tower Duel</strong>, un duelo de cañones para dos jugadores, paso a paso. Con diagramas, código real y pequeños juegos con los que puedes jugar para entenderlo.",
-
   "s1.h2": "¿Qué es un “juego web”?",
   "s1.lead": "Un juego web es un juego que funciona en un <b>navegador</b> (Chrome, Firefox, Safari…) sin instalar nada. Haces clic en un enlace ¡y a jugar!",
   "s1.p1": "Para que eso funcione, juntamos tres ingredientes que quizá ya conoces:",
@@ -22,10 +19,9 @@
   "s1.fig.youPlay": "tú juegas",
   "s1.fig.cap": "Del código a la pantalla: JavaScript dibuja el juego dentro del canvas, y tú juegas.",
   "s1.callout": "<b>Recuerda.</b> El navegador ya sabe mostrar páginas. Un juego web es “solo” una página muy animada donde JavaScript redibuja la imagen decenas de veces por segundo.",
-
   "s2.h2": "El juego que vamos a construir",
   "s2.p1": "Dos torres, una a cada lado de un paisaje. Cada jugador ajusta el <b>ángulo</b> y la <b>potencia</b> de su cañón, teniendo en cuenta el <b>viento</b>. El truco: ambos jugadores apuntan <b>al mismo tiempo</b>, y luego los dos disparos salen juntos. ¡El primero que dé a la torre contraria gana la ronda!",
-  "s2.p2": "Construimos el juego en <b>4 pasos</b> (los llamamos “fases”). Cada capítulo cuenta un paso, con su propio ambiente de bioma:",
+  "s2.p2": "Construimos el juego en <b>5 pasos</b> (los llamamos “fases”). Cada capítulo cuenta un paso, con su propio ambiente de bioma:",
   "s2.c1.lot": "FASE 1 · Pradera",
   "s2.c1.title": "Hacer que un cañón se mueva",
   "s2.c1.desc": "El bucle del juego, la trayectoria de una bala de cañón y cómo “empaquetamos” el juego con Docker.",
@@ -38,7 +34,9 @@
   "s2.c4.lot": "FASE 4 · Volcán",
   "s2.c4.title": "Destruir el paisaje",
   "s2.c4.desc": "Como en Worms: cada disparo cava un cráter. Veremos el truco de magia para “hacer un agujero” en una imagen.",
-
+  "s2.c5.lot": "FASE 5 · Tormenta",
+  "s2.c5.title": "El sonido del viento",
+  "s2.c5.desc": "Sonido 100 % sintetizado en Web Audio: cuatro caracteres de viento, adaptación a la fuerza e indicio estéreo de dirección — con un simulador.",
   "s3.h2": "Elige tu nivel",
   "s3.p1": "Cada capítulo existe en <b>tres niveles de lectura</b>. Empieza por el de <b>Descubrimiento</b>; vuelve más tarde para la arquitectura y los detalles. Aquí tienes las tres puertas de entrada del capítulo 1 (el selector de nivel aparece después en la parte de arriba de cada capítulo).",
   "s3.l1.tag": "Descubrimiento",
@@ -50,7 +48,6 @@
   "s3.l3.tag": "Experto",
   "s3.l3.title": "En profundidad",
   "s3.l3.desc": "En el fondo del motor: paso de tiempo fijo, integración numérica, determinismo y código real comentado.",
-
   "s4.h2": "Cómo leer este cuaderno",
   "s4.p1": "Te encontrarás con pequeñas cajas de colores. Esto es lo que significan:",
   "s4.callout.tip": "<b>Recuerda</b> — la idea importante que hay que tener en mente.",
@@ -60,7 +57,6 @@
   "s4.code.cap": "un poco de JavaScript",
   "s4.code.c1": "// una vez que ambos jugadores han confirmado, ¡disparamos!",
   "s4.cta": "Empezar el capítulo 1 →",
-
   "s5.h2": "Anexos",
   "s5.p1": "Bonus para ir más allá: desplegar el juego tú mismo, un rodeo por las mates, y las bambalinas del brief de partida.",
   "s5.li1.label": "Despliegue",
@@ -70,6 +66,5 @@
   "s5.li3.label": "El brief de partida",
   "s5.li3.desc": " — el pliego de condiciones que lo arrancó todo, comentado y criticado.",
   "s5.cta": "Ver todos los anexos →",
-
   "footer.suffix": "hecho para mentes curiosas de todas las edades 🛠️"
 }

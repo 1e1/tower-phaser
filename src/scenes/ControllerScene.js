@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-import { COLORS, AIM, MAX_WIND, ROUND_OPTIONS, HP_OPTIONS, GAME_MODES, GAME_WIDTH } from '../config/constants.js';
+import { COLORS, AIM, MAX_WIND, WIN_OPTIONS, HP_OPTIONS, GAME_MODES, GAME_WIDTH } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { SHELLS } from '../config/shells.js';
 import { PHASE } from '../sim/Simulation.js';
@@ -67,7 +67,7 @@ export default class ControllerScene extends Phaser.Scene {
     this.aimAngle = 45;
     this.aimPower = (AIM.minPower + AIM.maxPower) / 2;
     this.cracktro = null;
-    this.ammo = { heavy: 1, light: 1, salvo: 1, explosive: 1 };
+    this.ammo = { heavy: 1, light: 1, salvo: 1, explosive: 1, shield: 0 };
     this.roundCur = 0;
     this.hitsTaken = 0; // own-tower hits this round (drives escalating vibration)
     this.lastVibe = 0;
@@ -88,6 +88,11 @@ export default class ControllerScene extends Phaser.Scene {
   // A side has been settled (claimed by us, or the chooser is decided) — only
   // then does a player wear a colour; before that everyone reads as neutral.
   campDecided() {
+    // Once a match is actually being played, both towers have a fixed side — wear
+    // the slot colour even if we were auto-assigned and never tapped a camp (the
+    // chooser keeps theirs; this catches the other player). The cracktro/lobby fall
+    // back to the claim state below, so the rematch lobby still goes neutral.
+    if (this.phase && this.phase !== PHASE.MATCH_END) return true;
     return this.campChosen || (this.campChooser != null && this.campChooser !== -1);
   }
 
@@ -147,7 +152,7 @@ export default class ControllerScene extends Phaser.Scene {
 
         <div id="controls" hidden>
           <div id="readout">Angle 45° · Power 50%</div>
-          <div id="shells" class="shellrow">${SHELLS.map((s, i) => `<button data-shell="${i}" title="${s.name}"><b class="ct"></b><svg viewBox="0 0 24 24" fill="currentColor">${s.svg}</svg><span>${s.name}</span></button>`).join('')}</div>
+          <div id="shells" class="shellrow"><button data-shell="shield" title="Shield"><b class="ct"></b><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l7 3v6c0 4.2-2.9 8-7 9-4.1-1-7-4.8-7-9V5z"/></svg><span>Shield</span></button>${SHELLS.map((s, i) => `<button data-shell="${i}" title="${s.name}"><b class="ct"></b><svg viewBox="0 0 24 24" fill="currentColor">${s.svg}</svg><span>${s.name}</span></button>`).join('')}</div>
           <button id="fire"><span class="bore"></span><span class="lbl">VALIDATE SHOT</span><span class="track"><i class="drain"></i></span></button>
           <div id="status"></div>
         </div>
@@ -316,7 +321,8 @@ export default class ControllerScene extends Phaser.Scene {
     window.addEventListener('pointerup', () => { dragging = false; });
 
     this.overlay.querySelectorAll('#shells button').forEach((btn) => {
-      btn.addEventListener('click', () => this.selectShell(Number(btn.dataset.shell)));
+      const k = btn.dataset.shell;
+      btn.addEventListener('click', () => this.selectShell(k === 'shield' ? 'shield' : Number(k)));
     });
     this.$('fire').addEventListener('click', () => (this.locked ? this.cancel() : this.validate()));
     this.$('biomeL').addEventListener('click', () => this.cycleBiome(-1));
@@ -400,6 +406,12 @@ export default class ControllerScene extends Phaser.Scene {
     const matchEnd = this.phase === PHASE.MATCH_END;
     if (matchEnd && this.cracktro) return 'cracktro';
     if (this.phase && !matchEnd) return 'command';
+    // No live phase yet. A reconnect (or a reload) can land here mid-match — the
+    // sim is still running on the server (inMatch) but our first snapshot hasn't
+    // arrived to set the phase. Hold on the command view rather than dropping into
+    // the lobby and flashing the camp picker: camp choice only belongs to a genuine
+    // pre-match (setup) or rematch (postmatch) lobby.
+    if (this.inMatch && !this.setup && !this.postmatch) return 'command';
     return 'lobby'; // pre-match, or rematch lobby once the cracktro is dismissed
   }
 
@@ -450,6 +462,10 @@ export default class ControllerScene extends Phaser.Scene {
   // A tower was tapped at the camp end. Only a chooser may claim a side; the
   // config-only Architect and the camp-taken Rival have nothing to tap.
   tapTower(slot) {
+    // Camp choice is only ever valid in a genuine lobby (pre-match setup or the
+    // post-match rematch) — never mid-match. This mirrors the server's own guard
+    // so a reconnecting device that briefly renders the picker can't claim a side.
+    if (!this.setup && !this.postmatch) return;
     const role = this.setupRole();
     if ((role === 'config-chooser' || role === 'camp-chooser') && !this.campChosen) {
       this.chooseCampSlot(slot);
@@ -583,24 +599,44 @@ export default class ControllerScene extends Phaser.Scene {
     else btn.style.removeProperty('--shk');
 
     if (this.locked) lbl.textContent = `✖ Cancel${sc != null ? ` ·${clock}` : ' order'}`;
+    else if (this.shellIndex === 'shield') lbl.textContent = sc != null ? `🛡 DEPLOY${clock}` : '🛡 DEPLOY SHIELD';
     else lbl.textContent = sc != null ? `🔥 FIRE!${clock}` : 'VALIDATE SHOT';
   }
 
   // --- pickers -------------------------------------------------------------
 
   selectShell(idx) {
+    if (idx === 'shield') {
+      if ((this.ammo?.shield || 0) <= 0) return; // no shield in stock
+      this.shellIndex = 'shield';
+      this.sfx.blip(620);
+      this.client.send('shell', { id: 'shield' });
+      this.updateShellUI();
+      this.renderFireButton();
+      return;
+    }
     const shell = SHELLS[idx];
     if (shell.id !== 'normal' && (this.ammo?.[shell.id] || 0) <= 0) return; // out of stock
     this.shellIndex = idx;
     this.sfx.blip(560);
     this.client.send('shell', { id: shell.id });
     this.updateShellUI();
+    this.renderFireButton();
   }
 
-  // Stock badges (∞ for normal) + greying out spent specials + active highlight.
+  // Stock badges (∞ for normal, a count for specials + the shield) + greying out
+  // empty entries + active highlight.
   updateShellUI() {
     this.overlay.querySelectorAll('#shells button').forEach((btn) => {
-      const i = Number(btn.dataset.shell);
+      const k = btn.dataset.shell;
+      if (k === 'shield') {
+        const n = this.ammo?.shield ?? 0;
+        btn.querySelector('.ct').textContent = String(n);
+        btn.classList.toggle('out', n <= 0);
+        btn.classList.toggle('on', this.shellIndex === 'shield');
+        return;
+      }
+      const i = Number(k);
       const shell = SHELLS[i];
       const unlimited = shell.id === 'normal';
       const n = unlimited ? Infinity : this.ammo?.[shell.id] ?? 1;
@@ -627,10 +663,10 @@ export default class ControllerScene extends Phaser.Scene {
 
   cycleRounds(dir) {
     if (!this.canEditConfig()) return;
-    this.roundsIndex = (this.roundsIndex + dir + ROUND_OPTIONS.length) % ROUND_OPTIONS.length;
+    this.roundsIndex = (this.roundsIndex + dir + WIN_OPTIONS.length) % WIN_OPTIONS.length;
     this.sfx.blip(620);
-    this.client.send('config', { rounds: ROUND_OPTIONS[this.roundsIndex] });
-    this.$('roundsName').textContent = `${ROUND_OPTIONS[this.roundsIndex]} rounds`;
+    this.client.send('config', { wins: WIN_OPTIONS[this.roundsIndex] });
+    this.$('roundsName').textContent = `First to ${WIN_OPTIONS[this.roundsIndex]}`;
   }
 
   cycleHp(dir) {
@@ -661,6 +697,7 @@ export default class ControllerScene extends Phaser.Scene {
 
   onRoster(m) {
     const wasInMatch = this.inMatch;
+    const wasPostmatch = this.postmatch;
     this.biomeChooser = m.biomeChooser ?? -1;
     this.inMatch = !!m.inMatch;
     this.postmatch = !!m.postmatch;
@@ -675,7 +712,7 @@ export default class ControllerScene extends Phaser.Scene {
     if (m.config) {
       const bi = BIOMES.findIndex((b) => b.id === m.config.biomeId);
       if (bi !== -1) { this.biomeIndex = bi; this.applyBiome(); }
-      const ri = ROUND_OPTIONS.indexOf(m.config.rounds);
+      const ri = WIN_OPTIONS.indexOf(m.config.wins);
       if (ri !== -1) this.roundsIndex = ri;
       const hi = HP_OPTIONS.indexOf(m.config.hp);
       if (hi !== -1) this.hpIndex = hi;
@@ -693,6 +730,15 @@ export default class ControllerScene extends Phaser.Scene {
       this.campChosen = false;
       this.campPick = null;
       this.placedZ = false;
+    }
+
+    // Match just ended: the server releases the camp (campChooser → -1), but BOTH
+    // players must keep their own colours through the cracktro — not just the one
+    // who had tapped to claim a side. We latch campChosen here so the auto-assigned
+    // player doesn't snap to neutral the instant the chooser is cleared; neutral is
+    // only applied once they tap Rematch (dismissCracktro) or Bow out (goHome).
+    if (this.postmatch && !wasPostmatch) {
+      this.campChosen = true;
     }
 
     // Reconcile the optimistic local camp pick with the authoritative chooser.
@@ -718,8 +764,12 @@ export default class ControllerScene extends Phaser.Scene {
 
     if (s.round.current !== this.roundCur) { this.roundCur = s.round.current; this.hitsTaken = 0; }
     if (me.ammo) this.ammo = me.ammo;
-    const si = SHELLS.findIndex((x) => x.id === me.shell);
-    if (si !== -1) this.shellIndex = si;
+    if (me.shell === 'shield') {
+      this.shellIndex = 'shield';
+    } else {
+      const si = SHELLS.findIndex((x) => x.id === me.shell);
+      if (si !== -1) this.shellIndex = si;
+    }
     this.turbo = !!s.turbo;
     this.shotClock = s.shotClock;
 
@@ -805,6 +855,10 @@ export default class ControllerScene extends Phaser.Scene {
         }
       } else if (e.type === 'destroyed') {
         if (e.tower === this.player) this.sfx.rubble(true); // my tower falling: longer collapse
+      } else if (e.type === 'shield') {
+        if (e.owner === this.player) { this.sfx.shieldUp(); this.vibe(30); if (this.locked) this.unlock(); }
+      } else if (e.type === 'shieldHit') {
+        if (e.owner === this.player) { this.sfx.shieldBlock(); this.vibe([20, 40, 30]); } // my shield saved me
       }
     }
   }
@@ -889,7 +943,7 @@ export default class ControllerScene extends Phaser.Scene {
   // editability, the one-time entry placement, the scroll hint and status line.
   renderSetup() {
     this.$('biomeName').textContent = BIOMES[this.biomeIndex].name;
-    this.$('roundsName').textContent = `${ROUND_OPTIONS[this.roundsIndex]} rounds`;
+    this.$('roundsName').textContent = `First to ${WIN_OPTIONS[this.roundsIndex]}`;
     this.$('hpName').textContent = hpLabel(HP_OPTIONS[this.hpIndex]);
     this.$('modeName').textContent = GAME_MODES[this.modeIndex].label;
     this.$('cfg').classList.toggle('locked', !this.canEditConfig());
@@ -1053,7 +1107,34 @@ export default class ControllerScene extends Phaser.Scene {
       // confirmed ready by the server); it goes out the moment the volley fires.
       ready: (this.locked || this.serverReady) && this.phase === PHASE.AIMING,
     });
-    if (this.phase === PHASE.AIMING && !this.locked) this.drawAimGuide(r.width, r.height);
+    if (this.phase === PHASE.AIMING && !this.locked) {
+      if (this.shellIndex === 'shield') this.drawShieldPreview(r.width, r.height);
+      else this.drawAimGuide(r.width, r.height);
+    }
+  }
+
+  // Preview the deflecting plate where the shield will be deployed: along the aim
+  // direction, at a distance set by power, perpendicular to that line.
+  drawShieldPreview(w, h) {
+    const ctx = this.ctx;
+    const pivot = { x: w / 2, y: h * 0.48 };
+    const maxR = h * 0.42;
+    const ratio = (this.aimPower - AIM.minPower) / (AIM.maxPower - AIM.minPower);
+    const rad = (this.aimAngle * Math.PI) / 180;
+    const dx = this.facing * Math.cos(rad);
+    const dy = -Math.sin(rad);
+    const hx = pivot.x + dx * maxR * ratio;
+    const hy = pivot.y + dy * maxR * ratio;
+    const ux = -dy; const uy = dx; // plate axis (perpendicular to aim)
+    const L = Math.max(20, h * 0.12);
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#dfe6f2'; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(hx + ux * L, hy + uy * L); ctx.lineTo(hx - ux * L, hy - uy * L); ctx.stroke();
+    ctx.strokeStyle = `#${this.color.toString(16).padStart(6, '0')}`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(hx + ux * L, hy + uy * L); ctx.lineTo(hx - ux * L, hy - uy * L); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 
   drawAimGuide(w, h) {

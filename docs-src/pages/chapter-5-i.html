@@ -1,0 +1,70 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#2e3a5a"/>
+        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#5b7fbf"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre><span class="k">const</span> src = ctx.<span class="f">createBufferSource</span>();  <span class="c">{{s1.code.c1}}</span>
+src.buffer = pinkNoise; src.loop = <span class="k">true</span>;
+<span class="k">const</span> lp = ctx.<span class="f">createBiquadFilter</span>();      <span class="c">{{s1.code.c2}}</span>
+lp.type = <span class="s">'lowpass'</span>;
+lp.frequency.value = <span class="s">180</span> + k * <span class="s">2400</span>;    <span class="c">{{s1.code.c3}}</span>
+src.<span class="f">connect</span>(lp).<span class="f">connect</span>(gain).<span class="f">connect</span>(out);</pre>
+        </figure>
+        <p>{{s1.p2}}</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <p>{{s2.p2}}</p>
+        <div class="callout nerd">{{s2.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <div class="callout try">{{s3.try}}</div>
+        <p>{{s3.p1}}</p>
+        <div class="sim tvspat">
+          <div class="controls tv-snds">
+            <button class="tv-snd active" data-s="boom">{{s3.snd.boom}}</button>
+            <button class="tv-snd" data-s="impact">{{s3.snd.impact}}</button>
+            <button class="tv-snd" data-s="rubble">{{s3.snd.rubble}}</button>
+            <button class="tv-snd" data-s="clang">{{s3.snd.clang}}</button>
+            <button class="tv-snd" data-s="bird">{{s3.snd.bird}}</button>
+            <button class="tv-snd" data-s="wind">{{s3.snd.wind}}</button>
+          </div>
+          <canvas id="tv-field" width="760" height="320"></canvas>
+          <div class="hint" id="tv-read">{{s3.read0}}</div>
+          <div class="controls">
+            <label class="grow">{{s3.depth}} <input id="tv-depth" type="range" min="0" max="100" value="100" /></label>
+          </div>
+          <div class="controls">
+            <label class="grow">{{s3.panMax}} <input id="tv-panMax" type="range" min="0" max="100" value="85" /></label>
+            <label class="grow">{{s3.bgVol}} <input id="tv-depthMinVol" type="range" min="0" max="100" value="40" /></label>
+          </div>
+          <div class="controls">
+            <label class="grow">{{s3.tiltDb}} <input id="tv-tiltDb" type="range" min="0" max="12" step="0.5" value="6" /></label>
+            <label class="grow">{{s3.tiltHi}} <input id="tv-tiltHiHz" type="range" min="1500" max="5000" step="100" value="2500" /></label>
+            <label class="grow">{{s3.tiltLo}} <input id="tv-tiltLoHz" type="range" min="120" max="500" step="10" value="250" /></label>
+          </div>
+          <figure class="code"><figcaption>{{s3.cfgCap}}</figcaption><pre id="tv-json"></pre></figure>
+        </div>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-4-i.html">{{pager.prev}}</a>
+        <a class="disabled">{{pager.next}}</a>
+      </div>
+    </main>

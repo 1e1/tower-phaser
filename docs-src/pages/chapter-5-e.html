@@ -1,0 +1,53 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#2e3a5a"/>
+        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#5b7fbf"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre><span class="c">{{s1.code.c1}}</span>
+<span class="k">if</span> (!swapPending) {
+  <span class="k">if</span> (now &gt;= cycleAt) { swapPending = <span class="k">true</span>; pendingSince = now; }
+} <span class="k">else if</span> (<span class="f">rms</span>() &lt; <span class="s">0.05</span> || now - pendingSince &gt; <span class="s">2.5</span>) {
+  <span class="f">swap</span>(<span class="f">pickOther</span>(), <span class="s">1.4</span>);   <span class="c">{{s1.code.c2}}</span>
+  cycleAt = now + <span class="s">8</span> + <span class="f">Math.random</span>() * <span class="s">5</span>;
+}</pre>
+        </figure>
+        <p>{{s1.p2}}</p>
+        <div class="callout tip">{{s1.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <div class="callout try">{{s2.try}}</div>
+        <p>{{s2.p1}}</p>
+        <p>{{s2.p2}}</p>
+        <div class="sim ostlab">
+          <iframe class="ost-frame" src="../assets/ost-lab.html" title="{{s2.frameTitle}}" loading="lazy"></iframe>
+        </div>
+      </section>
+
+      <section class="sheet" style="text-align:center;">
+        <h2 style="justify-content:center; display:flex;"><span class="num">★</span>{{s3.h2}}</h2>
+        <p class="lead">{{s3.lead}}</p>
+        <p>{{s3.p1}}</p>
+        <p style="margin-top:24px;">
+          <a class="pill" href="index.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">{{s3.back}}</a>
+        </p>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-4-e.html">{{pager.prev}}</a>
+        <a class="disabled">{{pager.next}}</a>
+      </div>
+    </main>

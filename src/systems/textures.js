@@ -48,4 +48,12 @@ export function generateTextures(scene) {
   }
   g.generateTexture('cloud', 220, 100);
   g.destroy();
+
+  // Thin vertical streak for rain (tinted at runtime). Slants with the wind once
+  // the emitter's gravityX kicks in, so it reads as wind-blown rain.
+  g = make();
+  g.fillStyle(0xffffff, 1);
+  g.fillRoundedRect(1, 0, 2, 16, 1);
+  g.generateTexture('raindrop', 4, 16);
+  g.destroy();
 }

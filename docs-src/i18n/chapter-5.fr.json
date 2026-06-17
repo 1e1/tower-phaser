@@ -1,0 +1,54 @@
+{
+  "title": "Chapitre 5 — Le son du vent, synthétisé en direct",
+  "meta.desc": "Comment Tower Duel fabrique son vent entièrement avec la Web Audio API (aucun fichier son) : quatre caractères de souffle, l'adaptation à la force et l'indice stéréo de direction — avec un simulateur interactif.",
+
+  "hero.badge": "Lot 5 · Orage",
+  "hero.kicker": "Chapitre 5",
+  "hero.title": "Le son du vent, sans le moindre fichier",
+  "hero.lead": "Tout le son de <strong>Tower Duel</strong> est <strong>synthétisé en direct</strong> avec la Web Audio API — pas un seul fichier audio. Voici comment naît le souffle du vent, comment il s'adapte à la force et te dit, à l'oreille, de quel côté il pousse. Avec un <strong>simulateur</strong> pour tout essayer.",
+
+  "s1.h2": "Zéro asset, tout en oscillateurs",
+  "s1.lead": "Le jeu n'embarque aucun .mp3 ni .wav. Chaque bruit — tir, explosion, sifflement, fanfare — est généré à la volée à partir de bruit filtré et d'oscillateurs.",
+  "s1.p1": "Le vent ne fait pas exception. Plutôt que de boucler un enregistrement, on construit un <b>banc sonore continu</b> qui réagit en temps réel à la valeur du vent simulée. Avantage : zéro téléchargement, et un son qui colle exactement à ce qui se passe à l'écran.",
+  "s1.callout.nerd": "<b>Pour les curieux.</b> Le contexte audio des navigateurs démarre <em>suspendu</em> : il ne produit de son qu'après un geste de l'utilisateur (clic, touche). C'est pourquoi le simulateur ci-dessous ne s'anime qu'au moment où tu appuies sur « Lancer le vent ».",
+
+  "s2.h2": "Quatre caractères de vent",
+  "s2.p1": "Le simulateur propose quatre synthèses, de la plus neutre à la plus typée :",
+  "s2.v.whoosh.t": "Souffle",
+  "s2.v.whoosh.d": "bruit rose filtré passe-bas. Aéré, doux, neutre — le lit de fond.",
+  "s2.v.howl.t": "Hurlement",
+  "s2.v.howl.d": "souffle + une résonance passe-bande qui « fleurit » avec la force. Sifflant.",
+  "s2.v.gusty.t": "Rafales",
+  "s2.v.gusty.d": "souffle + résonance + deux oscillateurs lents qui font respirer le volume. Le plus vivant.",
+  "s2.v.aeolian.t": "Sifflement",
+  "s2.v.aeolian.d": "des voix très résonantes, comme des fils tendus. Tonal ; ne chante vraiment qu'au vent fort.",
+  "s2.callout.tip": "<b>Astuce.</b> Toutes partagent le même lit de bruit rose : seules changent les couches posées par-dessus. Changer de caractère ne coûte donc presque rien — c'est juste un nouveau câblage de filtres.",
+
+  "s3.h2": "À toi de jouer : le banc d'essai du vent",
+  "s3.try": "<b>À toi de jouer !</b> Mets un casque, lance le vent, puis fais glisser la force de gauche à droite. Essaie les quatre caractères, coche « rafale directionnelle » pour entendre le sens, et « lecture aléatoire » pour les enchaîner tout seuls.",
+  "s3.title": "Banc d'essai du son de vent",
+  "s3.play": "▶︎ Lancer le vent",
+  "s3.stop": "⏸ Arrêter le vent",
+  "s3.volume": "Volume",
+  "s3.v.whoosh": "1 · Souffle",
+  "s3.v.howl": "2 · Hurlement",
+  "s3.v.gusty": "3 · Rafales",
+  "s3.v.aeolian": "4 · Sifflement",
+  "s3.strength": "Force &amp; sens",
+  "s3.flip": "⇄ Inverser",
+  "s3.directional": "Rafale directionnelle (stéréo)",
+  "s3.random": "Lecture aléatoire",
+  "s3.cycle": "durée",
+  "s3.hint": "Casque recommandé. La barre du bas montre les niveaux gauche/droite et la position dans le champ stéréo.",
+
+  "s4.h2": "Tu as entendu le vent prendre vie",
+  "s4.lead": "Quatre caractères, une seule valeur qui pilote tout, et la direction donnée à l'oreille — le tout sans le moindre fichier.",
+  "s4.p1": "Envie de regarder sous le capot ? Le niveau <b>Intermédiaire</b> ouvre la recette du souffle et la spatialisation TV ; le niveau <b>Expert</b> montre comment on enchaîne les ambiances sans jamais couper un souffle. Le sélecteur de niveau est en haut de page.",
+  "s4.callout.tip": "<b>La morale.</b> Un son qui « colle » au jeu ne vient pas d'une grosse banque de fichiers, mais d'une poignée de paramètres bien branchés sur la simulation.",
+  "s4.back": "↩ Retour à l'accueil",
+
+  "footer.suffix": "chapitre {n}/{total} · le son 🌬️",
+
+  "pager.prev": "← Chapitre 4",
+  "pager.next": "La fin 🎉"
+}

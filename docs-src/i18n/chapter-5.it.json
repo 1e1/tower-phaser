@@ -1,0 +1,54 @@
+{
+  "title": "Capitolo 5 — Il suono del vento, sintetizzato dal vivo",
+  "meta.desc": "Un'appendice audio: come Tower Duel costruisce il suo vento interamente con la Web Audio API (senza file audio), quattro caratteri di soffio, l'adattamento alla forza e l'indizio stereo sulla direzione — con un simulatore interattivo.",
+
+  "hero.badge": "Lotto 5 · Tempesta",
+  "hero.kicker": "Capitolo 5",
+  "hero.title": "Il suono del vento, senza un solo file",
+  "hero.lead": "Tutto il suono di <strong>Tower Duel</strong> è <strong>sintetizzato dal vivo</strong> con la Web Audio API — nemmeno un file audio. Ecco come nasce il soffio del vento, come si adatta alla forza e come dice al tuo orecchio da che parte spinge. Con un <strong>simulatore</strong> per provare tutto.",
+
+  "s1.h2": "Zero asset, solo oscillatori",
+  "s1.lead": "Il gioco non include alcun .mp3 né .wav. Ogni rumore — sparo, esplosione, fischio, fanfara — è generato al volo a partire da rumore filtrato e oscillatori.",
+  "s1.p1": "Il vento non fa eccezione. Invece di mandare in loop una registrazione, costruiamo un <b>letto sonoro continuo</b> che reagisce in tempo reale al valore del vento simulato. Il vantaggio: zero download e un suono che combacia esattamente con ciò che accade sullo schermo.",
+  "s1.callout.nerd": "<b>Per i curiosi.</b> Il contesto audio dei browser parte <em>sospeso</em>: produce suono solo dopo un gesto dell'utente (clic, tasto). Per questo il simulatore qui sotto resta muto finché non premi «Avvia il vento».",
+
+  "s2.h2": "Quattro caratteri di vento",
+  "s2.p1": "Il simulatore propone quattro sintesi, dalla più neutra alla più caratterizzata:",
+  "s2.v.whoosh.t": "Soffio",
+  "s2.v.whoosh.d": "rumore rosa filtrato passa-basso. Ariosa, morbida, neutra — il letto di fondo.",
+  "s2.v.howl.t": "Ululato",
+  "s2.v.howl.d": "soffio + una risonanza passa-banda che «fiorisce» con la forza. Fischiante.",
+  "s2.v.gusty.t": "Raffiche",
+  "s2.v.gusty.d": "soffio + risonanza + due oscillatori lenti che fanno respirare il volume. Il più vivo.",
+  "s2.v.aeolian.t": "Fischio",
+  "s2.v.aeolian.d": "voci molto risonanti, come fili tesi. Tonale; canta davvero solo con vento forte.",
+  "s2.callout.tip": "<b>Trucco.</b> Tutte e quattro condividono lo stesso letto di rumore rosa: cambiano solo gli strati sopra. Cambiare carattere costa quindi quasi nulla — è solo un nuovo cablaggio di filtri.",
+
+  "s3.h2": "Tocca a te: il banco di prova del vento",
+  "s3.try": "<b>Tocca a te!</b> Metti le cuffie, avvia il vento, poi trascina la forza da sinistra a destra. Prova i quattro caratteri, spunta «raffica direzionale» per sentire il verso e «riproduzione casuale» per concatenarli da soli.",
+  "s3.title": "Banco di prova del suono del vento",
+  "s3.play": "▶︎ Avvia il vento",
+  "s3.stop": "⏸ Ferma il vento",
+  "s3.volume": "Volume",
+  "s3.v.whoosh": "1 · Soffio",
+  "s3.v.howl": "2 · Ululato",
+  "s3.v.gusty": "3 · Raffiche",
+  "s3.v.aeolian": "4 · Fischio",
+  "s3.strength": "Forza e verso",
+  "s3.flip": "⇄ Inverti",
+  "s3.directional": "Raffica direzionale (stereo)",
+  "s3.random": "Riproduzione casuale",
+  "s3.cycle": "durata",
+  "s3.hint": "Cuffie consigliate. La barra in basso mostra i livelli sinistra/destra e la posizione nel campo stereo.",
+
+  "s4.h2": "Hai sentito il vento prendere vita",
+  "s4.lead": "Quattro caratteri, un solo valore che governa tutto, e la direzione data all'orecchio — il tutto senza un solo file.",
+  "s4.p1": "Voglia di guardare sotto il cofano? Il livello <b>Intermedio</b> apre la ricetta del soffio e la spazializzazione TV; il livello <b>Esperto</b> mostra come concatenare le ambientazioni senza mai tagliare un soffio. Il selettore di livello è in cima alla pagina.",
+  "s4.callout.tip": "<b>La morale.</b> Un suono che «combacia» con il gioco non nasce da una grande banca di file, ma da una manciata di parametri ben collegati alla simulazione.",
+  "s4.back": "↩ Torna alla home",
+
+  "footer.suffix": "capitolo {n}/{total} · il suono 🌬️",
+
+  "pager.prev": "← Capitolo 4",
+  "pager.next": "La fine 🎉"
+}

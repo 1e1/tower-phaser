@@ -4,7 +4,7 @@ import {
   GAME_WIDTH,
   GAME_HEIGHT,
   COLORS,
-  ROUND_OPTIONS,
+  WIN_OPTIONS,
 } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 
@@ -26,7 +26,7 @@ export default class SetupScene extends Phaser.Scene {
     this.fields = [
       { type: 'name', label: 'Player 1', value: 'Player 1', color: COLORS.towerP1 },
       { type: 'name', label: 'Player 2', value: 'Player 2', color: COLORS.towerP2 },
-      { type: 'rounds', label: 'Rounds', index: 1 },
+      { type: 'rounds', label: 'Win rounds', index: 2 },
       { type: 'biome', label: 'Biome', index: 0 },
     ];
     this.selected = 0;
@@ -139,7 +139,7 @@ export default class SetupScene extends Phaser.Scene {
 
   cycle(field, dir) {
     if (field.type === 'rounds') {
-      field.index = (field.index + dir + ROUND_OPTIONS.length) % ROUND_OPTIONS.length;
+      field.index = (field.index + dir + WIN_OPTIONS.length) % WIN_OPTIONS.length;
       this.sfx.blip(620);
       this.refresh();
     } else if (field.type === 'biome') {
@@ -161,7 +161,7 @@ export default class SetupScene extends Phaser.Scene {
         row.value.setText(`${field.value || ''}${caret}`);
         row.value.setColor(`#${field.color.toString(16).padStart(6, '0')}`);
       } else if (field.type === 'rounds') {
-        row.value.setText(`< ${ROUND_OPTIONS[field.index]} >`);
+        row.value.setText(`< First to ${WIN_OPTIONS[field.index]} >`);
         row.value.setColor(active ? COLORS.hud : COLORS.hudDim);
       } else {
         row.value.setText(`< ${BIOMES[field.index].name} >`);
@@ -198,7 +198,7 @@ export default class SetupScene extends Phaser.Scene {
     this.scene.start('Game', {
       names: [p1.value.trim() || 'Player 1', p2.value.trim() || 'Player 2'],
       colors: [p1.color, p2.color],
-      totalRounds: ROUND_OPTIONS[rounds.index],
+      winsNeeded: WIN_OPTIONS[rounds.index],
       biome: BIOMES[biome.index],
     });
   }

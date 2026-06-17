@@ -25,7 +25,7 @@
 
   "s2.h2": "Le jeu qu'on construit",
   "s2.p1": "Deux tours, une de chaque côté d'un paysage. Chaque joueur règle l'<b>angle</b> et la <b>puissance</b> de son canon, en tenant compte du <b>vent</b>. Le piège : les deux joueurs visent <b>en même temps</b>, puis les deux tirs partent ensemble. Le premier à toucher la tour adverse gagne la manche !",
-  "s2.p2": "On a construit le jeu en <b>4 étapes</b> (qu'on appelle des « lots »). Chaque chapitre raconte une étape, avec son ambiance de biome :",
+  "s2.p2": "On a construit le jeu en <b>5 étapes</b> (qu'on appelle des « lots »). Chaque chapitre raconte une étape, avec son ambiance de biome :",
   "s2.c1.lot": "LOT 1 · Prairie",
   "s2.c1.title": "Faire bouger un canon",
   "s2.c1.desc": "La boucle de jeu, la trajectoire d'un boulet, et comment on « emballe » le jeu avec Docker.",
@@ -38,6 +38,9 @@
   "s2.c4.lot": "LOT 4 · Volcan",
   "s2.c4.title": "Détruire le paysage",
   "s2.c4.desc": "Comme dans Worms : chaque tir creuse un cratère. On verra le tour de magie pour « percer un trou » dans une image.",
+  "s2.c5.lot": "LOT 5 · Orage",
+  "s2.c5.title": "Le son du vent",
+  "s2.c5.desc": "Un son 100 % synthétisé en Web Audio : quatre caractères de vent, l'adaptation à la force et l'indice stéréo de direction — avec un simulateur.",
 
   "s3.h2": "Choisis ton niveau",
   "s3.p1": "Chaque chapitre existe en <b>trois niveaux de lecture</b>. Commence par la <b>Découverte</b> ; reviens plus tard pour l'architecture et les détails. Voici les trois portes d'entrée du chapitre 1 (le sélecteur de niveau est ensuite présent en haut de chaque chapitre).",

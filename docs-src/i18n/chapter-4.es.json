@@ -1,14 +1,11 @@
 {
   "title": "Capítulo 4 — Destruir el paisaje",
-
   "hero.badge": "Fase 4 · Volcán",
   "hero.kicker": "Capítulo 4",
   "hero.title": "Destruir el paisaje",
   "hero.lead": "Como en <em>Worms</em>: cada disparo cava un agujero real en el escenario. ¡Descubriremos el truco de magia para “hacer un agujero” en una imagen — y podrás cavar tú mismo!",
-
   "s1.h2": "Un escenario que conserva sus cicatrices",
   "s1.lead": "Hasta ahora, el paisaje era un bonito fondo fijo. Ahora, cada bala que cae <b>arranca</b> un trozo de terreno. Los agujeros se quedan: al final de la ronda, el campo de batalla está todo picado.",
-
   "s2.h2": "La magia: el “borrador” del canvas",
   "s2.p1": "El canvas sabe dibujar… ¡pero también sabe <b>borrar con una forma</b>! Cambiamos al modo <code class=\"inline\">destination-out</code>: todo lo que “dibujamos” se convierte entonces en un <b>borrador</b>. Dibuja un círculo → un agujero redondo perfecto en el terreno.",
   "s2.code.cap": "src/objects/Terrain.js (cavar un cráter)",
@@ -19,7 +16,6 @@
   "s2.sim.title": "¡Cava el terreno!",
   "s2.sim.reset": "↺ Reconstruir la colina",
   "s2.sim.hint": "Consejo: apunta debajo de un montículo para cavar una cueva y dejar un “puente” por encima.",
-
   "s3.h2": "¿Sólido o no? La regla del juego",
   "s3.p1": "¿Cómo sabe el juego si una bala ha tocado el suelo? No hace falta guardar una imagen enorme en memoria. Guardamos: la <b>altura del suelo</b> en cada punto y la <b>lista de cráteres</b>. Un punto es <b>sólido</b> si:",
   "s3.callout.tip": "<b>La regla.</b> “Estoy <b>por debajo de la superficie</b> del suelo <b>Y</b> <b>no estoy en ningún cráter</b>.” Si no, es espacio vacío.",
@@ -30,20 +26,16 @@
   "s3.fig.overhang": "↑ saliente que “flota”",
   "s3.fig.cap": "Por debajo de la superficie pero dentro de un cráter → vacío. El montículo de arriba sigue aguantando.",
   "s3.callout.nerd": "<b>Para los curiosos.</b> Comprobar “¿estoy en un cráter?” = comparar la distancia al centro de cada cráter con su radio. ¡Es el teorema de Pitágoras! (<code class=\"inline\">dx² + dy² ≤ radius²</code>).",
-
   "s4.h2": "Los detalles que lo hacen parecer real",
   "s4.li1": "🟫 <b>Borde chamuscado.</b> Oscurecemos el borde del agujero — pero <b>solo donde hay terreno</b> (modo <code class=\"inline\">source-atop</code>), si no veríamos un círculo flotando en el cielo.",
   "s4.li2": "🌫️ <b>Polvo detrás del terreno.</b> El impacto levanta polvo dibujado <b>detrás</b> del terreno: el relieve lo oculta, como si saliera del agujero.",
   "s4.li3": "🌱 <b>Escenario arrancado.</b> La hierba y los guijarros están “horneados” en la imagen del terreno: el borrador los quita junto con la tierra.",
-
   "s5.h2": "¡Bien hecho, has dado toda la vuelta!",
   "s5.lead": "Ahora ya sabes a grandes rasgos cómo cobra vida un juego web:",
   "s5.p1": "un <b>bucle</b> que redibuja 60×/s, un poco de <b>matemáticas</b> para la física y el escenario, un <b>árbitro</b> en red para jugar juntos y <b>trucos de dibujo</b> para hacerlo todo pedazos. Y sobre todo: avanzamos <b>paso a paso</b>, probando cada uno antes del siguiente.",
   "s5.callout.tip": "<b>El secreto de los profesionales.</b> Nadie escribe un juego grande de una sola vez. Haces una versión <b>pequeña</b> que funciona, la mejoras, una y otra vez. Exactamente las 4 fases de este cuaderno.",
   "s5.back": "↩ Volver al inicio",
-
   "footer.suffix": "capítulo {n}/{total} · ¡gracias por leer!",
-
   "pager.prev": "← Capítulo 3",
-  "pager.next": "El final 🎉"
+  "pager.next": "Capítulo 5 →"
 }

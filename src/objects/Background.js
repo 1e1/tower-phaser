@@ -1,6 +1,13 @@
 import Phaser from 'phaser';
 
-import { GAME_WIDTH, GAME_HEIGHT } from '../config/constants.js';
+import { GAME_WIDTH, GAME_HEIGHT, MAX_WIND } from '../config/constants.js';
+
+// Full-gale slant of the rain. Calm wind = vertical (0°); ±MAX_WIND tilts the
+// whole curtain to ±RAIN_MAX_TILT. ~32° reads as a driving storm without going
+// so flat it stops looking like falling rain.
+const RAIN_MAX_TILT = 32 * (Math.PI / 180);
+const RAIN_FALL_MEAN = 640; // mid-point of the drops' speedY range, for the tilt maths
+const RAIN_SPREAD = 55;     // ± horizontal jitter so each drop keeps its own trajectory
 
 const DEPTH = {
   sky: -100,
@@ -9,6 +16,11 @@ const DEPTH = {
   mountainFar: -90,
   mountainNear: -85,
   cloud: -80,
+  // Lightning sits above the parallax scenery but below the foreground (terrain,
+  // towers at depth >= 0), so a flash brightens the distant layers while the
+  // foreground stays in silhouette — depth ordering gives the parallax for free.
+  flash: -55,
+  bolt: -54,
   ambient: 8,
 };
 
@@ -42,6 +54,7 @@ export default class Background {
     this.spawnClouds();
     // The ambient particle layer is the cheapest thing to drop on weak devices.
     if (quality !== 'lite') this.spawnAmbient();
+    if (quality !== 'lite') this.spawnLightning();
   }
 
   drawSky() {
@@ -166,8 +179,25 @@ export default class Background {
 
     const common = { tint: ambientColor, depth: DEPTH.ambient };
     let config;
+    let texture = 'spark';
 
     switch (ambient) {
+      case 'rain':
+        // Fast vertical streaks; the wind drives gravityX (see update) so the
+        // whole curtain leans the way the wind blows — same value as the SFX.
+        texture = 'raindrop';
+        config = {
+          x: { min: WIDE_MIN, max: WIDE_MAX },
+          y: -20,
+          lifespan: 2400,
+          speedY: { min: 520, max: 760 },
+          speedX: { min: -10, max: 10 },
+          scale: { min: 0.6, max: 1.1 },
+          alpha: { min: 0.25, max: 0.6 },
+          frequency: 14,
+          quantity: 2,
+        };
+        break;
       case 'snow':
         config = {
           x: { min: WIDE_MIN, max: WIDE_MAX },
@@ -226,9 +256,68 @@ export default class Background {
     }
 
     this.emitter = this.scene.add
-      .particles(0, 0, 'spark', { ...config, tint: common.tint })
+      .particles(0, 0, texture, { ...config, tint: common.tint })
       .setDepth(common.depth)
       .setScrollFactor(0.8);
+  }
+
+  // Parallax lightning for the storm biome: a full-screen additive flash (behind
+  // the foreground) plus a jagged bolt in the distant layer, on a random cadence.
+  spawnLightning() {
+    const cfg = this.biome.lightning;
+    if (!cfg) return;
+    const flash = this.scene.add
+      .graphics()
+      .setDepth(DEPTH.flash)
+      .setScrollFactor(0)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    flash.fillStyle(0xbcd0ff, 1);
+    flash.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    flash.setAlpha(0);
+    const bolt = this.scene.add.graphics().setDepth(DEPTH.bolt).setScrollFactor(0.25).setAlpha(0);
+    this.lightning = {
+      cfg,
+      flash,
+      bolt,
+      energy: 0,
+      peak: 0.45,
+      next: Phaser.Math.FloatBetween(cfg.every[0], cfg.every[1]),
+    };
+  }
+
+  // Jagged bolt via midpoint displacement, returned as a point list.
+  makeBolt(x0, y0, x1, y1, disp) {
+    let pts = [{ x: x0, y: y0 }, { x: x1, y: y1 }];
+    for (let it = 0; it < 5; it += 1) {
+      const next = [];
+      for (let i = 0; i < pts.length - 1; i += 1) {
+        const a = pts[i];
+        const b = pts[i + 1];
+        next.push(a);
+        next.push({ x: (a.x + b.x) / 2 + Phaser.Math.FloatBetween(-disp, disp), y: (a.y + b.y) / 2 });
+      }
+      next.push(pts[pts.length - 1]);
+      pts = next;
+      disp *= 0.55;
+    }
+    return pts;
+  }
+
+  strikeLightning() {
+    const L = this.lightning;
+    const cfg = L.cfg;
+    const dist = Math.random();               // 0 = close (bright, loud), 1 = far (faint)
+    const near = 1 - dist;
+    L.energy = 1 - dist * 0.5;
+    L.peak = 0.5 * (cfg.farResponse ?? 0.9);
+    const x0 = Phaser.Math.Between(GAME_WIDTH * 0.2, GAME_WIDTH * 0.8);
+    const pts = this.makeBolt(x0, GAME_HEIGHT * 0.05, x0 + Phaser.Math.Between(-80, 80), GAME_HEIGHT * 0.55, GAME_WIDTH * 0.16);
+    L.bolt.clear();
+    L.bolt.lineStyle(1 + 2.5 * near, 0xeaf0ff, 1);
+    L.bolt.beginPath();
+    pts.forEach((p, i) => (i ? L.bolt.lineTo(p.x, p.y) : L.bolt.moveTo(p.x, p.y)));
+    L.bolt.strokePath();
+    if (this.scene.sfx) this.scene.sfx.thunder((cfg.thunderDelay ?? 1.1) * (0.4 + dist * 1.6));
   }
 
   // Target wind (px/s^2, positive blows right). The applied value eases toward
@@ -253,7 +342,32 @@ export default class Background {
     }
 
     if (this.emitter) {
-      this.emitter.gravityX = Phaser.Math.Clamp(windFx, -220, 220);
+      if (this.biome.ambient === 'rain') {
+        // Rain falls too fast for gravity (an acceleration) to bend it visibly over
+        // such a short drop, so the wind sets the drops' horizontal launch VELOCITY
+        // instead: the whole curtain tilts by a real angle, 0° when calm up to
+        // ±RAIN_MAX_TILT at full wind. The ± spread keeps every drop on its own
+        // slightly different slant rather than a rigid sheet. (speedX is a min/max
+        // op, so its range must be reloaded — assigning a number is clamped away.)
+        const tilt = Phaser.Math.Clamp(this.windValue / MAX_WIND, -1, 1) * RAIN_MAX_TILT;
+        const vx = Math.tan(tilt) * RAIN_FALL_MEAN;
+        this.emitter.gravityX = 0;
+        this.emitter.ops.speedX.loadConfig({ speedX: { min: vx - RAIN_SPREAD, max: vx + RAIN_SPREAD } });
+      } else {
+        this.emitter.gravityX = Phaser.Math.Clamp(windFx, -220, 220);
+      }
+    }
+
+    if (this.lightning) {
+      const L = this.lightning;
+      L.next -= dt;
+      if (L.next <= 0) {
+        this.strikeLightning();
+        L.next = Phaser.Math.FloatBetween(L.cfg.every[0], L.cfg.every[1]);
+      }
+      L.energy = Math.max(0, L.energy - dt * 3.0);
+      L.flash.setAlpha(L.energy * L.peak);
+      L.bolt.setAlpha(Math.min(1, L.energy * 2.2));
     }
   }
 }

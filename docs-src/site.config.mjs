@@ -31,6 +31,10 @@ export const pages = [
   { slug: 'chapter-4-i', kind: 'chapter', chapter: 4, level: 'i', biome: 'volcano' },
   { slug: 'chapter-4-e', kind: 'chapter', chapter: 4, level: 'e', biome: 'volcano' },
 
+  { slug: 'chapter-5', kind: 'chapter', chapter: 5, level: 'd', biome: 'storm' },
+  { slug: 'chapter-5-i', kind: 'chapter', chapter: 5, level: 'i', biome: 'storm' },
+  { slug: 'chapter-5-e', kind: 'chapter', chapter: 5, level: 'e', biome: 'storm' },
+
   { slug: 'annex', kind: 'annex', biome: 'meadow' },
   { slug: 'annex-lobby', kind: 'annex', biome: 'meadow' },
   { slug: 'annex-math', kind: 'annex', biome: 'volcano' },
@@ -46,7 +50,7 @@ export const levels = [
   { key: 'e', suffix: '-e' },
 ];
 
-export const TOTAL_CHAPTERS = 4;
+export const TOTAL_CHAPTERS = 5;
 
 // Breadcrumb sets, picked per page by kind (see build-docs.mjs). Each entry is
 // [href, labelKey] — the label is translated via the _site catalog.

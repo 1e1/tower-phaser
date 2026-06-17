@@ -1,0 +1,11 @@
+    <!-- Biome-OST mixer: the lab posts its document height so
+         the iframe grows to fit its content instead of scrolling internally. -->
+    <script>
+      (function () {
+        const frame = document.querySelector('.ost-frame'); if (!frame) return;
+        window.addEventListener('message', (e) => {
+          const h = e && e.data && e.data.ostLabHeight;
+          if (typeof h === 'number' && h > 0) frame.style.height = (h + 2) + 'px';
+        });
+      })();
+    </script>

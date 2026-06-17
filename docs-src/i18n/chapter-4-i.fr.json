@@ -1,12 +1,10 @@
 {
   "title": "Chapitre 4 (intermédiaire) — Terrain destructible &amp; état partagé",
   "meta.desc": "Niveau intermédiaire : un terrain heightfield et ses cratères, le déterminisme par graine, la solidité d'un point par distance au carré, un snapshot compact qui n'envoie que la graine et les cratères, et un aperçu du vent continu du mode turbo.",
-
   "hero.badge": "Intermédiaire · Lot 4 · Volcan",
   "hero.kicker": "Chapitre 4 · niveau intermédiaire",
   "hero.title": "Terrain destructible &amp; état partagé",
   "hero.lead": "Le terrain se déforme à chaque tir — et pourtant trois écrans le voient identique. La clé : un terrain <strong>déterministe</strong>, des cratères comme <strong>liste légère</strong>, et un snapshot qui envoie <strong>la graine, pas le terrain</strong>.",
-
   "s1.h2": "Le terrain : un heightfield, pas une image",
   "s1.lead": "Le sol n'est pas stocké comme une image, mais comme un <b>heightfield</b> : un tableau qui donne, pour chaque colonne <code class=\"inline\">x</code>, la hauteur du sol. C'est compact, rapide à interroger, et facile à régénérer.",
   "s1.code.cap": "src/sim/terrain.js — une hauteur par colonne",
@@ -14,19 +12,16 @@
   "s1.code.c2": "// somme de vagues sinusoïdales → relief naturel",
   "s1.p1": "La destruction ne réécrit pas ce tableau. À la place, on tient une <b>liste de cratères</b> à côté. La forme finale du terrain, c'est « le heightfield <em>moins</em> les cratères » — une soustraction calculée à la demande, jamais matérialisée.",
   "s1.callout.tip": "<b>À retenir.</b> Représenter l'état par « une base + une liste de modifications » est partout : c'est exactement l'esprit d'un journal d'événements. Plus léger qu'une image, et trivial à transmettre.",
-
   "s2.h2": "Solide ou vide ? Une règle, sans racine carrée",
   "s2.p1": "Pour savoir si un boulet a touché le sol, on n'a pas besoin d'une grosse image en mémoire. Un point est solide s'il est <b>sous la surface</b> ET <b>dans aucun cratère</b>. Tester « dans un cratère » se ramène à comparer une distance au rayon.",
   "s2.code.cap": "src/sim/terrain.js — comparaison de carrés, pas de √",
   "s2.p2": "On compare <code class=\"inline\">dx² + dy²</code> à <code class=\"inline\">r²</code> : aucune racine carrée, juste des multiplications. Comme un cratère peut être entièrement <b>sous</b> la surface, la matière au-dessus « flotte » → grottes et surplombs, façon Worms.",
   "s2.callout.nerd": "<b>Pour les curieux.</b> Pourquoi éviter la racine carrée ? Parce qu'elle coûte cher et qu'on n'en a pas besoin pour <em>comparer</em> des distances. C'est un classique des moteurs de jeu — l'<a href=\"annex-math.html\">annexe Maths</a> raconte toute l'histoire (Pythagore, et la légendaire astuce de Quake).",
-
   "s2.xsec.title": "Solide moins les cratères",
   "s2.xsec.solid": "solide",
   "s2.xsec.crater": "vide (cratère)",
   "s2.xsec.overhang": "↑ surplomb qui « flotte »",
   "s2.xsec.cap": "Solide = sous la surface <em>moins</em> les cratères. Un cratère situé sous la surface peut laisser de la matière au-dessus : voilà les grottes et les surplombs.",
-
   "s3.h2": "Le snapshot : envoyer la graine, pas le terrain",
   "s3.p1": "Le terrain fait des milliers de hauteurs — beaucoup trop pour le diffuser 30 fois par seconde. L'astuce architecturale : le snapshot transporte la <b>graine</b> et la <b>liste des cratères</b>. Chaque écran régénère le terrain à l'identique, puis y soustrait les cratères.",
   "s3.code.cap": "src/sim/Simulation.js — un état compact",
@@ -36,16 +31,13 @@
   "s3.p2": "Côté création de cratère, c'est tout aussi léger : quand un projectile devient solide, on pousse simplement un cercle dans la liste.",
   "s3.code2.cap": "src/sim/Simulation.js — un impact = un cercle de plus",
   "s3.callout.tip": "<b>À retenir.</b> Économie de bande passante <em>et</em> garantie de cohérence d'un seul coup : tant que la graine et la liste de cratères sont identiques, le terrain l'est aussi, sur les trois écrans.",
-
   "s4.h2": "Aperçu : le vent continu du mode turbo",
   "s4.p1": "En mode normal, le vent change entre les manches. Le <b>mode turbo</b> introduit un vent <b>continu</b> qui respire en permanence. Architecturalement, c'est un petit système à part dans la simulation : des <b>points-clés</b> régénérés toutes les 10 s, reliés par un lissage, plus une <b>onde de rafales</b> par-dessus.",
   "s4.code.cap": "src/sim/Simulation.js — lissage entre deux points-clés (smoothstep)",
   "s4.code.c1": "// smoothstep : démarrages/arrêts doux",
   "s4.p2": "On superpose ensuite une légère <b>onde de rafales</b> (deux sinusoïdes), dont l'amplitude dépend d'un trait propre au match (<code class=\"inline\">gustiness</code>). Résultat : un vent qui dérive doucement entre ses points-clés mais qui « breathe » au lieu de glisser mécaniquement. Le niveau expert détaille la formule complète.",
   "s4.callout.nerd": "<b>Pour les curieux.</b> Comme tout le reste de la simulation, ce vent est <b>déterministe</b> : tiré du RNG à graine du match, il est reproductible côté serveur — et donc identique à ce que la TV affichera.",
-
   "footer.suffix": "chapitre {n}/{total} · niveau intermédiaire",
-
   "pager.prev": "← Chapitre 3 · Client/serveur temps réel",
-  "pager.next": "Fin du parcours intermédiaire 🎉"
+  "pager.next": "Chapitre 5 →"
 }

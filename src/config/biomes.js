@@ -51,4 +51,19 @@ export const BIOMES = [
     ambientColor: 0xff7a33,
     roughness: 1.4,
   },
+  {
+    id: 'storm',
+    name: 'Storm',
+    sky: [0x0d1322, 0x243352],
+    terrain: { fill: 0x1c2236, edge: 0x5b7fbf, dark: 0x0f1422 },
+    celestial: { color: 0xcdd8f5, glow: 0x6f86c0, x: 0.74, y: 0.16, radius: 30 }, // veiled moon
+    mountains: [0x36415e, 0x222a40],
+    cloud: { color: 0x3c4768, alpha: 0.92 },
+    ambient: 'rain',
+    ambientColor: 0x9fb4e0,
+    roughness: 1.1,
+    // Parallax lightning: distant strikes flash the far layers far more than the
+    // near ones, so depth reads from light. every:[min,max] seconds between bolts.
+    lightning: { every: [4, 11], farResponse: 0.9, nearResponse: 0.18, thunderDelay: 1.1 },
+  },
 ];

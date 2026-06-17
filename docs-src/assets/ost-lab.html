@@ -1,0 +1,1589 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TOWER · Bande-son par biome</title>
+<style>
+  :root {
+    --ground: #0b1020;
+    --panel: #131b30;
+    --panel-2: #0e1730;
+    --line: #2a3654;
+    --text: #e8eef7;
+    --dim: #9fb0c8;
+    --accent: #ff6b35;
+    --green: #7cfc7c;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: "Helvetica Neue", Arial, system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(120% 90% at 50% -10%, #1b2236 0%, var(--ground) 55%, #070a14 100%);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+
+  /* ---- tracker chrome bar ---- */
+  .chrome {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(11, 16, 32, 0.86);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line);
+  }
+  .chrome-in {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--dim);
+    flex-wrap: wrap;
+  }
+  .chrome .play { color: var(--green); }
+  .chrome .play.live { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+  .chrome .file { color: var(--text); }
+  .chrome .nowp { color: var(--accent); max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chrome .readout { margin-left: auto; display: flex; gap: 14px; }
+  .chrome .readout b { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ---- hero ---- */
+  .hero { padding: 56px 0 40px; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+  h1 {
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: clamp(38px, 7.5vw, 78px);
+    line-height: 0.94;
+    letter-spacing: -0.03em;
+    margin: 0 0 18px;
+    text-transform: uppercase;
+  }
+  h1 .soft { color: var(--dim); display: block; font-size: 0.42em; letter-spacing: -0.01em; }
+  .lede {
+    max-width: 60ch;
+    color: var(--dim);
+    margin: 0 0 18px;
+    font-size: 15px;
+  }
+  .lede b { color: var(--text); font-weight: 400; }
+
+  .howto {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--green);
+    border: 1px solid color-mix(in srgb, var(--green) 40%, var(--line));
+    border-radius: 3px;
+    padding: 7px 12px;
+    margin: 0 0 28px;
+  }
+  .howto b { color: var(--text); font-weight: 700; }
+
+  .scope {
+    width: 100%;
+    height: 168px;
+    display: block;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    image-rendering: pixelated;
+  }
+  .stats {
+    display: flex;
+    gap: 0;
+    margin-top: -1px;
+    border: 1px solid var(--line);
+    border-top: 0;
+    flex-wrap: wrap;
+  }
+  .stat {
+    flex: 1 1 0;
+    min-width: 130px;
+    padding: 14px 18px;
+    border-right: 1px solid var(--line);
+  }
+  .stat:last-child { border-right: 0; }
+  .stat .n { font-size: 22px; color: var(--text); font-weight: 700; }
+  .stat .l { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+
+  /* ---- biome section ---- */
+  .biome { margin-top: 56px; }
+  .biome-head {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--bio);
+  }
+  .biome-idx {
+    font-size: 12px;
+    color: var(--bio);
+    letter-spacing: 0.1em;
+    padding-bottom: 6px;
+  }
+  .biome-name {
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: clamp(26px, 4.6vw, 42px);
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    line-height: 1;
+    margin: 0;
+  }
+  .biome-tag { font-size: 12px; color: var(--dim); padding-bottom: 6px; }
+  .biome-strip {
+    margin-left: auto;
+    width: 116px;
+    height: 38px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--sky1), var(--sky2));
+    align-self: center;
+  }
+
+  /* column legend */
+  .legend {
+    display: grid;
+    grid-template-columns: 34px 1fr 64px 96px 90px;
+    gap: 14px;
+    padding: 12px 16px 6px;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .tracks { display: flex; flex-direction: column; gap: 8px; }
+
+  .track {
+    display: grid;
+    grid-template-columns: 34px 1fr 64px 96px 90px;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--bio);
+  }
+  .track.playing { box-shadow: inset 0 0 0 1px var(--bio); }
+
+  /* play button (the track number doubles as transport) */
+  .idx {
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    padding: 0;
+    font: inherit;
+    color: var(--dim);
+    cursor: pointer;
+    position: relative;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 3px;
+  }
+  .idx .num, .idx .ico { grid-area: 1 / 1; transition: opacity 0.12s; }
+  .idx .num { font-size: 13px; }
+  .idx .ico { opacity: 0; color: var(--bio); font-size: 11px; }
+  .idx:hover { border-color: var(--bio); }
+  .idx:hover .num { opacity: 0; }
+  .idx:hover .ico { opacity: 1; }
+  .idx:focus-visible { outline: 2px solid var(--bio); outline-offset: 2px; }
+  .idx.playing { border-color: var(--bio); background: color-mix(in srgb, var(--bio) 20%, var(--panel-2)); }
+  .idx.playing .num { opacity: 0; }
+  .idx.playing .ico { opacity: 1; color: var(--accent); }
+
+  .t-main .t-title {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .t-main .t-desc { font-size: 12.5px; color: var(--dim); margin-top: 3px; }
+  .t-main .voices { display: flex; gap: 5px; margin-top: 9px; flex-wrap: wrap; }
+  .voice {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    color: var(--dim);
+    background: var(--panel-2);
+  }
+  .t-bpm { font-size: 13px; }
+  .t-bpm b { color: var(--text); font-weight: 700; font-size: 16px; }
+  .t-bpm span { color: var(--dim); font-size: 10px; display: block; letter-spacing: 0.1em; }
+  .t-key { font-size: 12.5px; color: var(--text); }
+
+  .meter { display: flex; gap: 3px; align-items: flex-end; height: 22px; }
+  .meter i { width: 9px; background: var(--line); display: block; }
+  .meter i.on { background: var(--bio); }
+  .meter i:nth-child(1) { height: 30%; }
+  .meter i:nth-child(2) { height: 48%; }
+  .meter i:nth-child(3) { height: 66%; }
+  .meter i:nth-child(4) { height: 84%; }
+  .meter i:nth-child(5) { height: 100%; }
+
+  /* final round track */
+  .track.is-final {
+    border: 1px solid var(--bio);
+    border-left: 3px solid var(--accent);
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--bio) 14%, var(--panel)) 0%, var(--panel) 60%);
+  }
+  .final-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    padding: 2px 7px;
+    margin-bottom: 8px;
+  }
+  .final-badge::before {
+    content: "";
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* ---- footer note ---- */
+  .note {
+    margin-top: 60px;
+    padding: 22px 24px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--dim);
+    font-size: 13px;
+  }
+  .note b { color: var(--text); font-weight: 700; }
+  .note .accent { color: var(--accent); }
+
+  /* ---- mixer / transition console ---- */
+  .mixer {
+    margin-top: 64px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    --bio: #7ed957;
+  }
+  .mixer-head { padding: 22px 24px 4px; }
+  .mixer-head h2 {
+    font-family: var(--sans);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: clamp(20px, 3vw, 28px);
+    margin: 0 0 8px;
+  }
+  .mixer-head p { color: var(--dim); font-size: 13px; margin: 0; max-width: 62ch; }
+
+  .biome-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 24px 16px; }
+  .btab {
+    -webkit-appearance: none; appearance: none;
+    font: inherit; cursor: pointer;
+    font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 8px 14px;
+    color: var(--dim);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+  .btab:hover { color: var(--text); }
+  .btab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btab.active { color: #0b1020; background: var(--tabc); border-color: var(--tabc); font-weight: 700; }
+
+  .stage { position: relative; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  #stage { display: block; width: 100%; height: auto; }
+  .stage-hud {
+    position: absolute; top: 14px; left: 16px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; letter-spacing: 0.08em;
+    background: rgba(8, 11, 20, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 6px 12px; border-radius: 3px;
+    backdrop-filter: blur(3px);
+  }
+  .stage-hud .mn { color: var(--dim); }
+  .stage-hud .ti { color: #fff; font-weight: 700; }
+  .stage-hud .tag {
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: 2px;
+    color: #0b1020; background: var(--bio); font-weight: 700;
+  }
+  .stage-hud .tag.fin { background: var(--accent); }
+  .dots { position: absolute; bottom: 12px; left: 16px; display: flex; gap: 7px; align-items: center; }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: transparent;
+  }
+  .dot.fin { border-radius: 1px; transform: rotate(45deg); }
+  .dot.cur { background: #fff; border-color: #fff; }
+  .dot.cur.fin { background: var(--accent); border-color: var(--accent); }
+
+  .console { display: grid; grid-template-columns: auto 1fr; gap: 28px; padding: 22px 24px 26px; align-items: end; }
+  .faders { display: flex; gap: 18px; }
+  .chan { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 64px; }
+  .chan-lab {
+    font-size: 11px; letter-spacing: 0.1em; color: var(--dim);
+    width: 22px; height: 22px; display: grid; place-items: center;
+    border: 1px solid var(--line); border-radius: 3px;
+  }
+  .chan.live .chan-lab { color: #0b1020; background: var(--bio); border-color: var(--bio); font-weight: 700; }
+  .chan[data-chan="F"].live .chan-lab { background: var(--accent); border-color: var(--accent); }
+  .groove {
+    position: relative; width: 12px; height: 128px;
+    background: var(--ground); border: 1px solid var(--line); border-radius: 3px;
+    overflow: hidden;
+  }
+  .fill {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 0%;
+    background: var(--bio);
+    border-top: 2px solid #fff;
+  }
+  .chan[data-chan="F"] .fill { background: var(--accent); }
+  .chan-name {
+    font-size: 10.5px; color: var(--dim); text-align: center; line-height: 1.25;
+    height: 2.6em; overflow: hidden;
+  }
+
+  .transport { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  .trow { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tbtn {
+    -webkit-appearance: none; appearance: none; font: inherit; cursor: pointer;
+    font-size: 12px; letter-spacing: 0.04em;
+    padding: 10px 16px; border-radius: 3px;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line);
+  }
+  .tbtn:hover { border-color: var(--bio); }
+  .tbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tbtn.primary { background: var(--bio); color: #0b1020; border-color: var(--bio); font-weight: 700; }
+  .tbtn.final { border-color: var(--accent); color: var(--accent); }
+  .tbtn[disabled] { opacity: 0.4; cursor: default; }
+  .vol { display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: 0.08em; color: var(--dim); text-transform: uppercase; }
+  .vol input { accent-color: var(--accent); width: 140px; }
+
+  .mixpanel { margin-top: 6px; padding-top: 12px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 8px; }
+  .mixhead { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); }
+  .mixnote { color: var(--dim); text-transform: none; letter-spacing: 0; font-size: 11px; }
+  .mixr { font-family: var(--mono); color: var(--accent); font-weight: 700; min-width: 3ch; }
+  #windToggle.on { background: var(--accent); color: #0b1020; border-color: var(--accent); font-weight: 700; }
+
+  @media (max-width: 720px) {
+    .console { grid-template-columns: 1fr; gap: 22px; align-items: stretch; }
+    .faders { justify-content: space-between; }
+    .legend { display: none; }
+    .track {
+      grid-template-columns: 34px 1fr;
+      grid-template-areas:
+        "idx main"
+        ".   bpm";
+      row-gap: 10px;
+    }
+    .track .idx { grid-area: idx; }
+    .t-main { grid-area: main; }
+    .t-bpm, .t-key, .meter { grid-area: bpm; display: inline-flex; margin-right: 18px; align-items: baseline; }
+    .meter { align-items: flex-end; }
+    .biome-strip { display: none; }
+  }
+</style>
+</head>
+<body>
+
+
+<div class="chrome">
+  <div class="chrome-in">
+    <span class="play" id="playLed">&#9654;</span>
+    <span class="file">TOWER_OST.XM</span>
+    <span class="nowp" id="nowPlaying">arrêt</span>
+    <span class="readout">
+      <span>ROW <b id="roRow">00</b></span>
+      <span>BPM <b id="roBpm">—</b></span>
+      <span>SYNTH <b>WEB&nbsp;AUDIO</b></span>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Direction sonore · maquette jouable</p>
+    <h1>Bande-son<br>par biome<span class="soft">dix-neuf pistes synthétisées en direct</span></h1>
+    <p class="lede">Chaque arène a son climat sonore. Toutes les pistes sont générées à la volée par un synthétiseur <b>Web Audio</b> — voix carrées, dents de scie, triangle, FM et bruit filtré, comme le moteur du jeu. Chaque biome propose plusieurs ambiances en boucle, et <b>au moins une piste de dernière manche</b> qui reprend le thème et monte la tension.</p>
+    <p class="howto"><b>&#9654;</b>&nbsp; Écoute une piste en cliquant son numéro, ou lance une manche dans la table de mixage juste en dessous pour entendre les transitions.</p>
+
+    <canvas class="scope" id="scope" width="1000" height="168" aria-label="Visualiseur audio, barres style 16 bits"></canvas>
+    <div class="stats">
+      <div class="stat"><div class="n">19</div><div class="l">pistes</div></div>
+      <div class="stat"><div class="n">5</div><div class="l">biomes</div></div>
+      <div class="stat"><div class="n">5</div><div class="l">dernières manches</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">fichiers audio</div></div>
+    </div>
+  </header>
+
+  <!-- MIXER / TRANSITION CONSOLE -->
+  <section class="mixer" id="mixer">
+    <div class="mixer-head">
+      <h2>Table de mixage · transition de manche</h2>
+      <p>Pendant un match, les deux ambiances d'un biome alternent à chaque manche ; la dernière manche a sa propre musique. Quand la scène glisse vers la colline suivante, la musique se fond avec elle. Choisis un biome, puis enchaîne les manches.</p>
+    </div>
+    <div class="biome-tabs" id="biomeTabs">
+      <button class="btab" data-biome="0" style="--tabc:#7ed957;">Prairie</button>
+      <button class="btab" data-biome="1" style="--tabc:#f0cd7a;">Désert</button>
+      <button class="btab" data-biome="2" style="--tabc:#bcd2ec;">Toundra</button>
+      <button class="btab" data-biome="3" style="--tabc:#ff6b35;">Volcan</button>
+      <button class="btab" data-biome="4" style="--tabc:#7da6ff;">Orage</button>
+    </div>
+    <div class="stage">
+      <canvas id="stage" width="1000" height="240" aria-label="Scène du biome qui glisse à chaque manche"></canvas>
+      <div class="stage-hud">
+        <span class="mn" id="hudRound">Manche 1 / 5</span>
+        <span class="ti" id="hudTitle">Brise du matin</span>
+        <span class="tag" id="hudTag">A</span>
+      </div>
+      <div class="dots" id="dots" aria-hidden="true"></div>
+    </div>
+    <div class="console">
+      <div class="faders" id="faders">
+        <div class="chan" data-chan="A">
+          <div class="chan-lab">A</div>
+          <div class="groove"><div class="fill"></div></div>
+          <div class="chan-name" data-name="A">Brise du matin</div>
+        </div>
+        <div class="chan" data-chan="B">
+          <div class="chan-lab">B</div>
+          <div class="groove"><div class="fill"></div></div>
+          <div class="chan-name" data-name="B">Cerf-volant</div>
+        </div>
+        <div class="chan" data-chan="F">
+          <div class="chan-lab">&#9733;</div>
+          <div class="groove"><div class="fill"></div></div>
+          <div class="chan-name" data-name="F">Dernier souffle</div>
+        </div>
+      </div>
+      <div class="transport">
+        <div class="trow">
+          <button class="tbtn primary" id="btnStart">&#9654; Démarrer la manche 1</button>
+          <button class="tbtn" id="btnNext">Manche suivante &#9656;</button>
+          <button class="tbtn final" id="btnFinal">Dernière manche</button>
+          <button class="tbtn" id="btnStop">&#9632; Stop</button>
+        </div>
+        <div class="vol">
+          <label for="vol">Volume</label>
+          <input type="range" id="vol" min="0" max="100" value="80" />
+        </div>
+        <div class="mixpanel">
+          <div class="mixhead">Équilibre vent / musique <span class="mixnote">(règle, puis donne-moi les deux valeurs)</span></div>
+          <div class="trow">
+            <button class="tbtn" id="windToggle">&#127788; Vent</button>
+            <label class="vol">Force <input type="range" id="windForce" min="0" max="100" value="45" /></label>
+          </div>
+          <div class="vol"><label>Niveau vent</label><input type="range" id="windLevel" min="0" max="100" value="20" /><span class="mixr" id="windLevelR">0.20</span></div>
+          <div class="vol"><label>Niveau musique</label><input type="range" id="musicLevel" min="0" max="100" value="30" /><span class="mixr" id="musicLevelR">0.30</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRAIRIE -->
+  <section class="biome" style="--bio:#7ed957; --sky1:#6fb7ff; --sky2:#cfeeff;">
+    <div class="biome-head">
+      <span class="biome-idx">01</span>
+      <h2 class="biome-name">Prairie</h2>
+      <span class="biome-tag">clair · pastoral · majeur</span>
+      <span class="biome-strip" aria-hidden="true"></span>
+    </div>
+    <div class="legend"><span>&#9654;</span><span>Piste</span><span>BPM</span><span>Gamme</span><span>Intensité</span></div>
+    <div class="tracks">
+
+      <div class="track">
+        <button class="idx" data-track="1" aria-label="Écouter Brise du matin"><span class="num">01</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Brise du matin</div>
+          <div class="t-desc">Boucle d'attente, respiration lente. Une mélodie à la voix carrée flotte au-dessus d'une basse triangle ronde.</div>
+          <div class="voices"><span class="voice">PULSE 50%</span><span class="voice">TRI BASS</span><span class="voice">NOISE HAT</span></div>
+        </div>
+        <div class="t-bpm"><b>96</b><span>BPM</span></div>
+        <div class="t-key">La majeur</div>
+        <div class="meter" aria-label="intensité 2 sur 5"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="track">
+        <button class="idx" data-track="2" aria-label="Écouter Cerf-volant"><span class="num">02</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Cerf-volant</div>
+          <div class="t-desc">Ambiance de partie en cours, plus enjouée. Arpèges bondissants et contretemps léger au bruit filtré.</div>
+          <div class="voices"><span class="voice">PULSE ARP</span><span class="voice">TRI BASS</span><span class="voice">NOISE SNARE</span></div>
+        </div>
+        <div class="t-bpm"><b>112</b><span>BPM</span></div>
+        <div class="t-key">Ré majeur</div>
+        <div class="meter" aria-label="intensité 3 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+      </div>
+
+      <div class="track is-final">
+        <button class="idx" data-track="3" aria-label="Écouter Dernier souffle"><span class="num">03</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="final-badge">Dernière manche</div>
+          <div class="t-title">Dernier souffle</div>
+          <div class="t-desc">Reprend le thème de « Brise du matin » mais doublé et pressé : arpèges pleins, basse marchante, le pastoral qui se cabre.</div>
+          <div class="voices"><span class="voice">PULSE LEAD</span><span class="voice">PULSE ARP</span><span class="voice">TRI BASS</span><span class="voice">NOISE KIT</span></div>
+        </div>
+        <div class="t-bpm"><b>128</b><span>BPM</span></div>
+        <div class="t-key">La majeur</div>
+        <div class="meter" aria-label="intensité 5 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- DÉSERT -->
+  <section class="biome" style="--bio:#f0cd7a; --sky1:#f6b66b; --sky2:#fde9c8;">
+    <div class="biome-head">
+      <span class="biome-idx">02</span>
+      <h2 class="biome-name">Désert</h2>
+      <span class="biome-tag">aride · tendu · phrygien</span>
+      <span class="biome-strip" aria-hidden="true"></span>
+    </div>
+    <div class="legend"><span>&#9654;</span><span>Piste</span><span>BPM</span><span>Gamme</span><span>Intensité</span></div>
+    <div class="tracks">
+
+      <div class="track">
+        <button class="idx" data-track="4" aria-label="Écouter Mirage"><span class="num">04</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Mirage</div>
+          <div class="t-desc">Bourdon de dents de scie, presque immobile. Deux voix légèrement désaccordées font trembler l'air comme la chaleur.</div>
+          <div class="voices"><span class="voice">SAW DRONE</span><span class="voice">PULSE DETUNE</span></div>
+        </div>
+        <div class="t-bpm"><b>84</b><span>BPM</span></div>
+        <div class="t-key">Mi phrygien</div>
+        <div class="meter" aria-label="intensité 1 sur 5"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="track">
+        <button class="idx" data-track="5" aria-label="Écouter Caravane"><span class="num">05</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Caravane</div>
+          <div class="t-desc">Pulsation de marche, percussion à main au bruit filtré. Mélodie à la gamme doublement harmonique, exotique.</div>
+          <div class="voices"><span class="voice">SAW LEAD</span><span class="voice">TRI BASS</span><span class="voice">NOISE PERC</span></div>
+        </div>
+        <div class="t-bpm"><b>100</b><span>BPM</span></div>
+        <div class="t-key">Double harmonique</div>
+        <div class="meter" aria-label="intensité 3 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+      </div>
+
+      <div class="track">
+        <button class="idx" data-track="6" aria-label="Écouter Fournaise"><span class="num">06</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Fournaise</div>
+          <div class="t-desc">Midi de plomb. Un mur de dents de scie graves et désaccordées écrase tout, la grosse caisse martèle chaque temps. La chaleur n'est plus une ambiance, c'est une pression.</div>
+          <div class="voices"><span class="voice">SAW WALL</span><span class="voice">SAW BASS</span><span class="voice">KICK 4/4</span><span class="voice">NOISE EMBER</span></div>
+        </div>
+        <div class="t-bpm"><b>76</b><span>BPM</span></div>
+        <div class="t-key">Mi phrygien</div>
+        <div class="meter" aria-label="intensité 4 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+      </div>
+
+      <div class="track is-final">
+        <button class="idx" data-track="7" aria-label="Écouter Tempête de sable"><span class="num">07</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="final-badge">Dernière manche · frénétique</div>
+          <div class="t-title">Tempête de sable</div>
+          <div class="t-desc">Lead en dents de scie rapide qui zigzague, balayages de bruit montants entre les phrases. On ne voit plus rien, on tire au son.</div>
+          <div class="voices"><span class="voice">SAW LEAD</span><span class="voice">SAW BASS</span><span class="voice">NOISE SWEEP</span><span class="voice">NOISE KIT</span></div>
+        </div>
+        <div class="t-bpm"><b>132</b><span>BPM</span></div>
+        <div class="t-key">Phrygien dominant</div>
+        <div class="meter" aria-label="intensité 5 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      </div>
+
+      <div class="track is-final">
+        <button class="idx" data-track="8" aria-label="Écouter Simoun"><span class="num">08</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="final-badge">Dernière manche · écrasante</div>
+          <div class="t-title">Simoun</div>
+          <div class="t-desc">Le vent qui asphyxie. Variante de dernière manche plus lourde que « Tempête de sable » : murs de scie, basse en croches martelée, stabs, balayages et déflagrations de bruit. Suffocant.</div>
+          <div class="voices"><span class="voice">SAW WALL</span><span class="voice">SAW BASS</span><span class="voice">PULSE STAB</span><span class="voice">NOISE SWEEP</span><span class="voice">NOISE BLAST</span></div>
+        </div>
+        <div class="t-bpm"><b>120</b><span>BPM</span></div>
+        <div class="t-key">Phrygien dominant</div>
+        <div class="meter" aria-label="intensité 5 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- TOUNDRA -->
+  <section class="biome" style="--bio:#bcd2ec; --sky1:#9fb8d6; --sky2:#eaf2fb;">
+    <div class="biome-head">
+      <span class="biome-idx">03</span>
+      <h2 class="biome-name">Toundra</h2>
+      <span class="biome-tag">cristallin · clairsemé · mineur</span>
+      <span class="biome-strip" aria-hidden="true"></span>
+    </div>
+    <div class="legend"><span>&#9654;</span><span>Piste</span><span>BPM</span><span>Gamme</span><span>Intensité</span></div>
+    <div class="tracks">
+
+      <div class="track">
+        <button class="idx" data-track="9" aria-label="Écouter Givre"><span class="num">09</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Givre</div>
+          <div class="t-desc">Notes de cloche FM espacées sur une nappe lente. Beaucoup de silence entre les sons, comme un froid qui s'installe.</div>
+          <div class="voices"><span class="voice">FM BELL</span><span class="voice">SINE PAD</span></div>
+        </div>
+        <div class="t-bpm"><b>72</b><span>BPM</span></div>
+        <div class="t-key">La mineur</div>
+        <div class="meter" aria-label="intensité 1 sur 5"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="track">
+        <button class="idx" data-track="10" aria-label="Écouter Aurore"><span class="num">10</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Aurore</div>
+          <div class="t-desc">Arpèges scintillants à la voix carrée fine qui montent et redescendent, une beauté froide en mouvement lent.</div>
+          <div class="voices"><span class="voice">PULSE ARP</span><span class="voice">FM BELL</span><span class="voice">SINE PAD</span></div>
+        </div>
+        <div class="t-bpm"><b>88</b><span>BPM</span></div>
+        <div class="t-key">Ré dorien</div>
+        <div class="meter" aria-label="intensité 2 sur 5"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="track is-final">
+        <button class="idx" data-track="11" aria-label="Écouter Rupture de glace"><span class="num">11</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="final-badge">Dernière manche</div>
+          <div class="t-title">Rupture de glace</div>
+          <div class="t-desc">Les cloches deviennent urgentes, des craquements de bruit sec déchirent la nappe. La gamme passe en mineur harmonique, tranchante.</div>
+          <div class="voices"><span class="voice">FM BELL</span><span class="voice">PULSE LEAD</span><span class="voice">TRI BASS</span><span class="voice">NOISE CRACK</span></div>
+        </div>
+        <div class="t-bpm"><b>124</b><span>BPM</span></div>
+        <div class="t-key">La mineur harm.</div>
+        <div class="meter" aria-label="intensité 5 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- VOLCAN -->
+  <section class="biome" style="--bio:#ff6b35; --sky1:#6e2535; --sky2:#2a1430;">
+    <div class="biome-head">
+      <span class="biome-idx">04</span>
+      <h2 class="biome-name">Volcan</h2>
+      <span class="biome-tag">sombre · pressant · mineur</span>
+      <span class="biome-strip" aria-hidden="true"></span>
+    </div>
+    <div class="legend"><span>&#9654;</span><span>Piste</span><span>BPM</span><span>Gamme</span><span>Intensité</span></div>
+    <div class="tracks">
+
+      <div class="track">
+        <button class="idx" data-track="12" aria-label="Écouter Cendres"><span class="num">12</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Cendres</div>
+          <div class="t-desc">Bourdon grave en dents de scie, crépitements de braise au bruit filtré dispersés. Une menace qui couve sans éclater.</div>
+          <div class="voices"><span class="voice">SAW DRONE</span><span class="voice">NOISE EMBER</span></div>
+        </div>
+        <div class="t-bpm"><b>90</b><span>BPM</span></div>
+        <div class="t-key">Do mineur</div>
+        <div class="meter" aria-label="intensité 2 sur 5"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="track">
+        <button class="idx" data-track="13" aria-label="Écouter Coulée"><span class="num">13</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Coulée</div>
+          <div class="t-desc">Basse triangle insistante en croches, pulsation qui avance sans relâche comme la lave. Lead court et mordant par-dessus.</div>
+          <div class="voices"><span class="voice">TRI BASS</span><span class="voice">SAW LEAD</span><span class="voice">NOISE KIT</span></div>
+        </div>
+        <div class="t-bpm"><b>116</b><span>BPM</span></div>
+        <div class="t-key">Do phrygien</div>
+        <div class="meter" aria-label="intensité 4 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+      </div>
+
+      <div class="track is-final">
+        <button class="idx" data-track="14" aria-label="Écouter Éruption"><span class="num">14</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="final-badge">Dernière manche · climax</div>
+          <div class="t-title">Éruption</div>
+          <div class="t-desc">Le sommet de toute la bande-son. Lead en dents de scie saturé, basse martelée, salves de bruit pleine puissance. Tout part en fumée.</div>
+          <div class="voices"><span class="voice">SAW LEAD+</span><span class="voice">SAW BASS</span><span class="voice">PULSE STAB</span><span class="voice">NOISE BLAST</span></div>
+        </div>
+        <div class="t-bpm"><b>144</b><span>BPM</span></div>
+        <div class="t-key">Do mineur harm.</div>
+        <div class="meter" aria-label="intensité 5 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ORAGE -->
+  <section class="biome" style="--bio:#7da6ff; --sky1:#243352; --sky2:#0d1322;">
+    <div class="biome-head">
+      <span class="biome-idx">05</span>
+      <h2 class="biome-name">Orage</h2>
+      <span class="biome-tag">épique · gothique · cauchemar</span>
+      <span class="biome-strip" aria-hidden="true"></span>
+    </div>
+    <div class="legend"><span>&#9654;</span><span>Piste</span><span>BPM</span><span>Gamme</span><span>Intensité</span></div>
+    <div class="tracks">
+
+      <div class="track">
+        <button class="idx" data-track="15" aria-label="Écouter Sabbat"><span class="num">15</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Sabbat</div>
+          <div class="t-desc">Ronde de sabbat en la mineur harmonique : bourdon grave, lead en dents de scie qui psalmodie, braises de bruit filtré dispersées. Lugubre et rituel — la nuit se referme.</div>
+          <div class="voices"><span class="voice">SAW DRONE</span><span class="voice">SAW LEAD</span><span class="voice">NOISE EMBER</span></div>
+        </div>
+        <div class="t-bpm"><b>82</b><span>BPM</span></div>
+        <div class="t-key">La mineur harm.</div>
+        <div class="meter" aria-label="intensité 3 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+      </div>
+
+      <div class="track">
+        <button class="idx" data-track="16" aria-label="Écouter Horde"><span class="num">16</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Horde</div>
+          <div class="t-desc">Marche de horde en phrygien dominant : basse martelée en croches, salves de bruit comme des tambours de guerre, stab dissonant qui claque. Orcs et gobelins en approche.</div>
+          <div class="voices"><span class="voice">SAW LEAD</span><span class="voice">SAW BASS</span><span class="voice">PULSE STAB</span><span class="voice">NOISE BLAST</span></div>
+        </div>
+        <div class="t-bpm"><b>108</b><span>BPM</span></div>
+        <div class="t-key">Mi phrygien dom.</div>
+        <div class="meter" aria-label="intensité 5 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      </div>
+
+      <div class="track is-final">
+        <button class="idx" data-track="17" aria-label="Écouter Walpurgis"><span class="num">17</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="final-badge">Dernière manche · climax</div>
+          <div class="t-title">Walpurgis</div>
+          <div class="t-desc">Le climax de tout le carnet. Nuit de Walpurgis : lead saturé une octave au-dessus, basse en croches, salves et <b>craquements de foudre</b> pleine puissance. Épique et cauchemardesque — le dernier biome ajouté frappe le plus fort.</div>
+          <div class="voices"><span class="voice">SAW LEAD+</span><span class="voice">SAW BASS</span><span class="voice">PULSE STAB</span><span class="voice">NOISE BLAST</span><span class="voice">NOISE CRACK</span></div>
+        </div>
+        <div class="t-bpm"><b>150</b><span>BPM</span></div>
+        <div class="t-key">Mi mineur harm.</div>
+        <div class="meter" aria-label="intensité 5 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      </div>
+
+      <div class="track">
+        <button class="idx" data-track="18" aria-label="Écouter Carpates"><span class="num">18</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Carpates</div>
+          <div class="t-desc">Cloches FM lointaines et nappe sombre au-dessus d'un bourdon : les Carpates sous l'orage, un château qui veille. Très lent, gothique, presque immobile — Transylvanie.</div>
+          <div class="voices"><span class="voice">FM BELL</span><span class="voice">PAD</span><span class="voice">SAW DRONE</span><span class="voice">NOISE EMBER</span></div>
+        </div>
+        <div class="t-bpm"><b>66</b><span>BPM</span></div>
+        <div class="t-key">La mineur harm.</div>
+        <div class="meter" aria-label="intensité 1 sur 5"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="track">
+        <button class="idx" data-track="19" aria-label="Écouter Maelström"><span class="num">19</span><span class="ico">&#9654;</span></button>
+        <div class="t-main">
+          <div class="t-title">Maelström</div>
+          <div class="t-desc">Fureur pure de la tempête : phrygien tendu, basse en croches sans répit, balayages de vent et salves. La bourrasque qui ne retombe jamais.</div>
+          <div class="voices"><span class="voice">SAW DRONE</span><span class="voice">SAW LEAD</span><span class="voice">NOISE SWEEP</span><span class="voice">NOISE BLAST</span></div>
+        </div>
+        <div class="t-bpm"><b>132</b><span>BPM</span></div>
+        <div class="t-key">Ré phrygien</div>
+        <div class="meter" aria-label="intensité 4 sur 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+      </div>
+
+    </div>
+  </section>
+
+  <p class="note">
+    <b>Note d'implémentation.</b> Cette page joue les pistes avec un mini-séquenceur Web Audio qui réutilise les mêmes familles de voix que le moteur <b>Sfx</b> du jeu — <span class="accent">PULSE</span>, <span class="accent">SAW</span>, <span class="accent">TRI</span>, <span class="accent">SINE</span>, <span class="accent">FM</span>, <span class="accent">NOISE</span>. Chaque boucle est générée à partir d'une tonalité, d'une gamme, d'une grille d'accords et d'un niveau d'intensité ; aucun fichier audio n'est chargé. En production, une ambiance tourne par biome, et à la dernière manche on bascule sur la piste « finale » correspondante. La transition de manche ne se contente pas d'un fondu de volume : les deux pistes partagent une <b>horloge commune</b> dont le tempo glisse (smoothstep) de l'ancien BPM vers le nouveau, en parallèle du glissement de scène — les rythmes restent verrouillés pendant tout le fondu.
+  </p>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- musical data ---------- */
+  var MAJ  = [0, 2, 4, 5, 7, 9, 11];
+  var MIN  = [0, 2, 3, 5, 7, 8, 10];
+  var DOR  = [0, 2, 3, 5, 7, 9, 10];
+  var PHR  = [0, 1, 3, 5, 7, 8, 10];
+  var PHRD = [0, 1, 4, 5, 7, 8, 10];
+  var DBL  = [0, 1, 4, 5, 7, 8, 11];
+  var HMIN = [0, 2, 3, 5, 7, 8, 11];
+
+  var TRACKS = {
+    1:  { bpm: 96,  root: 57, scale: MAJ,  prog: [0, 4, 5, 3], lead: "pulse",  arp: 2, bassMode: "half",    drums: 2 },
+    2:  { bpm: 112, root: 50, scale: MAJ,  prog: [0, 3, 4, 0], lead: "pulse",  arp: 1, bassMode: "quarter", drums: 3 },
+    3:  { bpm: 128, root: 57, scale: MAJ,  prog: [0, 4, 5, 3], lead: "pulse",  arp: 1, bassMode: "eighth",  drums: 5 },
+    4:  { bpm: 84,  root: 52, scale: PHR,  prog: [0, 5, 0, 5], lead: "saw",    arp: 4, bassMode: null, drone: true, drums: 0, fx: "ember" },
+    5:  { bpm: 100, root: 52, scale: DBL,  prog: [0, 6, 0, 5], lead: "saw",    arp: 2, bassMode: "quarter", drums: 3 },
+    6:  { bpm: 76,  root: 40, scale: PHR,  prog: [0, 1, 0, 5], lead: "saw",    arp: 4, leadOct: 0,  bassMode: "quarter", drone: true, heavy: true, drums: 4, fx: ["ember"] },
+    7:  { bpm: 132, root: 52, scale: PHRD, prog: [0, 1, 0, 6], lead: "saw",    arp: 1, bassMode: "eighth",  drums: 5, fx: "sweep" },
+    8:  { bpm: 120, root: 40, scale: PHRD, prog: [0, 1, 6, 1], lead: "saw",    arp: 1, leadOct: 12, bassMode: "eighth", drone: true, heavy: true, drums: 5, fx: ["sweep", "blast"], stab: true },
+    9:  { bpm: 72,  root: 57, scale: MIN,  prog: [0, 5, 3, 4], lead: "fmbell", arp: 4, bassMode: null, pad: true, drums: 0 },
+    10: { bpm: 88,  root: 50, scale: DOR,  prog: [0, 3, 5, 4], lead: "pulse",  arp: 2, bassMode: null, pad: true, drums: 2, bell: true },
+    11: { bpm: 124, root: 57, scale: HMIN, prog: [0, 4, 5, 4], lead: "fmbell", arp: 1, bassMode: "quarter", drums: 4, fx: "crack" },
+    12: { bpm: 90,  root: 48, scale: MIN,  prog: [0, 5, 0, 4], lead: "saw",    arp: 4, bassMode: null, drone: true, drums: 1, fx: "ember" },
+    13: { bpm: 116, root: 48, scale: PHR,  prog: [0, 6, 5, 0], lead: "saw",    arp: 2, bassMode: "eighth",  drums: 4 },
+    14: { bpm: 144, root: 48, scale: HMIN, prog: [0, 4, 1, 5], lead: "saw",    arp: 1, bassMode: "eighth",  drums: 5, fx: "blast", stab: true },
+    // Orage — biome épique/gothique : orcs & gobelins, cauchemar, Transylvanie.
+    15: { bpm: 82,  root: 45, scale: HMIN, prog: [0, 5, 0, 4], lead: "saw",    arp: 4, bassMode: "quarter", drone: true, heavy: true, drums: 3, fx: ["ember"] },
+    16: { bpm: 108, root: 40, scale: PHRD, prog: [0, 1, 0, 6], lead: "saw",    arp: 1, leadOct: 0,  bassMode: "eighth", drone: true, heavy: true, drums: 5, fx: ["blast"], stab: true },
+    17: { bpm: 150, root: 40, scale: HMIN, prog: [0, 4, 1, 5], lead: "saw",    arp: 1, leadOct: 12, bassMode: "eighth", drone: true, heavy: true, drums: 5, fx: ["blast", "crack"], stab: true },
+    18: { bpm: 66,  root: 45, scale: HMIN, prog: [0, 5, 3, 4], lead: "fmbell", arp: 4, bassMode: null, drone: true, pad: true, drums: 0, bell: true, fx: ["ember"] },
+    19: { bpm: 132, root: 38, scale: PHR,  prog: [0, 6, 5, 0], lead: "saw",    arp: 2, bassMode: "eighth", drone: true, heavy: true, drums: 4, fx: ["sweep", "blast"] }
+  };
+
+  var NAMES = {
+    1: "Brise du matin", 2: "Cerf-volant", 3: "Dernier souffle",
+    4: "Mirage", 5: "Caravane", 6: "Fournaise", 7: "Tempête de sable", 8: "Simoun",
+    9: "Givre", 10: "Aurore", 11: "Rupture de glace",
+    12: "Cendres", 13: "Coulée", 14: "Éruption",
+    15: "Sabbat", 16: "Horde", 17: "Walpurgis", 18: "Carpates", 19: "Maelström"
+  };
+
+  var ARP = [0, 2, 4, 7, 4, 2];
+  var VOL = 0.32;              // per-channel target gain
+  var TOTAL = 5;              // manches per match (final = last)
+
+  // biome -> tracks (data-driven so a biome can hold extra proposals).
+  // The mixer rotates the two "ambient" pistes and uses "final" for the last manche.
+  var BIOMES = [
+    { ambient: [1, 2],   final: 3 },
+    { ambient: [4, 6],   final: 8 },   // Désert : Mirage/Fournaise en rotation, Simoun en finale ; Caravane (5) & Tempête (7) restent au catalogue
+    { ambient: [9, 10],  final: 11 },
+    { ambient: [12, 13], final: 14 },
+    { ambient: [15, 19], final: 17 }   // Orage : Sabbat/Maelström en rotation, Walpurgis en finale ; Horde (16) & Carpates (18) au catalogue
+  ];
+  var TBIOME = { 1: 0, 2: 0, 3: 0, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 2, 10: 2, 11: 2, 12: 3, 13: 3, 14: 3, 15: 4, 16: 4, 17: 4, 18: 4, 19: 4 };
+  function biomeOf(id) { return TBIOME[id]; }
+  function ambientA(b) { return BIOMES[b].ambient[0]; }
+  function ambientB(b) { return BIOMES[b].ambient[1]; }
+  function finalOf(b)  { return BIOMES[b].final; }
+  function trackForRound(b, r) {
+    if (r >= TOTAL) return finalOf(b);
+    return (r % 2 === 1) ? ambientA(b) : ambientB(b);
+  }
+
+  /* ---------- audio engine ---------- */
+  var ctx = null, master = null, comp = null, analyser = null, freqData = null, noiseBuf = null;
+  var routeTo = null;          // destination for voices during a scheduleStep
+  var players = [];            // active { id, tr, bus, step, nextTime, stepDur, timer }
+  var currentId = 0;
+  var tempoBpm = 120;          // shared tempo (BPM) for every active player
+  var glide = null;            // active tempo glide { from, to, start, dur }
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Mix buses + a wind bed, so the wind/music balance can be tuned by ear here.
+  // The ratio of windBus:musicBus is exactly what maps to the game constants
+  // (MUSIC_WIND_DUCK : MUSIC_LEVEL) — both feed master with the same voice gains.
+  var musicBus = null, windBus = null;
+  var windPink = null, windPan = null, windVoice = null, windOn = false;
+
+  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+  // tempo at a given audio time — interpolates during a manche transition
+  function bpmAt(t) {
+    if (glide) {
+      var k = (t - glide.start) / glide.dur;
+      if (k <= 0) return glide.from;
+      if (k >= 1) return glide.to;
+      var e = k * k * (3 - 2 * k); // smoothstep, matched to the scene slide
+      return glide.from + (glide.to - glide.from) * e;
+    }
+    return tempoBpm;
+  }
+  function stepDurAt(t) { return (60 / bpmAt(t)) / 4; }
+
+  function ensureCtx() {
+    if (ctx) return;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = 0.8;
+    comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -16; comp.knee.value = 26; comp.ratio.value = 4;
+    comp.attack.value = 0.004; comp.release.value = 0.22;
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.72;
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    master.connect(comp); comp.connect(analyser); analyser.connect(ctx.destination);
+
+    // Separate mix buses for music and wind, both into master.
+    musicBus = ctx.createGain(); musicBus.gain.value = sliderVal("musicLevel", 0.30); musicBus.connect(master);
+    windBus = ctx.createGain(); windBus.gain.value = sliderVal("windLevel", 0.20); windBus.connect(master);
+
+    var len = Math.floor(ctx.sampleRate * 1.5);
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = noiseBuf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  }
+
+  function sliderVal(id, dflt) { var el = document.getElementById(id); return el ? parseInt(el.value, 10) / 100 : dflt; }
+
+  function noiseSrc() {
+    var s = ctx.createBufferSource();
+    s.buffer = noiseBuf; s.loop = true;
+    s.playbackRate.value = 0.8 + Math.random() * 0.4;
+    return s;
+  }
+
+  /* ---- voices (connect to routeTo) ---- */
+  function tone(type, t, freq, dur, vol, cutoff) {
+    var o = ctx.createOscillator();
+    o.type = type; o.frequency.value = freq;
+    var lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(Math.min(11000, cutoff || freq * 7), t);
+    if (type === "sawtooth") lp.frequency.exponentialRampToValueAtTime(Math.max(400, freq * 3), t + dur);
+    var g = ctx.createGain();
+    var a = 0.006, r = Math.min(0.12, dur * 0.4);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + a);
+    g.gain.setValueAtTime(vol, t + Math.max(a, dur - r));
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(lp); lp.connect(g); g.connect(routeTo);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function pad(t, freq, dur, vol) {
+    var o = ctx.createOscillator();
+    o.type = "sine"; o.frequency.value = freq;
+    var g = ctx.createGain();
+    var a = dur * 0.35, r = dur * 0.4;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + a);
+    g.gain.setValueAtTime(vol, t + Math.max(a, dur - r));
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(g); g.connect(routeTo);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function bell(t, freq, dur, vol) {
+    var car = ctx.createOscillator(); car.type = "sine"; car.frequency.value = freq;
+    var mod = ctx.createOscillator(); mod.type = "sine"; mod.frequency.value = freq * 2.0;
+    var mg = ctx.createGain();
+    mg.gain.setValueAtTime(freq * 3, t);
+    mg.gain.exponentialRampToValueAtTime(freq * 0.4 + 1, t + dur * 0.6);
+    mod.connect(mg); mg.connect(car.frequency);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    car.connect(g); g.connect(routeTo);
+    mod.start(t); car.start(t); mod.stop(t + dur + 0.02); car.stop(t + dur + 0.02);
+  }
+  function lead(track, t, freq, dur, vol) {
+    if (track.lead === "fmbell") return bell(t, freq, dur, vol * 1.1);
+    if (track.lead === "saw") return tone("sawtooth", t, freq, dur, vol);
+    return tone("square", t, freq, dur, vol);
+  }
+  function kick(t, vol) {
+    var o = ctx.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.connect(g); g.connect(routeTo);
+    o.start(t); o.stop(t + 0.22);
+  }
+  function noiseHit(t, opts) {
+    var s = noiseSrc();
+    var f = ctx.createBiquadFilter();
+    f.type = opts.filter; f.frequency.value = opts.freq; f.Q.value = opts.q || 1;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(opts.vol, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.001, t + opts.dur);
+    s.connect(f); f.connect(g); g.connect(routeTo);
+    s.start(t); s.stop(t + opts.dur + 0.02);
+    return { f: f, g: g };
+  }
+  function hat(t, v)   { noiseHit(t, { filter: "highpass", freq: 7000, vol: v, dur: 0.04 }); }
+  function snare(t, v) { noiseHit(t, { filter: "bandpass", freq: 1800, q: 0.8, vol: v, dur: 0.13 }); }
+  function crackn(t, v){ noiseHit(t, { filter: "highpass", freq: 4200, vol: v, dur: 0.05 }); }
+  function ember(t)    { noiseHit(t, { filter: "lowpass", freq: 700, vol: 0.05 + Math.random() * 0.05, dur: 0.05 + Math.random() * 0.05 }); }
+  function blast(t, v) { noiseHit(t, { filter: "lowpass", freq: 1400, vol: v, dur: 0.32 }); }
+  function sweepn(t, dur) {
+    var n = noiseHit(t, { filter: "bandpass", freq: 600, q: 1.2, vol: 0.12, dur: dur });
+    n.f.frequency.setValueAtTime(500, t);
+    n.f.frequency.exponentialRampToValueAtTime(6000, t + dur);
+  }
+
+  /* ---- sequencer ---- */
+  function chordTone(tr, deg, k) {
+    var idx = deg + k;
+    var oct = Math.floor(idx / 7);
+    var note = ((idx % 7) + 7) % 7;
+    return tr.root + tr.scale[note] + 12 * oct;
+  }
+
+  function hasFx(tr, name) { return tr.fx === name || (Array.isArray(tr.fx) && tr.fx.indexOf(name) >= 0); }
+
+  function scheduleStep(tr, s, t, stepDur, bus) {
+    routeTo = bus;
+    var bar = Math.floor(s / 16) % tr.prog.length;
+    var b = s % 16;
+    var deg = tr.prog[bar];
+    var beat = stepDur * 4;
+    var barDur = stepDur * 16;
+
+    if (b === 0) {
+      if (tr.drone) {
+        tone("sawtooth", t, mtof(chordTone(tr, deg, 0) - 12), barDur, 0.12, 600);
+        tone("sawtooth", t, mtof(chordTone(tr, deg, 4) - 12) * 1.004, barDur, 0.08, 700);
+        if (tr.heavy) tone("sawtooth", t, mtof(chordTone(tr, deg, 0)) * 0.997, barDur, 0.09, 1500);
+      }
+      if (tr.pad) {
+        pad(t, mtof(chordTone(tr, deg, 0)), barDur, 0.05);
+        pad(t, mtof(chordTone(tr, deg, 2)), barDur, 0.04);
+        pad(t, mtof(chordTone(tr, deg, 4)), barDur, 0.04);
+      }
+      if (hasFx(tr, "sweep") && bar % 2 === 1) sweepn(t, barDur);
+    }
+
+    if (tr.bassMode) {
+      var hit = false, dur = beat;
+      if (tr.bassMode === "half") { hit = (b === 0 || b === 8); dur = beat * 2; }
+      else if (tr.bassMode === "quarter") { hit = (b % 4 === 0); dur = beat * 0.9; }
+      else if (tr.bassMode === "eighth") { hit = (b % 2 === 0); dur = beat * 0.5; }
+      if (hit) {
+        var bf = mtof(chordTone(tr, deg, 0) - 12);
+        if (tr.lead === "saw" || tr.bassMode === "eighth") tone("sawtooth", t, bf, dur, 0.16, bf * 4);
+        else tone("triangle", t, bf, dur, 0.22, bf * 5);
+      }
+    }
+
+    if (tr.lead && tr.arp && (s % tr.arp === 0)) {
+      var ai = Math.floor(s / tr.arp) % ARP.length;
+      var note = chordTone(tr, deg, ARP[ai]) + (tr.leadOct != null ? tr.leadOct : 12);
+      var ldur = stepDur * tr.arp * 0.9;
+      var lvol = tr.lead === "fmbell" ? 0.16 : 0.14;
+      lead(tr, t, mtof(note), ldur, lvol);
+      if (tr.bell && b % 8 === 0) bell(t, mtof(note + 12), beat, 0.1);
+      if (tr.stab && b % 4 === 0) tone("square", t, mtof(chordTone(tr, deg, 2) + 12), beat * 0.4, 0.1, 5000);
+    }
+
+    var dl = tr.drums;
+    if (dl >= 1 && b === 0) kick(t, 0.5);
+    if (dl >= 3 && b === 8) kick(t, 0.5);
+    if (dl >= 4 && (b === 4 || b === 12)) kick(t, 0.42);
+    if (dl >= 3 && (b === 4 || b === 12)) snare(t, 0.13);
+    if (dl >= 2) { if (dl >= 4 ? (b % 2 === 0) : (b % 4 === 2)) hat(t, 0.07); }
+
+    if (hasFx(tr, "ember") && Math.random() < 0.25) ember(t + Math.random() * stepDur);
+    if (hasFx(tr, "crack") && (b === 6 || b === 14) && Math.random() < 0.6) crackn(t, 0.12);
+    if (hasFx(tr, "blast") && (b === 0 || b === 8)) blast(t, 0.26);
+  }
+
+  function makePlayer(id) {
+    var tr = TRACKS[id];
+    var p = {
+      id: id, tr: tr, bus: ctx.createGain(),
+      stepDur: (60 / tr.bpm) / 4, step: 0,
+      nextTime: ctx.currentTime + 0.08, timer: null
+    };
+    p.bus.gain.value = 0;
+    p.bus.connect(musicBus);
+    p.timer = setInterval(function () { pump(p); }, 25);
+    pump(p);
+    return p;
+  }
+  function pump(p) {
+    while (p.nextTime < ctx.currentTime + 0.12) {
+      var sd = stepDurAt(p.nextTime);     // shared, possibly-gliding tempo
+      scheduleStep(p.tr, p.step, p.nextTime, sd, p.bus);
+      p.nextTime += sd; p.step++;
+    }
+  }
+  function killPlayer(p) {
+    if (p.timer) { clearInterval(p.timer); p.timer = null; }
+    try { p.bus.disconnect(); } catch (e) {}
+    var i = players.indexOf(p);
+    if (i >= 0) players.splice(i, 1);
+  }
+
+  /* ---- transport: crossfade & stop ---- */
+  function crossfade(newId, dur) {
+    ensureCtx();
+    if (ctx.state === "suspended") ctx.resume();
+    var t = ctx.currentTime;
+
+    // glide the shared tempo from the current BPM to the new track's BPM
+    var toBpm = TRACKS[newId].bpm;
+    var fromBpm = bpmAt(t);
+    var thisGlide = (players.length > 0 && !reduce && dur > 0.05)
+      ? { from: fromBpm, to: toBpm, start: t, dur: dur } : null;
+    glide = thisGlide;
+    if (thisGlide) setTimeout(function () { if (glide === thisGlide) glide = null; }, dur * 1000 + 60);
+    tempoBpm = toBpm;
+
+    players.forEach(function (p) {
+      p.bus.gain.cancelScheduledValues(t);
+      p.bus.gain.setValueAtTime(p.bus.gain.value, t);
+      p.bus.gain.linearRampToValueAtTime(0, t + dur);
+      var dead = p;
+      setTimeout(function () { killPlayer(dead); }, dur * 1000 + 250);
+    });
+    var np = makePlayer(newId);
+    np.bus.gain.setValueAtTime(0, t);
+    np.bus.gain.linearRampToValueAtTime(VOL, t + dur);
+    players.push(np);
+    currentId = newId;
+    refreshUI();
+  }
+  function stopAll(dur) {
+    if (!ctx) { currentId = 0; refreshUI(); return; }
+    var t = ctx.currentTime;
+    players.forEach(function (p) {
+      p.bus.gain.cancelScheduledValues(t);
+      p.bus.gain.setValueAtTime(p.bus.gain.value, t);
+      p.bus.gain.linearRampToValueAtTime(0, t + dur);
+      var dead = p;
+      setTimeout(function () { killPlayer(dead); }, dur * 1000 + 250);
+    });
+    currentId = 0;
+    refreshUI();
+  }
+
+  /* ---- shared UI refresh ---- */
+  var led = document.getElementById("playLed");
+  var nowEl = document.getElementById("nowPlaying");
+  var bpmEl = document.getElementById("roBpm");
+  var rowEl = document.getElementById("roRow");
+
+  function refreshUI() {
+    document.querySelectorAll(".idx.playing").forEach(function (el) { el.classList.remove("playing"); });
+    document.querySelectorAll(".track.playing").forEach(function (el) { el.classList.remove("playing"); });
+    if (currentId) {
+      var btn = document.querySelector('.idx[data-track="' + currentId + '"]');
+      if (btn) { btn.classList.add("playing"); var row = btn.closest(".track"); if (row) row.classList.add("playing"); }
+      led.classList.add("live");
+      nowEl.textContent = String(currentId).padStart(2, "0") + " · " + NAMES[currentId];
+      bpmEl.textContent = TRACKS[currentId].bpm;
+    } else {
+      led.classList.remove("live");
+      nowEl.textContent = "arrêt";
+      bpmEl.textContent = "—";
+    }
+  }
+
+  /* ---- catalog preview buttons ---- */
+  document.querySelectorAll(".idx").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = parseInt(btn.dataset.track, 10);
+      if (currentId === id) stopAll(0.25);
+      else crossfade(id, 0.25);
+    });
+  });
+
+  /* ---------- equalizer scope (hero) ---------- */
+  var canvas = document.getElementById("scope");
+  var c2 = canvas.getContext("2d");
+  var W = canvas.width, H = canvas.height;
+  var COLS = 64, cellH = 8, gap = 2, colW = W / COLS;
+
+  var bands = [
+    ["#2f5d24", "#4a9b3a", "#7ed957", "#9be36b"],
+    ["#9c6f25", "#d9a441", "#f0cd7a", "#e9cf9a"],
+    ["#a9bdd4", "#bcd2ec", "#eaf2fb", "#ffffff"],
+    ["#6e2535", "#ff6b35", "#ff8c42", "#ffd27a"],
+    ["#0f1422", "#2e3a5a", "#5b7fbf", "#9fb4e0"]
+  ];
+  function pick(palette, level) {
+    return palette[Math.min(palette.length - 1, Math.floor(level * palette.length))];
+  }
+  function drawCols(heights, palettes) {
+    c2.clearRect(0, 0, W, H);
+    var rows = Math.floor(H / cellH);
+    for (var c = 0; c < COLS; c++) {
+      var palette = palettes(c);
+      var litN = Math.round(heights[c] * rows);
+      for (var r = 0; r < litN; r++) {
+        var level = r / rows;
+        c2.fillStyle = pick(palette, level);
+        var x = Math.round(c * colW) + 1;
+        var y = H - (r + 1) * cellH + 1;
+        c2.globalAlpha = 0.35 + level * 0.65;
+        c2.fillRect(x, y, Math.ceil(colW) - 2, cellH - gap);
+      }
+    }
+    c2.globalAlpha = 1;
+  }
+  function idleFrame(t) {
+    var seg = COLS / 4, h = new Array(COLS);
+    for (var c = 0; c < COLS; c++) {
+      var p = c * 0.5;
+      var a = Math.sin(t * 0.0022 + p) * 0.5 + 0.5;
+      var b = Math.sin(t * 0.0041 + p * 1.7) * 0.5 + 0.5;
+      h[c] = 0.18 + (a * 0.6 + b * 0.4) * 0.7;
+    }
+    drawCols(h, function (c) { return bands[Math.floor(c / seg) % 4]; });
+  }
+  function liveFrame() {
+    analyser.getByteFrequencyData(freqData);
+    var n = freqData.length, h = new Array(COLS);
+    for (var c = 0; c < COLS; c++) {
+      var idx = Math.floor((c / COLS) * (n * 0.8));
+      h[c] = Math.pow(freqData[idx] / 255, 0.9);
+    }
+    var pal = bands[biomeOf(currentId)];
+    drawCols(h, function () { return pal; });
+    var cp = players[players.length - 1];
+    if (cp) rowEl.textContent = String(cp.step % 16).padStart(2, "0");
+    bpmEl.textContent = Math.round(bpmAt(ctx.currentTime));
+  }
+  function scopeLoop(now) {
+    if (currentId && analyser) liveFrame();
+    else idleFrame(now);
+    requestAnimationFrame(scopeLoop);
+  }
+  if (reduce) idleFrame(1200);
+  else requestAnimationFrame(scopeLoop);
+
+  /* ---------- mixer: scene + console + transitions ---------- */
+  var SCENE = [
+    { sky: ["#6fb7ff", "#cfeeff"], cel: "#fff3b0", mtn: ["#9fc6e8", "#7fb0dd"], fill: "#4a9b3a", edge: "#7ed957", dark: "#2f5d24" },
+    { sky: ["#f6b66b", "#fde9c8"], cel: "#fff0c0", mtn: ["#d8a566", "#c28a4a"], fill: "#d9a441", edge: "#f0cd7a", dark: "#9c6f25" },
+    { sky: ["#9fb8d6", "#eaf2fb"], cel: "#fdfdff", mtn: ["#c7d6e8", "#aebfd6"], fill: "#e7eef6", edge: "#ffffff", dark: "#a9bdd4" },
+    { sky: ["#2a1430", "#6e2535"], cel: "#ff8c42", mtn: ["#46303f", "#32222f"], fill: "#3a2f3a", edge: "#ff6b35", dark: "#1d171d" },
+    { sky: ["#0d1322", "#243352"], cel: "#cdd8f5", mtn: ["#36415e", "#222a40"], fill: "#1c2236", edge: "#5b7fbf", dark: "#0f1422" }
+  ];
+  var BIOME_C = ["#7ed957", "#f0cd7a", "#bcd2ec", "#ff6b35", "#7da6ff"];
+  var P1 = "#4f8fff", P2 = "#ff6b5e";
+
+  var stage = document.getElementById("stage");
+  var sc = stage.getContext("2d");
+  var SW = stage.width, SH = stage.height;
+  var gy = SH * 0.7;
+
+  var mb = 0;          // mixer biome
+  var round = 1;       // current manche
+  var world = 0;       // horizontal scroll
+  var slideDur = 1.6;
+  var sliding = false, slideFrom = 0, slideTo = 0, slideStart = 0;
+
+  function groundTop(sx) {
+    var x = sx + world;
+    return gy + Math.sin(x * 0.011) * 16 + Math.sin(x * 0.027) * 7;
+  }
+  function hillBand(off, baseY, amp, color, freq) {
+    sc.beginPath();
+    sc.moveTo(0, SH);
+    for (var x = 0; x <= SW; x += 6) {
+      var y = baseY + Math.sin((x + off) * freq) * amp + Math.sin((x + off) * freq * 2.3) * amp * 0.4;
+      sc.lineTo(x, y);
+    }
+    sc.lineTo(SW, SH); sc.closePath();
+    sc.fillStyle = color; sc.fill();
+  }
+  function tower(sx, color) {
+    var topY = groundTop(sx);
+    var w = 18, h = 46;
+    sc.fillStyle = color;
+    sc.fillRect(sx - w / 2, topY - h, w, h);
+    // crenellations
+    sc.fillRect(sx - w / 2, topY - h - 5, 5, 5);
+    sc.fillRect(sx - 2.5, topY - h - 5, 5, 5);
+    sc.fillRect(sx + w / 2 - 5, topY - h - 5, 5, 5);
+    sc.fillStyle = "rgba(0,0,0,0.18)";
+    sc.fillRect(sx - 1, topY - h, 2, h);
+  }
+  function drawStage() {
+    var s = SCENE[mb];
+    var grad = sc.createLinearGradient(0, 0, 0, SH);
+    grad.addColorStop(0, s.sky[0]); grad.addColorStop(1, s.sky[1]);
+    sc.fillStyle = grad; sc.fillRect(0, 0, SW, SH);
+
+    // celestial body (slow parallax)
+    var cx = (SW * 0.8 - world * 0.04) % (SW + 200);
+    sc.globalAlpha = 0.9;
+    sc.fillStyle = s.cel;
+    sc.beginPath(); sc.arc(cx, SH * 0.26, 26, 0, Math.PI * 2); sc.fill();
+    sc.globalAlpha = 0.18;
+    sc.beginPath(); sc.arc(cx, SH * 0.26, 44, 0, Math.PI * 2); sc.fill();
+    sc.globalAlpha = 1;
+
+    hillBand(world * 0.2, SH * 0.5, 26, s.mtn[1], 0.006);
+    hillBand(world * 0.35, SH * 0.58, 20, s.mtn[0], 0.009);
+
+    // ground
+    sc.beginPath();
+    sc.moveTo(0, SH);
+    for (var x = 0; x <= SW; x += 5) sc.lineTo(x, groundTop(x));
+    sc.lineTo(SW, SH); sc.closePath();
+    sc.fillStyle = s.fill; sc.fill();
+    // dark base band
+    var dgrad = sc.createLinearGradient(0, gy, 0, SH);
+    dgrad.addColorStop(0, "rgba(0,0,0,0)");
+    dgrad.addColorStop(1, s.dark);
+    sc.fillStyle = dgrad; sc.fill();
+    // bright edge line
+    sc.beginPath();
+    for (var x2 = 0; x2 <= SW; x2 += 5) {
+      if (x2 === 0) sc.moveTo(x2, groundTop(x2)); else sc.lineTo(x2, groundTop(x2));
+    }
+    sc.strokeStyle = s.edge; sc.lineWidth = 3; sc.stroke();
+
+    // towers, one duel per screen
+    var k0 = Math.floor((world - SW) / SW);
+    for (var k = k0; k <= k0 + 2; k++) {
+      var baseWorld = k * SW + SW * 0.5;
+      var sx = baseWorld - world;
+      if (sx > -120 && sx < SW + 120) { tower(sx - 80, P1); tower(sx + 80, P2); }
+    }
+  }
+
+  /* ---- console (faders + hud) ---- */
+  var chans = {
+    A: document.querySelector('.chan[data-chan="A"]'),
+    B: document.querySelector('.chan[data-chan="B"]'),
+    F: document.querySelector('.chan[data-chan="F"]')
+  };
+  var fills = {
+    A: chans.A.querySelector(".fill"),
+    B: chans.B.querySelector(".fill"),
+    F: chans.F.querySelector(".fill")
+  };
+  var hudRound = document.getElementById("hudRound");
+  var hudTitle = document.getElementById("hudTitle");
+  var hudTag = document.getElementById("hudTag");
+  var dotsEl = document.getElementById("dots");
+
+  function chanId(ch) { return ch === "A" ? ambientA(mb) : ch === "B" ? ambientB(mb) : finalOf(mb); }
+  function levelOf(id) {
+    for (var i = 0; i < players.length; i++) if (players[i].id === id) return players[i].bus.gain.value / VOL;
+    return 0;
+  }
+  function updateFaders() {
+    ["A", "B", "F"].forEach(function (ch) {
+      var lvl = Math.max(0, Math.min(1, levelOf(chanId(ch))));
+      fills[ch].style.height = (lvl * 100).toFixed(1) + "%";
+      chans[ch].classList.toggle("live", lvl > 0.04);
+    });
+  }
+
+  function setBiomeVars() {
+    var c = BIOME_C[mb];
+    document.getElementById("mixer").style.setProperty("--bio", c);
+    hudTag.style.background = c;
+    chans.A.querySelector("[data-name]").textContent = NAMES[ambientA(mb)];
+    chans.B.querySelector("[data-name]").textContent = NAMES[ambientB(mb)];
+    chans.F.querySelector("[data-name]").textContent = NAMES[finalOf(mb)];
+  }
+  function buildDots() {
+    dotsEl.innerHTML = "";
+    for (var r = 1; r <= TOTAL; r++) {
+      var d = document.createElement("span");
+      d.className = "dot" + (r === TOTAL ? " fin" : "") + (r === round ? " cur" : "");
+      dotsEl.appendChild(d);
+    }
+  }
+  function updateHud() {
+    var id = trackForRound(mb, round);
+    hudRound.textContent = "Manche " + round + " / " + TOTAL;
+    hudTitle.textContent = NAMES[id];
+    var isFin = round >= TOTAL;
+    hudTag.textContent = isFin ? "★ Finale" : (round % 2 === 1 ? "A" : "B");
+    hudTag.classList.toggle("fin", isFin);
+    buildDots();
+    btnNext.disabled = isFin;
+  }
+
+  /* ---- transitions ---- */
+  function goToRound(r, doSlide) {
+    round = r;
+    var id = trackForRound(mb, round);
+    var dur = reduce ? 0.4 : slideDur;
+    crossfade(id, dur);
+    var targetWorld = (round - 1) * SW;
+    if (doSlide && !reduce) {
+      slideFrom = world; slideTo = targetWorld; slideStart = performance.now(); sliding = true;
+    } else {
+      world = targetWorld; drawStage();
+    }
+    updateHud();
+  }
+
+  function consoleLoop(now) {
+    if (sliding) {
+      var k = Math.min(1, (now - slideStart) / (slideDur * 1000));
+      var e = k * k * (3 - 2 * k); // smoothstep, like the wind easing
+      world = slideFrom + (slideTo - slideFrom) * e;
+      drawStage();
+      if (k >= 1) sliding = false;
+    }
+    updateFaders();
+    requestAnimationFrame(consoleLoop);
+  }
+
+  /* ---- mixer controls ---- */
+  var tabs = document.querySelectorAll(".btab");
+  var btnStart = document.getElementById("btnStart");
+  var btnNext = document.getElementById("btnNext");
+  var btnFinal = document.getElementById("btnFinal");
+  var btnStop = document.getElementById("btnStop");
+  var volEl = document.getElementById("vol");
+
+  function setActiveTab() {
+    tabs.forEach(function (t) { t.classList.toggle("active", parseInt(t.dataset.biome, 10) === mb); });
+  }
+
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () {
+      mb = parseInt(t.dataset.biome, 10);
+      setActiveTab(); setBiomeVars();
+      round = 1; world = 0; sliding = false;
+      drawStage(); updateHud();
+      goToRound(1, false); // start the match on this biome
+      btnStart.innerHTML = "&#9654; Démarrer la manche 1";
+    });
+  });
+  btnStart.addEventListener("click", function () {
+    round = 1; world = 0; sliding = false; drawStage();
+    goToRound(1, false);
+  });
+  btnNext.addEventListener("click", function () {
+    if (round < TOTAL) goToRound(round + 1, true);
+  });
+  btnFinal.addEventListener("click", function () {
+    if (round !== TOTAL) goToRound(TOTAL, true);
+  });
+  btnStop.addEventListener("click", function () {
+    stopAll(0.3);
+  });
+  volEl.addEventListener("input", function () {
+    if (master) master.gain.setTargetAtTime(parseInt(volEl.value, 10) / 100, ctx.currentTime, 0.02);
+  });
+
+  // ── wind bed (gusty character) — a proxy for the in-game ambient wind, so the
+  //    wind/music balance can be judged by ear. Ported from src/systems/Sfx.js. ──
+  function windPinkBuf(seconds) {
+    var len = Math.floor(ctx.sampleRate * seconds);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    var b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (var i = 0; i < len; i++) {
+      var w = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.96900 * b2 + w * 0.1538520;
+      b3 = 0.86650 * b3 + w * 0.3104856; b4 = 0.55000 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.0168980;
+      d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926;
+    }
+    return buf;
+  }
+  function windBuildGusty() {
+    var out = ctx.createGain(); out.gain.value = 0;
+    var s = ctx.createBufferSource(); s.buffer = windPink; s.loop = true; s.start();
+    var lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 300; lp.Q.value = 0.7;
+    var gb = ctx.createGain(); gb.gain.value = 0;
+    var bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 350; bp.Q.value = 7;
+    var gh = ctx.createGain(); gh.gain.value = 0;
+    var gust = ctx.createGain(); gust.gain.value = 0.55;
+    lp.connect(gb).connect(gust); bp.connect(gh).connect(gust); s.connect(lp); s.connect(bp); gust.connect(out);
+    var lfo1 = ctx.createOscillator(); lfo1.type = "sine"; lfo1.frequency.value = 0.21;
+    var lfo2 = ctx.createOscillator(); lfo2.type = "sine"; lfo2.frequency.value = 0.13;
+    var d1 = ctx.createGain(); d1.gain.value = 0; var d2 = ctx.createGain(); d2.gain.value = 0;
+    lfo1.connect(d1).connect(gust.gain); lfo2.connect(d2).connect(gust.gain);
+    lfo1.start(); lfo2.start();
+    out.connect(windPan);
+    return {
+      out: out,
+      setStrength: function (k) {
+        var t = ctx.currentTime;
+        lp.frequency.setTargetAtTime(200 + k * 1600, t, 0.1); gb.gain.setTargetAtTime(0.06 + k * 0.55, t, 0.1);
+        bp.frequency.setTargetAtTime(300 + k * 700, t, 0.1); gh.gain.setTargetAtTime(k * 0.45, t, 0.1);
+        var depth = 0.18 + 0.42 * k; d1.gain.setTargetAtTime(depth, t, 0.2); d2.gain.setTargetAtTime(depth * 0.7, t, 0.2);
+      },
+      stop: function () {
+        var t = ctx.currentTime; out.gain.setTargetAtTime(0, t, 0.3);
+        setTimeout(function () { try { s.stop(); lfo1.stop(); lfo2.stop(); out.disconnect(); } catch (e) {} }, 500);
+      },
+    };
+  }
+  function windStartLab() {
+    ensureCtx(); if (ctx.state === "suspended") ctx.resume();
+    if (windOn) return;
+    if (!windPink) windPink = windPinkBuf(4);
+    windPan = ctx.createStereoPanner(); windPan.connect(windBus);
+    windVoice = windBuildGusty();
+    windVoice.out.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.4);
+    windOn = true;
+    windApplyForce();
+  }
+  function windStopLab() {
+    if (!windOn) return; windOn = false;
+    if (windVoice) windVoice.stop();
+    windVoice = null;
+  }
+  function windApplyForce() {
+    if (!windVoice) return;
+    var v = parseInt(document.getElementById("windForce").value, 10) / 100;
+    windVoice.setStrength(Math.min(1, Math.abs(v)));
+  }
+
+  var windToggle = document.getElementById("windToggle");
+  var windLevelEl = document.getElementById("windLevel");
+  var musicLevelEl = document.getElementById("musicLevel");
+  var windLevelR = document.getElementById("windLevelR");
+  var musicLevelR = document.getElementById("musicLevelR");
+  windToggle.addEventListener("click", function () {
+    if (windOn) { windStopLab(); windToggle.classList.remove("on"); }
+    else { windStartLab(); windToggle.classList.add("on"); }
+  });
+  document.getElementById("windForce").addEventListener("input", windApplyForce);
+  windLevelEl.addEventListener("input", function () {
+    var v = parseInt(windLevelEl.value, 10) / 100; windLevelR.textContent = v.toFixed(2);
+    if (windBus) windBus.gain.setTargetAtTime(v, ctx.currentTime, 0.03);
+  });
+  musicLevelEl.addEventListener("input", function () {
+    var v = parseInt(musicLevelEl.value, 10) / 100; musicLevelR.textContent = v.toFixed(2);
+    if (musicBus) musicBus.gain.setTargetAtTime(v, ctx.currentTime, 0.03);
+  });
+
+  // init
+  setActiveTab(); setBiomeVars(); buildDots(); updateHud(); drawStage();
+  if (!reduce) requestAnimationFrame(consoleLoop);
+  else updateFaders();
+})();
+</script>
+
+
+<script>
+  (function(){
+    function postH(){ try{ parent.postMessage({ostLabHeight: document.documentElement.scrollHeight}, "*"); }catch(e){} }
+    window.addEventListener("load", postH);
+    if (window.ResizeObserver) { new ResizeObserver(postH).observe(document.body); }
+    setInterval(postH, 1200);
+  })();
+</script>
+</body>
+</html>

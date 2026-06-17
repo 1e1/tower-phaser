@@ -1,0 +1,48 @@
+{
+  "title": "Capítulo 5 (intermedio) — La receta del soplo &amp; la espacialización en la TV",
+
+  "hero.badge": "Intermedio · Fase 5 · Tormenta",
+  "hero.kicker": "Capítulo 5 · nivel intermedio",
+  "hero.title": "Bajo el capó del viento",
+  "hero.lead": "El sonido del viento, visto como un <strong>grafo de señal</strong>: ruido rosa en un <strong>filtro paso bajo</strong>, un solo valor que lo gobierna todo y un <strong>paneo estéreo</strong> que dice el sentido. Y del lado de la TV, cómo situar un sonido en el espacio.",
+
+  "s1.h2": "La receta de un soplo",
+  "s1.p1": "La base es <b>ruido rosa</b> (más suave que el blanco, «suena» más a aire) que pasa por un <b>filtro paso bajo</b>. Cuanto más fuerte es el viento, más se abre el filtro y más sube el volumen — el soplo se vuelve a la vez más presente y más agudo.",
+  "s1.code.cap": "src/systems/Sfx.js — el soplo de base",
+  "s1.code.c1": "// bucle de ruido rosa",
+  "s1.code.c2": "// un filtro paso bajo",
+  "s1.code.c3": "// k = |viento| / VIENTO_MAX, de 0 a 1",
+  "s1.p2": "Sobre esa base superponemos, según el caso, una <b>resonancia</b> (un paso banda que canta) para el aullido, o <b>ráfagas</b> gobernadas por osciladores lentos. Cuatro montajes dan cuatro caracteres.",
+
+  "s2.h2": "Adaptarse a la fuerza, mostrar el sentido",
+  "s2.p1": "Un solo valor lo gobierna todo: el viento del juego, de <code class=\"inline\">−95</code> a <code class=\"inline\">+95</code> px/s². Su <b>módulo</b> (de 0 a 1) abre el filtro, sube el volumen y acentúa las ráfagas; su <b>signo</b> da la dirección (positivo = hacia la derecha).",
+  "s2.p2": "Para oír ese sentido, el sonido <b>se inclina en el campo estéreo</b> hacia el lado al que sopla el viento (cuanto más fuerte, más se inclina). Y en modo «ráfaga direccional», una ráfaga <b>atraviesa</b> los auriculares de izquierda a derecha (o al revés) hinchándose a su paso: imposible equivocarse de oído.",
+  "s2.callout.nerd": "<b>Para los curiosos.</b> La dirección se ajusta con un único <code class=\"inline\">StereoPannerNode</code>: <code class=\"inline\">pan = signo · fuerza</code>, de −1 (todo a la izquierda) a +1 (todo a la derecha). La ráfaga móvil se limita a animar ese <code class=\"inline\">pan</code> en el tiempo.",
+
+  "s3.h2": "Espacialización en la TV — estéreo, profundidad &amp; timbre",
+  "s3.try": "Ponte unos auriculares para oír la izquierda/derecha.",
+  "s3.p1": "Convención de la TV: <b>izquierda/derecha</b> por paneo estéreo (posición X), <b>delante-detrás</b> por el volumen de profundidad, y <b>arriba-abajo</b> por un ligero balanceo de timbre — agudo arriba, grave abajo. Elige un sonido y luego haz clic en el campo de batalla para emitirlo en esa posición.",
+  "s3.snd.boom": "💥 Boom",
+  "s3.snd.impact": "🌋 Impact",
+  "s3.snd.rubble": "🧱 Escombros",
+  "s3.snd.clang": "🛡 Clang",
+  "s3.snd.bird": "🐦 Pájaro",
+  "s3.snd.wind": "🌬 Ráfaga",
+  "s3.read0": "Haz clic en el campo de batalla para emitir.",
+  "s3.depth": "Profundidad (delante → detrás)",
+  "s3.panMax": "Pan máx (bordes)",
+  "s3.bgVol": "Volumen del fondo",
+  "s3.tiltDb": "Balanceo de timbre (dB)",
+  "s3.tiltHi": "Agudo pivote (Hz)",
+  "s3.tiltLo": "Grave pivote (Hz)",
+  "s3.cfgCap": "config validada (volver a pegar en el juego)",
+  "s3.cv.treble": "agudo ↑",
+  "s3.cv.bass": "grave ↓",
+  "s3.cv.right": "derecha →",
+  "s3.cv.left": "← izquierda",
+
+  "footer.suffix": "capítulo {n}/{total} · nivel intermedio",
+
+  "pager.prev": "← Capítulo 4 · Terreno destructible",
+  "pager.next": "El final 🎉"
+}

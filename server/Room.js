@@ -49,7 +49,7 @@ export default class Room {
     // each player: { socket, name, token, isConfigOwner, disconnected, graceTimer }
     this.players = [null, null];
     this.waiting = []; // each: { socket, name }
-    this.config = { rounds: 3, biomeId: BIOMES[0].id, hp: 1, turbo: false, cadence: 5 };
+    this.config = { wins: 3, biomeId: BIOMES[0].id, hp: 1, turbo: false, cadence: 5 };
     this.postmatch = false; // rematch lobby (sim kept frozen at MATCH_END)
     // --- lobby (pre-match and rematch) ---
     this.setup = true; // true until the first match starts
@@ -212,7 +212,7 @@ export default class Room {
     this.postmatch = false;
     this.sim = new Simulation({
       names: [this.players[0].name, this.players[1].name],
-      totalRounds: this.config.rounds,
+      winsNeeded: this.config.wins,
       biome: this.biome(),
       maxHp: this.config.hp,
       turbo: this.config.turbo,
@@ -330,7 +330,7 @@ export default class Room {
   setConfig(socket, cfg = {}) {
     const allowed = socket.role === 'player' && this.players[socket.slot]?.isConfigOwner;
     if (allowed) {
-      if (Number.isFinite(cfg.rounds)) this.config.rounds = cfg.rounds;
+      if (Number.isFinite(cfg.wins)) this.config.wins = cfg.wins;
       if (BIOMES.some((b) => b.id === cfg.biomeId)) this.config.biomeId = cfg.biomeId;
       if (cfg.hp === 1 || cfg.hp === 2 || cfg.hp === 3) this.config.hp = cfg.hp;
       if (typeof cfg.turbo === 'boolean') this.config.turbo = cfg.turbo;

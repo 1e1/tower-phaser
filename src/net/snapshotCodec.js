@@ -16,16 +16,20 @@ import { PHASE } from '../sim/Simulation.js';
 import { SHELLS } from '../config/shells.js';
 import { BIOMES } from '../config/biomes.js';
 
-const MAGIC = 2; // format/version byte; lets the client reject foreign frames
+const MAGIC = 4; // format/version byte; lets the client reject foreign frames
 
 // Enum tables. Index ⇄ id, shared by both ends. Order is the wire contract —
 // only ever append, never reorder.
 const PHASE_ORDER = [PHASE.LOBBY, PHASE.AIMING, PHASE.FIRING, PHASE.RESOLVING, PHASE.MATCH_END];
 const SHELL_IDS = SHELLS.map((s) => s.id);
+// A tower's current SELECTION can also be the shield (a deploy armed in place of
+// a shot), which is not a real shell — so it gets its own append-only enum.
+const SELECTION_IDS = SHELL_IDS.concat('shield');
 const BIOME_IDS = BIOMES.map((b) => b.id);
-// Special-shell ammo, in the fixed order the simulation seeds it (see initAmmo).
-const AMMO_KEYS = ['heavy', 'light', 'salvo', 'explosive'];
-const EVENT_TYPES = ['roundStart', 'fire', 'hit', 'impact', 'turnEnd', 'destroyed', 'matchEnd'];
+// Special-shell ammo + the deployable shield, in the fixed order the simulation
+// seeds it (see initAmmo). Append-only — never reorder.
+const AMMO_KEYS = ['heavy', 'light', 'salvo', 'explosive', 'shield'];
+const EVENT_TYPES = ['roundStart', 'fire', 'hit', 'impact', 'turnEnd', 'destroyed', 'matchEnd', 'shield', 'shieldHit'];
 
 const idx = (arr, v, fallback = 0) => {
   const i = arr.indexOf(v);
@@ -119,6 +123,12 @@ function writeEvent(w, e) {
     case 'matchEnd':
       w.u8(e.scores[0]); w.u8(e.scores[1]);
       break;
+    case 'shield':
+      w.u8(e.owner); w.i16(e.x); w.i16(e.y);
+      break;
+    case 'shieldHit':
+      w.i16(e.x); w.i16(e.y); w.u8(e.owner);
+      break;
     default:
       break;
   }
@@ -143,6 +153,10 @@ function readEvent(r) {
       return { type, tower: r.u8() };
     case 'matchEnd':
       return { type, scores: [r.u8(), r.u8()] };
+    case 'shield':
+      return { type, owner: r.u8(), x: r.i16(), y: r.i16() };
+    case 'shieldHit':
+      return { type, x: r.i16(), y: r.i16(), owner: r.u8() };
     default:
       return { type };
   }
@@ -174,9 +188,16 @@ export function encodeSnapshot(state, events = []) {
   for (const t of state.towers) {
     w.bool(t.ready);
     w.f32(t.groundY); w.f32(t.angle); w.f32(t.power);
-    w.u8(idx(SHELL_IDS, t.shell));
+    w.u8(idx(SELECTION_IDS, t.shell));
     w.f32(t.hp);
     for (const k of AMMO_KEYS) w.u8(t.ammo[k] || 0);
+    // Deployed shield: present flag, then centre, plate-axis unit vector, and the
+    // open flag (true while its owner is firing through it).
+    if (t.shield) {
+      w.bool(true); w.i16(t.shield.x); w.i16(t.shield.y); w.f32(t.shield.ux); w.f32(t.shield.uy); w.bool(t.shield.open);
+    } else {
+      w.bool(false);
+    }
   }
 
   w.u16(state.projectiles.length);
@@ -219,11 +240,12 @@ export function decodeSnapshot(arrayBuffer) {
     const groundY = r.f32();
     const angle = r.f32();
     const power = r.f32();
-    const shell = SHELL_IDS[r.u8()];
+    const shell = SELECTION_IDS[r.u8()];
     const hp = r.f32();
     const ammo = {};
     for (const k of AMMO_KEYS) ammo[k] = r.u8();
-    towers.push({ ready, groundY, angle, power, shell, hp, ammo });
+    const shield = r.bool() ? { x: r.i16(), y: r.i16(), ux: r.f32(), uy: r.f32(), open: r.bool() } : null;
+    towers.push({ ready, groundY, angle, power, shell, hp, ammo, shield });
   }
 
   const projCount = r.u16();

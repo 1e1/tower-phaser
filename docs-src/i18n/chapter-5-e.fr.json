@@ -1,0 +1,32 @@
+{
+  "title": "Chapitre 5 (expert) — Enchaîner les ambiances &amp; la bande-son par biome",
+
+  "hero.badge": "Expert · Lot 5 · Orage",
+  "hero.kicker": "Chapitre 5 · niveau expert",
+  "hero.title": "Le bon moment, pas seulement le bon son",
+  "hero.lead": "La finition du son procédural : enchaîner deux ambiances <strong>sans couper un souffle</strong> en attendant une accalmie, puis la <strong>bande-son par biome</strong> et sa transition de manche — fondu croisé des volumes <strong>et</strong> glissement du tempo sur la même courbe.",
+
+  "s1.h2": "Enchaîner sans couper un souffle",
+  "s1.p1": "En lecture aléatoire, chaque caractère joue un moment, puis un <b>autre</b> prend le relais. Comme le vent est une boucle continue, on évite de le couper en plein milieu : une fois la durée écoulée, on <b>attend une accalmie</b> (un creux de niveau) avant de basculer, avec un fondu enchaîné d'environ 1,4 s. Un plafond de 2,5 s garantit que ça finit toujours par changer.",
+  "s1.code.cap": "le changement de caractère, calé sur une accalmie",
+  "s1.code.c1": "// la durée est-elle écoulée ?",
+  "s1.code.c2": "// fondu doux vers un autre caractère",
+  "s1.p2": "Résultat : on n'entend jamais une rafale coupée net — la transition se glisse dans les silences relatifs du vent.",
+  "s1.callout.tip": "<b>La morale.</b> Un bon son procédural, ce n'est pas que de la synthèse : c'est aussi <em>quand</em> on déclenche les choses. Attendre le bon moment vaut souvent mieux qu'un fondu plus long.",
+
+  "s2.h2": "Bande-son par biome — propositions &amp; transition de manche",
+  "s2.try": "Mets le son : tout est synthétisé en direct, aucun fichier audio.",
+  "s2.p1": "Chaque biome a son climat sonore, décliné en plusieurs propositions. Pendant un match, les <b>deux ambiances</b> d'un biome alternent à chaque manche ; la <b>dernière manche</b> a sa propre musique. Quand la scène glisse vers la colline suivante, la musique suit : <b>fondu croisé</b> des volumes <i>et</i> <b>glissement du tempo</b> (BPM) sur la même courbe smoothstep, pour que les deux pistes restent calées pendant la transition.",
+  "s2.p2": "Le catalogue conserve toutes les propositions — dont les cinq du Désert. La table de mixage joue la playlist retenue par biome (Désert : <b>Mirage</b> et <b>Fournaise</b> en rotation, <b>Simoun</b> en finale). Choisis un biome, puis enchaîne les manches.",
+  "s2.frameTitle": "Simulateur de bande-son par biome",
+
+  "s3.h2": "Et voilà le carnet bouclé !",
+  "s3.lead": "De la boucle de jeu au son synthétisé, tu as fait le tour complet de Tower Duel.",
+  "s3.p1": "Cinq lots, trois niveaux de lecture, une poignée de simulateurs : tu sais maintenant comment un petit jeu web prend vie, écran après écran, souffle après souffle. Merci d'avoir lu jusqu'au bout.",
+  "s3.back": "↩ Retour à l'accueil",
+
+  "footer.suffix": "chapitre {n}/{total} · niveau expert",
+
+  "pager.prev": "← Chapitre 4 · Terrain destructible",
+  "pager.next": "La fin 🎉"
+}

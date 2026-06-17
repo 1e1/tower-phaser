@@ -1,0 +1,59 @@
+    <!-- TV spatialiser: X = stereo pan · depth = volume ·
+         Y = timbre tilt (treble up / bass down). Defaults are the validated config. -->
+    <script>
+      (function () {
+        const fld = document.getElementById('tv-field'); if (!fld) return;
+        const $ = (id) => document.getElementById(id);
+        const W = 760, H = 320, GY = 250, DPR = window.devicePixelRatio || 1;
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const lerp = (a, b, t) => a + (b - a) * t;
+        let ctx = null, sound = 'boom', last = null;
+        const ac = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === 'suspended') ctx.resume(); return ctx; };
+        const cfg = () => ({ panMax: +$('tv-panMax').value / 100, depthMinVol: +$('tv-depthMinVol').value / 100, tiltDb: +$('tv-tiltDb').value, tiltHiHz: +$('tv-tiltHiHz').value, tiltLoHz: +$('tv-tiltLoHz').value });
+
+        // depth-volume → tilt EQ (treble up / bass down) → stereo pan → out.
+        function input(x, y, depth, c) {
+          const a = ac();
+          const pan = clamp(((x - W / 2) / (W / 2)) * c.panMax, -1, 1);
+          const vol = lerp(c.depthMinVol, 1, depth);
+          const tilt = c.tiltDb * (1 - 2 * (y / H));
+          const g = a.createGain(); g.gain.value = vol;
+          const hs = a.createBiquadFilter(); hs.type = 'highshelf'; hs.frequency.value = c.tiltHiHz; hs.gain.value = tilt;
+          const ls = a.createBiquadFilter(); ls.type = 'lowshelf'; ls.frequency.value = c.tiltLoHz; ls.gain.value = -tilt;
+          const sp = a.createStereoPanner(); sp.pan.value = pan;
+          g.connect(hs).connect(ls).connect(sp).connect(a.destination);
+          last = { x, y, pan, vol, tilt };
+          return g;
+        }
+        function noise(d) { const a = ac(); const n = Math.floor(a.sampleRate * d); const b = a.createBuffer(1, n, a.sampleRate); const arr = b.getChannelData(0); for (let i = 0; i < n; i++) arr[i] = Math.random() * 2 - 1; const s = a.createBufferSource(); s.buffer = b; return s; }
+        const SND = {
+          boom(out) { const a = ac(), t = a.currentTime; const s = noise(.35), lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(1800, t); lp.frequency.exponentialRampToValueAtTime(280, t + .3); const g = a.createGain(); g.gain.setValueAtTime(.9, t); g.gain.exponentialRampToValueAtTime(.001, t + .32); s.connect(lp).connect(g).connect(out); s.start(t); s.stop(t + .35); const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(50, t + .25); const og = a.createGain(); og.gain.setValueAtTime(.8, t); og.gain.exponentialRampToValueAtTime(.001, t + .28); o.connect(og).connect(out); o.start(t); o.stop(t + .3); },
+          impact(out) { const a = ac(), t = a.currentTime; const s = noise(.55), lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(1200, t); lp.frequency.exponentialRampToValueAtTime(120, t + .5); const g = a.createGain(); g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(.001, t + .55); s.connect(lp).connect(g).connect(out); s.start(t); s.stop(t + .55); },
+          rubble(out) { const a = ac(), t = a.currentTime, dur = .9; const s = noise(dur), lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(700, t); lp.frequency.exponentialRampToValueAtTime(80, t + dur); const g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(1, t + .03); g.gain.exponentialRampToValueAtTime(.001, t + dur); s.connect(lp).connect(g).connect(out); s.start(t); s.stop(t + dur); const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(42, t + .4); const og = a.createGain(); og.gain.setValueAtTime(.85, t); og.gain.exponentialRampToValueAtTime(.001, t + .44); o.connect(og).connect(out); o.start(t); o.stop(t + .46); },
+          clang(out) { const a = ac(), t = a.currentTime; const s = noise(.12), hp = a.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2600; const ng = a.createGain(); ng.gain.setValueAtTime(.5, t); ng.gain.exponentialRampToValueAtTime(.001, t + .12); s.connect(hp).connect(ng).connect(out); s.start(t); s.stop(t + .13); [1320, 1980, 2640].forEach((f, i) => { const o = a.createOscillator(); o.type = 'triangle'; o.frequency.value = f; const g = a.createGain(); g.gain.setValueAtTime(.28 / (i + 1), t); g.gain.exponentialRampToValueAtTime(.001, t + .5); o.connect(g).connect(out); o.start(t); o.stop(t + .52); }); },
+          bird(out) { const a = ac(), t0 = a.currentTime; for (let k = 0; k < 3; k++) { const t = t0 + k * .12; const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(2600 + k * 200, t); o.frequency.exponentialRampToValueAtTime(3600 + k * 200, t + .05); o.frequency.exponentialRampToValueAtTime(2400, t + .1); const g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.25, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + .11); o.connect(g).connect(out); o.start(t); o.stop(t + .12); } },
+          wind(out) { const a = ac(), t = a.currentTime, dur = 1.4; const s = noise(dur), bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(380, t); bp.frequency.linearRampToValueAtTime(620, t + dur * .5); bp.frequency.linearRampToValueAtTime(360, t + dur); bp.Q.value = .8; const g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.5, t + dur * .4); g.gain.linearRampToValueAtTime(.0001, t + dur); s.connect(bp).connect(g).connect(out); s.start(t); s.stop(t + dur); },
+        };
+        function emit(x, y) { SND[sound](input(x, y, +$('tv-depth').value / 100, cfg())); }
+
+        const fc = fld.getContext('2d');
+        function fit() { const r = fld.getBoundingClientRect(); const cssW = r.width || W; fld.style.height = (cssW * H / W) + 'px'; const bw = Math.round(cssW * DPR); if (fld.width !== bw) { fld.width = bw; fld.height = Math.round(cssW * H / W * DPR); } fc.setTransform(bw / W, 0, 0, bw / W, 0, 0); }
+        function draw() {
+          requestAnimationFrame(draw); fc.clearRect(0, 0, W, H);
+          const sky = fc.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#24314e'); sky.addColorStop(1, '#0e1830'); fc.fillStyle = sky; fc.fillRect(0, 0, W, H);
+          fc.fillStyle = '#2f4d28'; fc.fillRect(0, GY, W, H - GY); fc.fillStyle = '#5f8f4a'; fc.fillRect(0, GY, W, 3);
+          for (const tx of [120, 640]) { fc.fillStyle = '#56627a'; fc.fillRect(tx - 22, GY - 80, 44, 80); }
+          fc.fillStyle = '#9fb0c8'; fc.font = "12px 'Fredoka', sans-serif"; fc.fillText('{{s3.cv.treble}}', 8, 18); fc.fillText('{{s3.cv.bass}}', 8, H - 8);
+          fc.textAlign = 'right'; fc.fillText('{{s3.cv.right}}', W - 8, H / 2); fc.textAlign = 'left'; fc.fillText('{{s3.cv.left}}', 8, H / 2);
+          fc.textAlign = 'center'; fc.font = "18px 'Fredoka', sans-serif"; fc.fillText('🎧', W / 2, H - 8); fc.textAlign = 'left';
+          if (last) { fc.fillStyle = '#ffd27a'; fc.beginPath(); fc.arc(last.x, last.y, 7, 0, 7); fc.fill(); fc.strokeStyle = '#fff'; fc.stroke(); }
+        }
+        function refresh() { const c = cfg(); $('tv-json').textContent = JSON.stringify({ tvAudio: c }, null, 2); if (last) $('tv-read').textContent = 'pan ' + last.pan.toFixed(2) + ' · volume ' + last.vol.toFixed(2) + ' · timbre ' + (last.tilt >= 0 ? '+' : '') + last.tilt.toFixed(1) + ' dB'; }
+
+        fld.addEventListener('pointerdown', (e) => { const r = fld.getBoundingClientRect(); emit((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); refresh(); });
+        document.querySelectorAll('.tv-snd').forEach((b) => { b.onclick = () => { sound = b.dataset.s; document.querySelectorAll('.tv-snd').forEach((x) => x.classList.toggle('active', x === b)); }; });
+        ['tv-depth', 'tv-panMax', 'tv-depthMinVol', 'tv-tiltDb', 'tv-tiltHiHz', 'tv-tiltLoHz'].forEach((id) => $(id).addEventListener('input', refresh));
+        window.addEventListener('resize', fit);
+        fit(); refresh(); draw();
+      })();
+    </script>

@@ -1,0 +1,32 @@
+{
+  "title": "Chapter 5 (expert) — Chaining ambiences &amp; the per-biome soundtrack",
+
+  "hero.badge": "Expert · Batch 5 · Storm",
+  "hero.kicker": "Chapter 5 · expert level",
+  "hero.title": "The right moment, not just the right sound",
+  "hero.lead": "The finishing touch of procedural sound: chaining two ambiences <strong>without cutting a gust</strong> by waiting for a lull, then the <strong>per-biome soundtrack</strong> and its round transition — crossfading the volumes <strong>and</strong> gliding the tempo along the same curve.",
+
+  "s1.h2": "Cycling without cutting a gust",
+  "s1.p1": "In random play, each character plays for a while, then <b>another</b> takes over. Since wind is a continuous loop, we avoid cutting it mid-swell: once the duration elapses, we <b>wait for a lull</b> (a dip in level) before switching, with a crossfade of about 1.4 s. A 2.5 s cap guarantees it always eventually changes.",
+  "s1.code.cap": "the character switch, timed to a lull",
+  "s1.code.c1": "// has the duration elapsed?",
+  "s1.code.c2": "// gentle crossfade to another character",
+  "s1.p2": "The result: you never hear a gust cut off abruptly — the transition slips into the wind's relative quiet.",
+  "s1.callout.tip": "<b>The moral.</b> Good procedural sound isn't only synthesis: it's also <em>when</em> you trigger things. Waiting for the right moment often beats a longer fade.",
+
+  "s3.h2": "And that wraps up the notebook!",
+  "s3.lead": "From the game loop to synthesized sound, you've made the full tour of Tower Duel.",
+  "s3.p1": "Five batches, three reading levels, a handful of simulators: you now know how a small web game comes to life, screen after screen, gust after gust. Thanks for reading all the way through.",
+  "s3.back": "↩ Back to home",
+
+  "s2.h2": "Per-biome soundtrack — proposals &amp; round transition",
+  "s2.try": "Turn the sound on: everything is synthesized live, no audio files.",
+  "s2.p1": "Each biome has its own sonic climate, offered in several proposals. During a match, a biome's <b>two ambiences</b> alternate from round to round; the <b>final round</b> has its own music. When the scene slides to the next hill, the music follows: a <b>crossfade</b> of the volumes <i>and</i> a <b>tempo glide</b> (BPM) along the same smoothstep curve, so both tracks stay in sync through the transition.",
+  "s2.p2": "The catalog keeps every proposal — including the five Desert ones. The mixer plays the playlist chosen per biome (Desert: <b>Mirage</b> and <b>Fournaise</b> in rotation, <b>Simoun</b> for the finale). Pick a biome, then run through the rounds.",
+  "s2.frameTitle": "Per-biome soundtrack simulator",
+
+  "footer.suffix": "chapter {n}/{total} · expert level",
+
+  "pager.prev": "← Chapter 4 · Destructible terrain",
+  "pager.next": "The end 🎉"
+}

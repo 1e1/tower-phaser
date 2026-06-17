@@ -1,0 +1,48 @@
+{
+  "title": "Chapter 5 (intermediate) — The airflow recipe &amp; TV spatialization",
+
+  "hero.badge": "Intermediate · Batch 5 · Storm",
+  "hero.kicker": "Chapter 5 · intermediate level",
+  "hero.title": "Under the hood of the wind",
+  "hero.lead": "The sound of wind, seen as a <strong>signal graph</strong>: pink noise through a <strong>lowpass filter</strong>, a single value driving everything, and a <strong>stereo pan</strong> that gives the heading. And on the TV side, how to place a sound in space.",
+
+  "s1.h2": "The recipe for a gust of air",
+  "s1.p1": "The base is <b>pink noise</b> (gentler than white noise, it “sounds” more like air) run through a <b>lowpass filter</b>. The stronger the wind, the wider the filter opens and the higher the volume — the air becomes both more present and brighter.",
+  "s1.code.cap": "src/systems/Sfx.js — the base airflow",
+  "s1.code.c1": "// pink-noise loop",
+  "s1.code.c2": "// a lowpass filter",
+  "s1.code.c3": "// k = |wind| / MAX_WIND, 0 to 1",
+  "s1.p2": "On top of that base we layer, as needed, a <b>resonance</b> (a singing bandpass) for the howl, or <b>gusts</b> driven by slow oscillators. Four assemblies give four characters.",
+
+  "s2.h2": "Adapt to strength, reveal the heading",
+  "s2.p1": "A single value drives everything: the game's wind, from <code class=\"inline\">−95</code> to <code class=\"inline\">+95</code> px/s². Its <b>magnitude</b> (0 to 1) opens the filter, raises the volume and deepens the gusts; its <b>sign</b> gives the direction (positive = rightward).",
+  "s2.p2": "To hear that heading, the sound <b>leans across the stereo field</b> toward the side the wind blows (the stronger it is, the more it leans). And in “directional gust” mode, a gust <b>travels</b> across your headphones left to right (or the reverse), swelling as it passes: you can't mistake the ear.",
+  "s2.callout.nerd": "<b>For the curious.</b> Direction is set with a single <code class=\"inline\">StereoPannerNode</code>: <code class=\"inline\">pan = sign · strength</code>, from −1 (hard left) to +1 (hard right). The travelling gust simply animates that <code class=\"inline\">pan</code> over time.",
+
+  "s3.h2": "TV spatialization — stereo, depth &amp; timbre",
+  "s3.try": "Put on headphones to hear left/right.",
+  "s3.p1": "The TV convention: <b>left/right</b> via stereo pan (X position), <b>front-to-back</b> via the depth volume, and <b>up-down</b> via a slight timbre tilt — brighter up top, deeper down low. Pick a sound, then click the battlefield to emit it at that position.",
+  "s3.snd.boom": "💥 Boom",
+  "s3.snd.impact": "🌋 Impact",
+  "s3.snd.rubble": "🧱 Rubble",
+  "s3.snd.clang": "🛡 Clang",
+  "s3.snd.bird": "🐦 Bird",
+  "s3.snd.wind": "🌬 Gust",
+  "s3.read0": "Click the battlefield to emit.",
+  "s3.depth": "Depth (front → back)",
+  "s3.panMax": "Max pan (edges)",
+  "s3.bgVol": "Background volume",
+  "s3.tiltDb": "Timbre tilt (dB)",
+  "s3.tiltHi": "Treble pivot (Hz)",
+  "s3.tiltLo": "Bass pivot (Hz)",
+  "s3.cfgCap": "validated config (paste back into the game)",
+  "s3.cv.treble": "treble ↑",
+  "s3.cv.bass": "bass ↓",
+  "s3.cv.right": "right →",
+  "s3.cv.left": "← left",
+
+  "footer.suffix": "chapter {n}/{total} · intermediate level",
+
+  "pager.prev": "← Chapter 4 · Destructible terrain",
+  "pager.next": "The end 🎉"
+}

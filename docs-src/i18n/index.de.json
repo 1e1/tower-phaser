@@ -1,14 +1,11 @@
 {
   "title": "Bau dein eigenes Web-Spiel — das Tower-Duel-Notizbuch",
   "meta.desc": "Ein illustriertes Tutorial, um zu verstehen, wie ein Videospiel gebaut wird, das im Browser läuft – am Beispiel des Spiels Tower Duel.",
-
   "nav.brandExtra": "das Notizbuch",
-
   "hero.badge": "Macher-Notizbuch",
   "hero.kicker": "Wie du baust…",
   "hero.title": "…ein echtes Videospiel direkt im Browser",
   "hero.lead": "Verfolge die Entstehung von <strong>Tower Duel</strong>, einem Kanonenduell für zwei Spieler, Schritt für Schritt. Mit Diagrammen, echtem Code und kleinen Spielen, mit denen du herumprobieren kannst, um es zu verstehen.",
-
   "s1.h2": "Was ist ein „Web-Spiel“?",
   "s1.lead": "Ein Web-Spiel ist ein Spiel, das in einem <b>Browser</b> läuft (Chrome, Firefox, Safari…), ohne dass du etwas installieren musst. Du klickst auf einen Link, und schon geht's los!",
   "s1.p1": "Damit das funktioniert, setzen wir drei Zutaten zusammen, die du vielleicht schon kennst:",
@@ -22,10 +19,9 @@
   "s1.fig.youPlay": "du spielst",
   "s1.fig.cap": "Vom Code auf den Bildschirm: JavaScript zeichnet das Spiel in das canvas, und du spielst.",
   "s1.callout": "<b>Merke dir.</b> Der Browser weiß bereits, wie man Seiten anzeigt. Ein Web-Spiel ist „nur“ eine sehr lebendige Seite, auf der JavaScript das Bild dutzendmal pro Sekunde neu zeichnet.",
-
   "s2.h2": "Das Spiel, das wir bauen",
   "s2.p1": "Zwei Türme, einer auf jeder Seite einer Landschaft. Jeder Spieler stellt den <b>Winkel</b> und die <b>Stärke</b> seiner Kanone ein und berücksichtigt dabei den <b>Wind</b>. Der Clou: Beide Spieler zielen <b>gleichzeitig</b>, dann werden beide Schüsse zusammen abgefeuert. Wer zuerst den gegnerischen Turm trifft, gewinnt die Runde!",
-  "s2.p2": "Wir haben das Spiel in <b>4 Schritten</b> gebaut (wir nennen sie „Etappen“). Jedes Kapitel erzählt einen Schritt, mit seiner eigenen Biom-Stimmung:",
+  "s2.p2": "Wir haben das Spiel in <b>5 Schritten</b> gebaut (wir nennen sie „Etappen“). Jedes Kapitel erzählt einen Schritt, mit seiner eigenen Biom-Stimmung:",
   "s2.c1.lot": "ETAPPE 1 · Wiese",
   "s2.c1.title": "Eine Kanone in Bewegung bringen",
   "s2.c1.desc": "Die Spielschleife, die Flugbahn einer Kanonenkugel und wie wir das Spiel mit Docker „einpacken“.",
@@ -38,7 +34,9 @@
   "s2.c4.lot": "ETAPPE 4 · Vulkan",
   "s2.c4.title": "Die Landschaft zerstören",
   "s2.c4.desc": "Wie bei Worms: Jeder Schuss gräbt einen Krater. Wir sehen den Zaubertrick, mit dem man ein „Loch“ in ein Bild stanzt.",
-
+  "s2.c5.lot": "ETAPPE 5 · Sturm",
+  "s2.c5.title": "Der Klang des Windes",
+  "s2.c5.desc": "Sound zu 100 % in Web Audio synthetisiert: vier Wind-Charaktere, Anpassung an die Stärke und ein Stereo-Hinweis auf die Richtung — mit einem Simulator.",
   "s3.h2": "Wähle dein Niveau",
   "s3.p1": "Jedes Kapitel gibt es in <b>drei Tiefen</b>. Beginne, wo du dich wohlfühlst — du kannst das Niveau auf jeder Seite über die Leiste oben wechseln.",
   "s3.l1.tag": "Einstieg",
@@ -50,7 +48,6 @@
   "s3.l3.tag": "Profi",
   "s3.l3.title": "In der Tiefe",
   "s3.l3.desc": "Numerische Integration, Determinismus, Netzwerkprotokoll und schnelle Mathematik — mit echtem Code.",
-
   "s4.h2": "Wie du dieses Notizbuch liest",
   "s4.p1": "Dir begegnen kleine bunte Kästchen. Hier ist, was sie bedeuten:",
   "s4.callout.tip": "<b>Merke dir</b> — der wichtige Gedanke, den du im Kopf behalten solltest.",
@@ -60,7 +57,6 @@
   "s4.code.cap": "ein bisschen JavaScript",
   "s4.code.c1": "// sobald beide Spieler bestätigt haben, feuern wir!",
   "s4.cta": "Kapitel 1 starten →",
-
   "s5.h2": "Anhänge",
   "s5.p1": "Boni, um weiterzugehen: das Spiel selbst hosten, ein Abstecher in die Mathematik und ein Blick hinter die Kulissen des Start-Briefings.",
   "s5.li1.label": "Deployment",
@@ -70,6 +66,5 @@
   "s5.li3.label": "Das Start-Briefing",
   "s5.li3.desc": " — das Lastenheft, mit dem alles begann, kommentiert und kritisiert.",
   "s5.cta": "Alle Anhänge ansehen →",
-
   "footer.suffix": "gemacht für neugierige Köpfe jeden Alters 🛠️"
 }

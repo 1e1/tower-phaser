@@ -1,0 +1,48 @@
+{
+  "title": "Chapitre 5 (intermédiaire) — La recette du souffle &amp; la spatialisation TV",
+
+  "hero.badge": "Intermédiaire · Lot 5 · Orage",
+  "hero.kicker": "Chapitre 5 · niveau intermédiaire",
+  "hero.title": "Sous le capot du vent",
+  "hero.lead": "Le son du vent, vu comme un <strong>graphe de signal</strong> : du bruit rose dans un <strong>filtre passe-bas</strong>, une seule valeur qui pilote tout, et un <strong>panoramique stéréo</strong> qui dit le sens. Et côté TV, comment placer un son dans l'espace.",
+
+  "s1.h2": "La recette d'un souffle",
+  "s1.p1": "La base, c'est du <b>bruit rose</b> (plus doux que le bruit blanc, il « ressemble » davantage à de l'air) que l'on passe dans un <b>filtre passe-bas</b>. Plus le vent est fort, plus on ouvre le filtre et plus on monte le volume — le souffle devient à la fois plus présent et plus aigu.",
+  "s1.code.cap": "src/systems/Sfx.js — le souffle de base",
+  "s1.code.c1": "// boucle de bruit rose",
+  "s1.code.c2": "// un filtre passe-bas",
+  "s1.code.c3": "// k = |vent| / VENT_MAX, de 0 à 1",
+  "s1.p2": "Sur cette base, on superpose selon le cas une <b>résonance</b> (un passe-bande qui chante) pour le hurlement, ou des <b>rafales</b> pilotées par des oscillateurs lents. Quatre assemblages donnent quatre caractères.",
+
+  "s2.h2": "S'adapter à la force, montrer le sens",
+  "s2.p1": "Une seule valeur pilote tout : le vent du jeu, de <code class=\"inline\">−95</code> à <code class=\"inline\">+95</code> px/s². Sa <b>norme</b> (de 0 à 1) ouvre le filtre, monte le volume et accentue les rafales ; son <b>signe</b> donne la direction (positif = vers la droite).",
+  "s2.p2": "Pour entendre ce sens, le son <b>penche dans le champ stéréo</b> du côté où souffle le vent (plus il est fort, plus il penche). Et en mode « rafale directionnelle », une bourrasque <b>traverse</b> le casque de gauche à droite (ou l'inverse) en enflant à son passage : impossible de se tromper d'oreille.",
+  "s2.callout.nerd": "<b>Pour les curieux.</b> La direction se règle avec un seul nœud <code class=\"inline\">StereoPannerNode</code> : <code class=\"inline\">pan = signe · force</code>, de −1 (tout à gauche) à +1 (tout à droite). La bourrasque mobile, elle, anime ce <code class=\"inline\">pan</code> au fil du temps.",
+
+  "s3.h2": "Spatialisation TV — stéréo, profondeur &amp; timbre",
+  "s3.try": "Mets des écouteurs pour entendre le gauche/droite.",
+  "s3.p1": "Convention de la TV : <b>gauche/droite</b> par panoramique stéréo (position X), <b>avant-arrière</b> par le volume de profondeur, et <b>haut-bas</b> par une légère bascule de timbre — aigu en haut, grave en bas. Choisis un son, puis clique sur le champ de bataille pour l'émettre à cette position.",
+  "s3.snd.boom": "💥 Boom",
+  "s3.snd.impact": "🌋 Impact",
+  "s3.snd.rubble": "🧱 Éboulis",
+  "s3.snd.clang": "🛡 Clang",
+  "s3.snd.bird": "🐦 Oiseau",
+  "s3.snd.wind": "🌬 Rafale",
+  "s3.read0": "Clique sur le champ de bataille pour émettre.",
+  "s3.depth": "Profondeur (avant → arrière)",
+  "s3.panMax": "Pan max (bords)",
+  "s3.bgVol": "Volume du fond",
+  "s3.tiltDb": "Bascule timbre (dB)",
+  "s3.tiltHi": "Aigu pivot (Hz)",
+  "s3.tiltLo": "Grave pivot (Hz)",
+  "s3.cfgCap": "config validée (recoller dans le jeu)",
+  "s3.cv.treble": "aigu ↑",
+  "s3.cv.bass": "grave ↓",
+  "s3.cv.right": "droite →",
+  "s3.cv.left": "← gauche",
+
+  "footer.suffix": "chapitre {n}/{total} · niveau intermédiaire",
+
+  "pager.prev": "← Chapitre 4 · Terrain destructible",
+  "pager.next": "La fin 🎉"
+}

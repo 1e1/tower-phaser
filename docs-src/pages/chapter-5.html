@@ -1,0 +1,81 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#2e3a5a"/>
+        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#5b7fbf"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <p>{{s1.p1}}</p>
+        <div class="callout nerd">{{s1.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <ul class="clean">
+          <li><b>{{s2.v.whoosh.t}}</b> — {{s2.v.whoosh.d}}</li>
+          <li><b>{{s2.v.howl.t}}</b> — {{s2.v.howl.d}}</li>
+          <li><b>{{s2.v.gusty.t}}</b> — {{s2.v.gusty.d}}</li>
+          <li><b>{{s2.v.aeolian.t}}</b> — {{s2.v.aeolian.d}}</li>
+        </ul>
+        <div class="callout tip">{{s2.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <div class="callout try">{{s3.try}}</div>
+        <div class="sim windlab">
+          <h4>{{s3.title}}</h4>
+          <div class="controls">
+            <button id="wl-play" class="wl-play" data-stop="{{s3.stop}}">{{s3.play}}</button>
+            <label>{{s3.volume}}<input id="wl-vol" type="range" min="0" max="100" value="65" /></label>
+          </div>
+          <div class="wl-variants">
+            <button class="wl-variant active" data-id="whoosh">{{s3.v.whoosh}}</button>
+            <button class="wl-variant" data-id="howl">{{s3.v.howl}}</button>
+            <button class="wl-variant" data-id="gusty">{{s3.v.gusty}}</button>
+            <button class="wl-variant" data-id="aeolian">{{s3.v.aeolian}}</button>
+          </div>
+          <canvas id="wl-scope" width="640" height="150"></canvas>
+          <div class="wl-field-row">
+            <span class="cap">L</span>
+            <canvas id="wl-field" width="600" height="26"></canvas>
+            <span class="cap">R</span>
+          </div>
+          <div class="controls">
+            <label class="grow">{{s3.strength}} <span id="wl-readout" class="wl-readout">·&nbsp;0&nbsp;%</span>
+              <input id="wl-strength" type="range" min="-100" max="100" value="35" /></label>
+            <button id="wl-flip">{{s3.flip}}</button>
+          </div>
+          <div class="controls">
+            <label class="chk"><input type="checkbox" id="wl-directional" /> {{s3.directional}}</label>
+            <label class="chk"><input type="checkbox" id="wl-random" /> {{s3.random}}</label>
+            <label class="chk">{{s3.cycle}} <input id="wl-cycle" type="number" min="2" max="30" value="8" /> s</label>
+          </div>
+          <div class="hint">{{s3.hint}}</div>
+        </div>
+      </section>
+
+      <section class="sheet" style="text-align:center;">
+        <h2 style="justify-content:center; display:flex;"><span class="num">★</span>{{s4.h2}}</h2>
+        <p class="lead">{{s4.lead}}</p>
+        <p>{{s4.p1}}</p>
+        <div class="callout tip">{{s4.callout.tip}}</div>
+        <p style="margin-top:24px;">
+          <a class="pill" href="index.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">{{s4.back}}</a>
+        </p>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-4.html">{{pager.prev}}</a>
+        <a class="disabled">{{pager.next}}</a>
+      </div>
+    </main>

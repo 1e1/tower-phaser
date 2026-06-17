@@ -32,7 +32,7 @@ export default class GameScene extends Phaser.Scene {
   init(data) {
     this.names = data.names;
     this.playerColors = data.colors;
-    this.totalRounds = data.totalRounds;
+    this.winsNeeded = data.winsNeeded;
     this.biome = data.biome || BIOMES[0];
     this.scores = [0, 0];
     this.roundsPlayed = 0;
@@ -66,8 +66,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.hud = new Hud(this, this.names, this.playerColors);
     this.hud.updateScores(this.scores);
-    this.hud.updateRound(this.currentRound, this.totalRounds);
+    this.hud.updateRound(this.currentRound, this.winsNeeded);
     this.hud.updateWind(this.wind);
+    this.background.setWind(this.wind.value); // lean the rain/clouds with the wind
 
     this.setupInput();
 
@@ -321,7 +322,7 @@ export default class GameScene extends Phaser.Scene {
     this.hud.showBanner(message, 1300);
 
     this.time.delayedCall(1700, () => {
-      if (this.roundsPlayed >= this.totalRounds) {
+      if (Math.max(this.scores[0], this.scores[1]) >= this.winsNeeded) {
         this.endMatch();
       } else {
         this.nextRound();
@@ -332,6 +333,7 @@ export default class GameScene extends Phaser.Scene {
   nextTurn() {
     this.wind.randomize();
     this.hud.updateWind(this.wind);
+    this.background.setWind(this.wind.value); // the curtain re-leans with the fresh wind
     this.towers.forEach((t) => t.reset());
     this.projectiles = [];
     this.state = STATE.AIMING;
@@ -340,7 +342,7 @@ export default class GameScene extends Phaser.Scene {
   nextRound() {
     this.currentRound += 1;
     this.terrain.generate();
-    this.hud.updateRound(this.currentRound, this.totalRounds);
+    this.hud.updateRound(this.currentRound, this.winsNeeded);
     this.nextTurn();
   }
 

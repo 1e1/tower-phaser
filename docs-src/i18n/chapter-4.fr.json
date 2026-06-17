@@ -1,14 +1,11 @@
 {
   "title": "Chapitre 4 — Détruire le paysage",
-
   "hero.badge": "Lot 4 · Volcan",
   "hero.kicker": "Chapitre 4",
   "hero.title": "Détruire le paysage",
   "hero.lead": "Comme dans <em>Worms</em> : chaque tir creuse un vrai trou dans le décor. On va découvrir le tour de magie pour « percer un trou » dans une image — et tu vas pouvoir creuser toi-même !",
-
   "s1.h2": "Un décor qui garde ses cicatrices",
   "s1.lead": "Jusqu'ici, le paysage était un joli fond fixe. Maintenant, chaque boulet qui tombe <b>arrache</b> un morceau de terrain. Les trous restent : à la fin de la manche, le champ de bataille est tout grêlé.",
-
   "s2.h2": "La magie : la « gomme » du canvas",
   "s2.p1": "Le canvas sait dessiner… mais aussi <b>effacer dans une forme</b> ! On bascule en mode <code class=\"inline\">destination-out</code> : tout ce qu'on « dessine » devient alors une <b>gomme</b>. Dessine un cercle → un trou bien rond dans le terrain.",
   "s2.code.cap": "src/objects/Terrain.js (creuser un cratère)",
@@ -19,7 +16,6 @@
   "s2.sim.title": "Creuse le terrain !",
   "s2.sim.reset": "↺ Reconstruire la colline",
   "s2.sim.hint": "Astuce : vise sous une bosse pour creuser une grotte et laisser un « pont » au-dessus.",
-
   "s3.h2": "Solide ou pas ? La règle du jeu",
   "s3.p1": "Comment le jeu sait-il si un boulet a touché le sol ? Pas besoin de garder une énorme image en mémoire. On garde : la <b>hauteur du sol</b> à chaque endroit, et la <b>liste des cratères</b>. Un point est <b>solide</b> si :",
   "s3.callout.tip": "<b>La règle.</b> « Je suis <b>sous la surface</b> du sol <b>ET</b> je ne suis <b>dans aucun cratère</b>. » Sinon, c'est du vide.",
@@ -30,20 +26,16 @@
   "s3.fig.overhang": "↑ surplomb qui « flotte »",
   "s3.fig.cap": "Sous la surface mais dans un cratère → vide. La bosse au-dessus tient toujours.",
   "s3.callout.nerd": "<b>Pour les curieux.</b> Tester « suis-je dans un cratère ? » = comparer la distance au centre de chaque cratère avec son rayon. C'est le théorème de Pythagore ! (<code class=\"inline\">dx² + dy² ≤ radius²</code>).",
-
   "s4.h2": "Les détails qui font « vrai »",
   "s4.li1": "🟫 <b>Bord roussi.</b> On assombrit le bord du trou — mais <b>seulement là où il y a du terrain</b> (mode <code class=\"inline\">source-atop</code>), sinon on verrait un cercle flotter dans le ciel.",
   "s4.li2": "🌫️ <b>Poussière derrière le terrain.</b> L'impact soulève de la poussière dessinée <b>derrière</b> le terrain : le relief la cache, comme si elle sortait du trou.",
   "s4.li3": "🌱 <b>Décor emporté.</b> Herbe et cailloux sont « cuits » dans l'image du terrain : la gomme les enlève en même temps que la terre.",
-
   "s5.h2": "Bravo, tu as fait le tour complet !",
   "s5.lead": "Tu sais maintenant à peu près comment un jeu web prend vie :",
   "s5.p1": "une <b>boucle</b> qui redessine 60×/s, un peu de <b>maths</b> pour la physique et le décor, un <b>arbitre</b> en réseau pour jouer ensemble, et des <b>astuces de dessin</b> pour tout casser. Et surtout : on avance <b>étape par étape</b>, chacune testée avant la suivante.",
   "s5.callout.tip": "<b>Le secret des pros.</b> Personne n'écrit un gros jeu d'un coup. On fait une <b>petite</b> version qui marche, on l'améliore, encore et encore. Exactement les 4 lots de ce carnet.",
   "s5.back": "↩ Retour à l'accueil",
-
   "footer.suffix": "chapitre {n}/{total} · merci d'avoir lu !",
-
   "pager.prev": "← Chapitre 3",
-  "pager.next": "La fin 🎉"
+  "pager.next": "Chapitre 5 →"
 }

@@ -1,0 +1,183 @@
+    <script>
+      (function () {
+        const MAX_WIND = 95; // px/s² — same as the game (src/config/constants.js)
+        const VARIANTS = ['whoosh', 'howl', 'gusty', 'aeolian'];
+        const $ = (id) => document.getElementById(id);
+        const root = $('wl-play'); if (!root) return;
+
+        let ctx = null, master = null, panner = null, analyser = null, splitter = null, anL = null, anR = null;
+        let voice = null, noiseBuf = null, playing = false, activeVariant = 'gusty';
+        let randomNextAt = 0, swapPending = false, pendingSince = 0;
+
+        // ── synthesis ──────────────────────────────────────────────────────────
+        function makeNoise(seconds) {
+          const len = Math.floor(ctx.sampleRate * seconds);
+          const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+          const d = buf.getChannelData(0);
+          let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0; // Paul Kellet pink noise — reads as wind, not hiss
+          for (let i = 0; i < len; i++) {
+            const w = Math.random() * 2 - 1;
+            b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759; b2=0.96900*b2+w*0.1538520;
+            b3=0.86650*b3+w*0.3104856; b4=0.55000*b4+w*0.5329522; b5=-0.7616*b5-w*0.0168980;
+            d[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11; b6=w*0.115926;
+          }
+          return buf;
+        }
+        const src = () => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(); return s; };
+        const gain = (v=0) => { const g = ctx.createGain(); g.gain.value = v; return g; };
+        const filt = (t,f,q) => { const b = ctx.createBiquadFilter(); b.type=t; b.frequency.value=f; if(q!=null)b.Q.value=q; return b; };
+
+        function buildVariant(id) {
+          const out = gain(0); const nodes = []; let setStrength;
+          if (id === 'whoosh') {
+            const s = src(), lp = filt('lowpass',300,0.7), g = gain(0);
+            s.connect(lp).connect(g).connect(out); nodes.push(s);
+            setStrength = (k) => { const t = ctx.currentTime;
+              lp.frequency.setTargetAtTime(180+k*2400,t,0.08); g.gain.setTargetAtTime(0.04+k*0.95,t,0.08); };
+          } else if (id === 'howl') {
+            const s = src(); const lp = filt('lowpass',200,0.7), gb = gain(0); const bp = filt('bandpass',300,9), gh = gain(0);
+            s.connect(lp).connect(gb).connect(out); s.connect(bp).connect(gh).connect(out); nodes.push(s);
+            setStrength = (k) => { const t = ctx.currentTime;
+              lp.frequency.setTargetAtTime(120+k*500,t,0.08); gb.gain.setTargetAtTime(0.05+k*0.45,t,0.08);
+              bp.frequency.setTargetAtTime(260+k*820,t,0.08); gh.gain.setTargetAtTime(k*k*0.8,t,0.08); };
+          } else if (id === 'gusty') {
+            const s = src(); const lp = filt('lowpass',300,0.7), gb = gain(0); const bp = filt('bandpass',350,7), gh = gain(0);
+            const gust = gain(0.55); lp.connect(gb).connect(gust); bp.connect(gh).connect(gust); s.connect(lp); s.connect(bp); gust.connect(out);
+            const lfo1 = ctx.createOscillator(); lfo1.type='sine'; lfo1.frequency.value=0.21;
+            const lfo2 = ctx.createOscillator(); lfo2.type='sine'; lfo2.frequency.value=0.13;
+            const d1 = gain(0), d2 = gain(0); lfo1.connect(d1).connect(gust.gain); lfo2.connect(d2).connect(gust.gain);
+            const bpMod = ctx.createOscillator(); bpMod.type='sine'; bpMod.frequency.value=0.21;
+            const bpDepth = gain(0); bpMod.connect(bpDepth).connect(bp.frequency);
+            lfo1.start(); lfo2.start(); bpMod.start(); nodes.push(s,lfo1,lfo2,bpMod);
+            setStrength = (k) => { const t = ctx.currentTime;
+              lp.frequency.setTargetAtTime(200+k*1600,t,0.1); gb.gain.setTargetAtTime(0.06+k*0.55,t,0.1);
+              bp.frequency.setTargetAtTime(300+k*700,t,0.1); gh.gain.setTargetAtTime(k*0.45,t,0.1);
+              gust.gain.setTargetAtTime(0.5+0.1*k,t,0.15); const depth = 0.18+0.42*k;
+              d1.gain.setTargetAtTime(depth,t,0.2); d2.gain.setTargetAtTime(depth*0.7,t,0.2); bpDepth.gain.setTargetAtTime(220*k,t,0.2); };
+          } else {
+            const s = src(); const voices = [405,612,835].map((f,i) => {
+              const bp = filt('bandpass',f,24), g = gain(0); s.connect(bp).connect(g).connect(out);
+              const amp = ctx.createOscillator(); amp.type='sine'; amp.frequency.value=0.3+i*0.17;
+              const ad = gain(0); amp.connect(ad).connect(g.gain); amp.start(); nodes.push(amp); return { bp, g, ad, f };
+            });
+            nodes.push(s);
+            setStrength = (k) => { const t = ctx.currentTime; const scale = 0.8+0.6*k;
+              voices.forEach((v,i) => { v.bp.frequency.setTargetAtTime(v.f*scale,t,0.1);
+                const lvl = Math.max(0,k-0.12)*(0.55-i*0.12); v.g.gain.setTargetAtTime(lvl,t,0.12); v.ad.gain.setTargetAtTime(lvl*0.5,t,0.2); }); };
+          }
+          return {
+            out, setStrength,
+            fadeIn(dur) { const t = ctx.currentTime; out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value,t); out.gain.linearRampToValueAtTime(1,t+dur); },
+            stop(dur) { const t = ctx.currentTime; out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value,t); out.gain.linearRampToValueAtTime(0,t+dur);
+              setTimeout(() => { nodes.forEach(n => { try { n.stop(); } catch(e){} }); try { out.disconnect(); } catch(e){} }, dur*1000+200); },
+          };
+        }
+
+        function ensureCtx() {
+          if (ctx) return;
+          ctx = new (window.AudioContext || window.webkitAudioContext)();
+          noiseBuf = makeNoise(4);
+          master = gain(0.5); panner = ctx.createStereoPanner();
+          analyser = ctx.createAnalyser(); analyser.fftSize = 1024;
+          splitter = ctx.createChannelSplitter(2);
+          anL = ctx.createAnalyser(); anL.fftSize = 256; anR = ctx.createAnalyser(); anR.fftSize = 256;
+          panner.connect(master); master.connect(ctx.destination); master.connect(analyser);
+          master.connect(splitter); splitter.connect(anL,0); splitter.connect(anR,1);
+        }
+        function swapVariant(id, fade) {
+          if (voice) voice.stop(fade);
+          voice = buildVariant(id); voice.out.connect(panner); voice.fadeIn(fade); applyStrength();
+        }
+
+        // ── parameters ─────────────────────────────────────────────────────────
+        const rawV = () => parseInt($('wl-strength').value, 10);
+        const dirSign = () => (rawV() < 0 ? -1 : 1);
+        const kVal = () => Math.min(1, Math.abs(rawV()) / 100);
+        function applyStrength() {
+          const v = rawV();
+          const arrow = Math.abs(v) < 3 ? '·' : (v < 0 ? '←' : '→');
+          $('wl-readout').textContent = arrow + ' ' + Math.round(Math.abs(v)) + ' %  (' + (Math.round((Math.abs(v)/100)*MAX_WIND)*dirSign()) + ' px/s²)';
+          if (voice) voice.setStrength(kVal());
+        }
+        function applyVolume() { if (master) master.gain.setTargetAtTime(parseInt($('wl-vol').value,10)/100*0.85, ctx.currentTime, 0.05); }
+
+        function armRandom() { randomNextAt = ctx.currentTime + Math.max(2, parseFloat($('wl-cycle').value) || 8); swapPending = false; }
+        function pickRandom() { const o = VARIANTS.filter(x => x !== activeVariant); return o[Math.floor(Math.random()*o.length)]; }
+
+        // ── stereo + cycle + visuals (per-frame) ─────────────────────────────────
+        function rms(an) { const a = new Uint8Array(an.frequencyBinCount); an.getByteTimeDomainData(a); let s=0; for(let i=0;i<a.length;i++){ const x=(a[i]-128)/128; s+=x*x; } return Math.sqrt(s/a.length); }
+        function panTick() {
+          const now = ctx.currentTime, dir = dirSign(), k = kVal();
+          if ($('wl-directional').checked) {
+            const T = 3.0, phase = (now % T) / T; let pan = 0, swell = 0;
+            if (phase < 0.62) { const trav = phase/0.62; pan = dir*(-0.92+1.84*trav); swell = Math.sin(Math.PI*trav); }
+            panner.pan.setTargetAtTime(pan, now, 0.02);
+            master.gain.setTargetAtTime(parseInt($('wl-vol').value,10)/100*0.85*(0.45+0.55*swell), now, 0.03);
+          } else {
+            panner.pan.setTargetAtTime(dir*k*0.85, now, 0.06);
+          }
+        }
+        function cycleTick() {
+          if (!$('wl-random').checked) return;
+          const now = ctx.currentTime;
+          if (!swapPending) { if (now >= randomNextAt) { swapPending = true; pendingSince = now; } return; }
+          if (rms(analyser) < 0.05 || now - pendingSince > 2.5) { selectVariant(pickRandom(), true); }
+        }
+
+        const scope = $('wl-scope'), sctx = scope.getContext('2d');
+        const field = $('wl-field'), fctx = field.getContext('2d');
+        function fit(c){ const r = c.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; if(r.width){ c.width=r.width*dpr; c.height=(c===scope?150:26)*dpr; c.getContext('2d').setTransform(dpr,0,0,dpr,0,0); } return r; }
+        let scopeR = fit(scope), fieldR = fit(field);
+        window.addEventListener('resize', () => { scopeR = fit(scope); fieldR = fit(field); });
+
+        function draw() {
+          requestAnimationFrame(draw);
+          if (!playing) return;
+          panTick(); cycleTick();
+          const W = scopeR.width || 640, H = 150;
+          sctx.clearRect(0,0,W,H);
+          const bins = new Uint8Array(analyser.frequencyBinCount); analyser.getByteFrequencyData(bins);
+          const n = 96, step = Math.floor(bins.length*0.6/n), bw = W/n;
+          for (let i = 0; i < n; i++) { let m = 0; for(let j=0;j<step;j++) m = Math.max(m, bins[i*step+j]);
+            const h = (m/255)*H, mix = i/n; sctx.fillStyle = `rgb(${60+mix*180}, ${110-mix*30}, ${190-mix*120})`; sctx.fillRect(i*bw, H-h, bw-1, h); }
+          const fw = fieldR.width || 600, fh = 26; fctx.clearRect(0,0,fw,fh);
+          const l = rms(anL), r = rms(anR);
+          fctx.fillStyle = 'rgba(58,109,240,.28)'; fctx.fillRect(0,0, fw*0.5*Math.min(1,l*3), fh);
+          fctx.fillStyle = 'rgba(216,85,47,.28)'; const rw = fw*0.5*Math.min(1,r*3); fctx.fillRect(fw-rw,0,rw,fh);
+          fctx.strokeStyle = 'rgba(43,37,53,.25)'; fctx.beginPath(); fctx.moveTo(fw/2,0); fctx.lineTo(fw/2,fh); fctx.stroke();
+          const x = (panner.pan.value*0.5+0.5)*fw; fctx.fillStyle = '#2b2535'; fctx.beginPath(); fctx.arc(x, fh/2, 7, 0, 7); fctx.fill();
+        }
+        requestAnimationFrame(draw);
+
+        // ── transport + UI ───────────────────────────────────────────────────────
+        function start() {
+          ensureCtx(); if (ctx.state === 'suspended') ctx.resume();
+          scopeR = fit(scope); fieldR = fit(field);
+          swapVariant(activeVariant, 0.3); playing = true; armRandom();
+          $('wl-play').classList.add('on'); $('wl-play').dataset.on = '1'; $('wl-play').textContent = $('wl-play').dataset.stop;
+          applyVolume();
+        }
+        function stop() {
+          playing = false; if (voice) { voice.stop(0.3); voice = null; }
+          $('wl-play').classList.remove('on'); $('wl-play').dataset.on = ''; $('wl-play').textContent = $('wl-play').dataset.start;
+          sctx.clearRect(0,0,scope.width,scope.height); fctx.clearRect(0,0,field.width,field.height);
+        }
+        function selectVariant(id, gentle) {
+          activeVariant = id;
+          document.querySelectorAll('.wl-variant').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+          if (playing) { swapVariant(id, gentle ? 1.4 : 0.3); armRandom(); }
+        }
+
+        // Play label from the rendered text; pause label from the data-stop token.
+        $('wl-play').dataset.start = $('wl-play').textContent;
+        $('wl-play').onclick = () => (playing ? stop() : start());
+        document.querySelectorAll('.wl-variant').forEach(b => { b.onclick = () => selectVariant(b.dataset.id, false); });
+        $('wl-strength').oninput = () => applyStrength();
+        $('wl-vol').oninput = () => { if (playing && !$('wl-directional').checked) applyVolume(); };
+        $('wl-flip').onclick = () => { $('wl-strength').value = -rawV(); applyStrength(); };
+        $('wl-directional').onchange = () => { if (playing && !$('wl-directional').checked) applyVolume(); };
+        $('wl-random').onchange = () => { if (playing) armRandom(); };
+        $('wl-cycle').onchange = () => { if (playing) armRandom(); };
+        applyStrength();
+      })();
+    </script>

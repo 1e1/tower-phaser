@@ -1,12 +1,10 @@
 {
   "title": "Chapitre 4 (expert) — Terrain destructible &amp; maths rapides",
   "meta.desc": "Niveau expert : génération du heightfield par somme de sinusoïdes avec edge blend et plateformes, les cratères comme soustraction géométrique par distance au carré, cavernes et surplombs, le déterminisme, et le vent continu turbo (keypoints, smoothstep, onde de rafales).",
-
   "hero.badge": "Expert · Lot 4 · Volcan",
   "hero.kicker": "Chapitre 4 · niveau expert",
   "hero.title": "Terrain destructible &amp; maths rapides",
   "hero.lead": "Le terrain au plus près du métal : un <strong>heightfield</strong> somme de sinusoïdes, des cratères comme <strong>soustraction géométrique</strong> sans racine carrée, des cavernes possibles, le <strong>déterminisme</strong>, et la formule complète du <strong>vent continu</strong> turbo.",
-
   "s1.h2": "Générer le heightfield : sinusoïdes, edge blend, plateformes",
   "s1.lead": "Le relief est une fonction pure de la graine. On somme trois <b>vagues</b> sinusoïdales (grandes collines, bosses, détails), dont l'amplitude, la fréquence et la phase sont tirées d'un RNG à graine.",
   "s1.code.cap": "src/sim/terrain.js — trois octaves de bruit sinusoïdal",
@@ -14,33 +12,28 @@
   "s1.code2.cap": "src/sim/terrain.js — bords plats + fondu",
   "s1.code2.c1": "// …",
   "s1.callout.nerd": "<b>Pour les curieux.</b> <code class=\"inline\">roughness</code> vient du biome (1.25 au désert, 0.85 en toundra, 1.4 au volcan) : la même somme de vagues produit un terrain plus doux ou plus tourmenté selon le décor — un seul moteur, quatre personnalités de relief.",
-
   "s2.h2": "Cratères : une soustraction géométrique",
   "s2.p1": "La destruction n'efface pas de pixels : elle ajoute un cercle à une liste, et la solidité d'un point devient « sous la surface, hors de tout cratère ». C'est une <b>opération booléenne</b> (différence) évaluée à la demande.",
   "s2.code.cap": "src/sim/terrain.js — la règle de solidité",
   "s2.code.c1": "// au-dessus du sol → vide",
   "s2.code.c2": "// dans un trou → vide",
   "s2.p2": "Comme la condition de surface et la condition de cratère sont <b>indépendantes</b>, un cratère entièrement sous la surface laisse la matière au-dessus intacte : on obtient gratuitement des <b>cavernes</b> et des <b>surplombs</b>. C'est exactement le comportement « Worms » sans aucune logique dédiée.",
-
   "s2.xsec.title": "Solide moins les cratères",
   "s2.xsec.solid": "solide",
   "s2.xsec.crater": "vide (cratère)",
   "s2.xsec.overhang": "↑ surplomb qui « flotte »",
   "s2.xsec.cap": "Un cratère sous la crête laisse un surplomb au-dessus : le même test tout simple engendre une topologie riche.",
-
   "s3.h2": "Maths rapides : comparer des distances sans racine carrée",
   "s3.p1": "Le test « suis-je dans ce cratère ? » est appelé à chaque pas, pour chaque projectile, contre chaque cratère. Il <b>doit</b> être rapide. La parade est universelle : ne jamais calculer une distance quand on peut comparer des <b>carrés</b>.",
   "s3.code.cap": "src/sim/terrain.js — dx² + dy² ≤ r², pas de Math.sqrt",
   "s3.p2": "Comme la racine carrée est monotone, comparer <code class=\"inline\">dx² + dy²</code> à <code class=\"inline\">r²</code> donne exactement le même verdict que comparer la distance à <code class=\"inline\">r</code>, mais en n'utilisant que des multiplications. C'est Pythagore, débarrassé de sa racine.",
   "s3.callout.nerd": "<b>Pour aller plus loin.</b> Pourquoi la racine carrée a longtemps été la bête noire des moteurs de jeu, la légende du code <code class=\"inline\">0x5f3759df</code> de Quake III, et comment Tower Duel évite carrément le calcul : tout est raconté dans l'<a href=\"annex-math.html\">annexe Maths rapides</a>.",
-
   "s4.h2": "Déterminisme : un terrain reproductible",
   "s4.p1": "Pour que le serveur (le juge) et chaque écran voient <b>le même</b> terrain, on bannit <code class=\"inline\">Math.random()</code> : le relief est une fonction pure <code class=\"inline\">(graine, roughness) → hauteurs</code>. Le serveur génère, puis n'envoie que la graine.",
   "s4.code.cap": "src/sim/Simulation.js — la graine fait foi",
   "s4.code.c1": "// chaque client régénère à l'identique à partir de la même graine",
   "s4.p2": "Les cratères suivent la même discipline : ils naissent d'événements déterministes (impacts résolus côté serveur) et voyagent dans le snapshot sous forme de liste. Même graine + même liste de cratères ⇒ même terrain, bit pour bit, partout.",
   "s4.callout.tip": "<b>À retenir.</b> Déterminisme = reproductibilité <em>et</em> économie réseau, d'une seule pierre. C'est le même principe qu'au chapitre 1 (boucle à pas fixe, RNG à graine), appliqué ici au monde géométrique.",
-
   "s5.h2": "Le vent continu turbo, en entier",
   "s5.p1": "Le mode turbo remplace le vent « par manche » par un vent <b>continu</b>. Deux couches se superposent : une <b>dérive de base</b> entre points-clés (régénérés toutes les <code class=\"inline\">WIND_KEY_SECONDS</code>), lissée par un <b>smoothstep</b>, et une <b>onde de rafales</b> qui module le tout.",
   "s5.code.cap": "src/sim/Simulation.js — updateTurboWind : base lissée + rafales",
@@ -49,14 +42,11 @@
   "s5.code.c3": "// smoothstep : dérivée nulle aux bords",
   "s5.p2": "Le <b>smoothstep</b> <code class=\"inline\">s = t²(3 − 2t)</code> a une dérivée nulle aux extrémités : le vent arrive et quitte chaque point-clé en douceur, sans cassure visible. L'onde de rafales combine deux sinusoïdes de fréquences différentes pour un souffle <b>apériodique</b> à l'œil, dont l'amplitude dépend de <code class=\"inline\">gustiness</code> — un trait tiré une fois par match, sa « personnalité » de vent.",
   "s5.callout.nerd": "<b>Garde-fou.</b> Les points-clés restent sous 80 % de <code class=\"inline\">MAX_WIND</code> (<code class=\"inline\">windKeypoint</code>) pour laisser de la marge à l'onde de rafales avant le <code class=\"inline\">clamp</code> final : la rafale peut « pousser » sans saturer brutalement contre la borne.",
-
   "s6.h2": "Fin du parcours expert",
   "s6.lead": "Tu as parcouru Tower Duel jusqu'au métal :",
   "s6.p1": "une <b>boucle déterministe</b>, un <b>rendu sans assets</b>, un <b>protocole autoritatif</b>, et un <b>terrain destructible</b> tenu par quelques formules bien choisies. Partout la même discipline : séparer ce qui change de ce qui calcule, et préférer la simplicité reproductible.",
   "s6.link": "→ Annexe Maths : la racine carrée &amp; l'astuce de Quake",
-
   "footer.suffix": "chapitre {n}/{total} · niveau expert",
-
   "pager.prev": "← Chapitre 3 · Protocole réseau",
-  "pager.next": "La fin 🎉"
+  "pager.next": "Chapitre 5 →"
 }

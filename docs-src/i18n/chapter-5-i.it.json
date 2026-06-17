@@ -1,0 +1,48 @@
+{
+  "title": "Capitolo 5 (intermedio) — La ricetta del soffio &amp; la spazializzazione TV",
+
+  "hero.badge": "Intermedio · Lotto 5 · Tempesta",
+  "hero.kicker": "Capitolo 5 · livello intermedio",
+  "hero.title": "Sotto il cofano del vento",
+  "hero.lead": "Il suono del vento, visto come un <strong>grafo di segnale</strong>: rumore rosa in un <strong>filtro passa-basso</strong>, un solo valore che governa tutto, e un <strong>panning stereo</strong> che dà il verso. E lato TV, come collocare un suono nello spazio.",
+
+  "s1.h2": "La ricetta di un soffio",
+  "s1.p1": "La base è <b>rumore rosa</b> (più morbido del bianco, «somiglia» di più all'aria) fatto passare in un <b>filtro passa-basso</b>. Più il vento è forte, più il filtro si apre e più sale il volume — il soffio diventa al tempo stesso più presente e più acuto.",
+  "s1.code.cap": "src/systems/Sfx.js — il soffio di base",
+  "s1.code.c1": "// loop di rumore rosa",
+  "s1.code.c2": "// un filtro passa-basso",
+  "s1.code.c3": "// k = |vento| / VENTO_MAX, da 0 a 1",
+  "s1.p2": "Su questa base sovrapponiamo, a seconda dei casi, una <b>risonanza</b> (un passa-banda che canta) per l'ululato, oppure <b>raffiche</b> guidate da oscillatori lenti. Quattro assemblaggi danno quattro caratteri.",
+
+  "s2.h2": "Adattarsi alla forza, mostrare il verso",
+  "s2.p1": "Un solo valore governa tutto: il vento del gioco, da <code class=\"inline\">−95</code> a <code class=\"inline\">+95</code> px/s². Il suo <b>modulo</b> (da 0 a 1) apre il filtro, alza il volume e accentua le raffiche; il suo <b>segno</b> dà la direzione (positivo = verso destra).",
+  "s2.p2": "Per sentire questo verso, il suono <b>pende nel campo stereo</b> dal lato verso cui soffia il vento (più è forte, più pende). E in modalità «raffica direzionale», una raffica <b>attraversa</b> le cuffie da sinistra a destra (o viceversa) gonfiandosi al suo passaggio: impossibile sbagliare orecchio.",
+  "s2.callout.nerd": "<b>Per i curiosi.</b> La direzione si regola con un unico <code class=\"inline\">StereoPannerNode</code>: <code class=\"inline\">pan = segno · forza</code>, da −1 (tutto a sinistra) a +1 (tutto a destra). La raffica mobile non fa che animare quel <code class=\"inline\">pan</code> nel tempo.",
+
+  "s3.h2": "Spazializzazione TV — stereo, profondità &amp; timbro",
+  "s3.try": "Indossa le cuffie per sentire il sinistra/destra.",
+  "s3.p1": "Convenzione della TV: <b>sinistra/destra</b> tramite panning stereo (posizione X), <b>avanti-indietro</b> tramite il volume di profondità, e <b>alto-basso</b> tramite una leggera oscillazione di timbro — acuti in alto, gravi in basso. Scegli un suono, poi clicca sul campo di battaglia per emetterlo in quella posizione.",
+  "s3.snd.boom": "💥 Boom",
+  "s3.snd.impact": "🌋 Impact",
+  "s3.snd.rubble": "🧱 Detriti",
+  "s3.snd.clang": "🛡 Clang",
+  "s3.snd.bird": "🐦 Uccello",
+  "s3.snd.wind": "🌬 Raffica",
+  "s3.read0": "Clicca sul campo di battaglia per emettere.",
+  "s3.depth": "Profondità (avanti → indietro)",
+  "s3.panMax": "Pan max (bordi)",
+  "s3.bgVol": "Volume dello sfondo",
+  "s3.tiltDb": "Oscillazione timbro (dB)",
+  "s3.tiltHi": "Acuti pivot (Hz)",
+  "s3.tiltLo": "Gravi pivot (Hz)",
+  "s3.cfgCap": "config validata (da reincollare nel gioco)",
+  "s3.cv.treble": "acuti ↑",
+  "s3.cv.bass": "bassi ↓",
+  "s3.cv.right": "destra →",
+  "s3.cv.left": "← sinistra",
+
+  "footer.suffix": "capitolo {n}/{total} · livello intermedio",
+
+  "pager.prev": "← Capitolo 4 · Terreno distruttibile",
+  "pager.next": "La fine 🎉"
+}

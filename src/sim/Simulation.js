@@ -1,6 +1,6 @@
-import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS, AIM_NOISE } from '../config/constants.js';
+import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS, AIM_NOISE, SHIELD } from '../config/constants.js';
 import { generateHeights, heightAt, pointSolid } from './terrain.js';
-import { aimVector, muzzle, bounds, rectContains } from './geometry.js';
+import { aimVector, muzzle, pivot, bounds, rectContains } from './geometry.js';
 import { getShell } from '../config/shells.js';
 
 // Authoritative, framework-free game simulation. It runs on the server (the
@@ -24,13 +24,26 @@ const WIND_KEY_SECONDS = 10;
 // Special shells are rationed (normal is unlimited): one of each to start, +1
 // of every special each round, and +1 of a type whenever it hits your tower.
 const SPECIALS = ['heavy', 'light', 'salvo', 'explosive'];
-const initAmmo = () => ({ heavy: 1, light: 1, salvo: 1, explosive: 1 });
+// Shield is NOT a special shell: it is not resupplied per round and is not
+// granted by being hit — it is earned only by LOSING a round (see decideRound),
+// so it starts at 0 and lives alongside the shell stock.
+const initAmmo = () => ({ heavy: 1, light: 1, salvo: 1, explosive: 1, shield: 0 });
+
+// Distance of a small point from a segment AB — used for shell↔shield contact.
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const l2 = dx * dx + dy * dy || 1;
+  let t = ((px - ax) * dx + (py - ay) * dy) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
 
 export default class Simulation {
-  constructor({ names, totalRounds, biome, maxHp = 1, turbo = false, cadence = 5, random = Math.random }) {
+  constructor({ names, winsNeeded, biome, maxHp = 1, turbo = false, cadence = 5, random = Math.random }) {
     this.random = random;
     this.names = names;
-    this.totalRounds = totalRounds;
+    this.winsNeeded = winsNeeded; // first player to win this many rounds takes the match
     this.biome = biome;
     this.maxHp = maxHp;
     this.turbo = turbo;
@@ -51,8 +64,8 @@ export default class Simulation {
     this.banner = '';
 
     this.towers = [
-      { x: 120, facing: 1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo() },
-      { x: GAME_WIDTH - 120, facing: -1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo() },
+      { x: 120, facing: 1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo(), shield: null },
+      { x: GAME_WIDTH - 120, facing: -1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo(), shield: null },
     ];
 
     this.seed = 0;
@@ -92,6 +105,7 @@ export default class Simulation {
     for (const t of this.towers) {
       t.groundY = heightAt(this.heights, t.x);
       t.damage = 0; // full health each new round
+      t.shield = null; // shields do not carry across rounds
     }
   }
 
@@ -166,6 +180,11 @@ export default class Simulation {
     if (this.phase !== PHASE.AIMING) return;
     const tower = this.towers[player];
     if (!tower || tower.ready) return;
+    // The shield is a pseudo-shell: selecting it arms a deploy instead of a shot.
+    if (id === 'shield') {
+      if ((tower.ammo.shield || 0) > 0) tower.shell = 'shield';
+      return;
+    }
     if (getShell(id).id !== id) return;
     if (id !== 'normal' && (tower.ammo[id] || 0) <= 0) return; // out of stock
     tower.shell = id;
@@ -196,6 +215,15 @@ export default class Simulation {
     // Classic fires a fresh volley; turbo lets shells pile up in flight.
     if (!this.turbo) this.projectiles = [];
     this.towers.forEach((tower, i) => {
+      // Shield deploy takes the place of this tower's shot: no projectile leaves.
+      if (tower.shell === 'shield') {
+        if ((tower.ammo.shield || 0) > 0) {
+          tower.ammo.shield -= 1;
+          this.deployShield(i);
+        }
+        tower.shell = 'normal'; // back to a real shell next volley
+        return;
+      }
       let shell = getShell(tower.shell);
       // Special shells consume stock; fall back to the unlimited normal shell.
       if (shell.id !== 'normal') {
@@ -238,6 +266,10 @@ export default class Simulation {
       if (tower.shell !== 'normal' && (tower.ammo[tower.shell] || 0) <= 0) {
         tower.shell = 'normal';
       }
+
+      // We just fired through our own barrier: open it so our shell passes. It
+      // re-seals once that shell has cleared the plate (updateShieldGates).
+      if (tower.shield && tower.shield.alive) tower.shield.open = true;
     });
     this.volleyDamage = [0, 0];
     if (this.turbo) {
@@ -249,6 +281,24 @@ export default class Simulation {
     } else {
       this.phase = PHASE.FIRING;
     }
+  }
+
+  // Place this tower's shield: the aim angle sets its direction, the power its
+  // distance from the tower; the plate sits perpendicular to that line so it
+  // presents a broad face to incoming shells.
+  deployShield(i) {
+    const tower = this.towers[i];
+    const p = pivot(tower);
+    const d = aimVector(tower.angle, tower.facing);
+    const ratio = (tower.power - AIM.minPower) / (AIM.maxPower - AIM.minPower);
+    const dst = SHIELD.minDist + Math.max(0, Math.min(1, ratio)) * (SHIELD.maxDist - SHIELD.minDist);
+    const cx = p.x + d.x * dst;
+    const cy = p.y + d.y * dst;
+    // open=false: a freshly raised shield is solid. It is a physical barrier that
+    // stops ANY shell crossing it — so it briefly opens when its OWNER fires, to
+    // let their own shell out (see fire + updateShieldGates).
+    tower.shield = { x: cx, y: cy, ux: -d.y, uy: d.x, alive: true, open: false };
+    this.pushEvent('shield', { owner: i, x: Math.round(cx), y: Math.round(cy) });
   }
 
   tick(dt) {
@@ -290,12 +340,31 @@ export default class Simulation {
   stepProjectiles(dt) {
     for (const p of this.projectiles) {
       if (!p.alive) continue;
+      p.px = p.x; // path start this tick (so a fast shell can't tunnel the shield)
+      p.py = p.y;
       p.vx += this.wind * (p.windFactor ?? 1) * dt;
       p.vy += PHYSICS.gravity * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.elapsed += dt;
       this.checkCollision(p);
+    }
+    this.updateShieldGates();
+  }
+
+  // Re-seal an opened shield once its owner's own shells have cleared the plate
+  // (flown past `deployDistance + plateHalf + shellRadius` from the tower). Until
+  // then the barrier stays open so it never blocks the shot that opened it.
+  updateShieldGates() {
+    for (let i = 0; i < 2; i += 1) {
+      const sh = this.towers[i].shield;
+      if (!sh || !sh.alive || !sh.open) continue;
+      const piv = pivot(this.towers[i]);
+      const clear = Math.hypot(sh.x - piv.x, sh.y - piv.y) + SHIELD.plateHalf + SHIELD.hitRadius;
+      const stillCrossing = this.projectiles.some(
+        (p) => p.alive && p.owner === i && Math.hypot(p.x - piv.x, p.y - piv.y) <= clear,
+      );
+      if (!stillCrossing) sh.open = false;
     }
   }
 
@@ -312,6 +381,35 @@ export default class Simulation {
 
     const targetIdx = p.owner === 0 ? 1 : 0;
     const opponent = this.towers[targetIdx];
+
+    // A shield is a physical barrier: it absorbs the first shell to cross it (1
+    // HP), then shatters — whoever fired it. It is skipped only while OPEN (its
+    // owner is firing through it). Both towers' shields are tested, but the
+    // owner's own shell sails out because we open that shield on fire. We sample
+    // along the shell's path so a fast shell can't tunnel the thin plate.
+    const x0 = p.px ?? p.x;
+    const y0 = p.py ?? p.y;
+    for (let ti = 0; ti < 2; ti += 1) {
+      const sh = this.towers[ti].shield;
+      if (!sh || !sh.alive || sh.open) continue;
+      const a1x = sh.x + sh.ux * SHIELD.plateHalf;
+      const a1y = sh.y + sh.uy * SHIELD.plateHalf;
+      const a2x = sh.x - sh.ux * SHIELD.plateHalf;
+      const a2y = sh.y - sh.uy * SHIELD.plateHalf;
+      let blocked = false;
+      for (let t = 0; t <= 1; t += 0.25) {
+        const sx = x0 + (p.x - x0) * t;
+        const sy = y0 + (p.y - y0) * t;
+        if (segDist(sx, sy, a1x, a1y, a2x, a2y) < SHIELD.hitRadius) { blocked = true; break; }
+      }
+      if (blocked) {
+        p.alive = false;
+        this.towers[ti].shield = null; // 1 HP: the plate is spent
+        this.pushEvent('shieldHit', { x: Math.round(p.x), y: Math.round(p.y), owner: ti });
+        return;
+      }
+    }
+
     if (rectContains(bounds(opponent), p.x, p.y)) {
       p.alive = false;
       // The struck player gains a round of the shell that just hit them.
@@ -364,6 +462,9 @@ export default class Simulation {
     const dead1 = this.towers[1].damage >= this.maxHp;
     if (dead1) this.scores[0] += 1;
     if (dead0) this.scores[1] += 1;
+    // The loser of the round earns a shield (the underdog's consolation/clutch).
+    if (dead0) this.towers[0].ammo.shield += 1;
+    if (dead1) this.towers[1].ammo.shield += 1;
     this.roundsPlayed += 1;
     if (dead0) this.pushEvent('destroyed', { tower: 0 });
     if (dead1) this.pushEvent('destroyed', { tower: 1 });
@@ -387,7 +488,7 @@ export default class Simulation {
       return;
     }
 
-    if (this.roundsPlayed >= this.totalRounds) {
+    if (Math.max(this.scores[0], this.scores[1]) >= this.winsNeeded) {
       this.phase = PHASE.MATCH_END;
       this.projectiles = [];
       this.pushEvent('matchEnd', { scores: this.scores.slice() });
@@ -437,7 +538,7 @@ export default class Simulation {
   snapshot() {
     return {
       phase: this.phase,
-      round: { current: this.currentRound, total: this.totalRounds },
+      round: { current: this.currentRound, total: this.winsNeeded }, // `total` carries the win target (first-to-N)
       wind: this.wind,
       scores: this.scores.slice(),
       seed: this.seed,
@@ -458,6 +559,9 @@ export default class Simulation {
         shell: t.shell,
         hp: Math.max(0, this.maxHp - t.damage),
         ammo: { ...t.ammo },
+        shield: t.shield
+          ? { x: Math.round(t.shield.x), y: Math.round(t.shield.y), ux: t.shield.ux, uy: t.shield.uy, open: !!t.shield.open }
+          : null,
       })),
       projectiles: this.projectiles
         .filter((p) => p.alive)

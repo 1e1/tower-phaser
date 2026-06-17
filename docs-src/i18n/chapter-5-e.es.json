@@ -1,0 +1,32 @@
+{
+  "title": "Capítulo 5 (experto) — Encadenar ambientaciones &amp; la banda sonora por bioma",
+
+  "hero.badge": "Experto · Fase 5 · Tormenta",
+  "hero.kicker": "Capítulo 5 · nivel experto",
+  "hero.title": "El momento justo, no solo el sonido justo",
+  "hero.lead": "El acabado del sonido procedural: encadenar dos ambientaciones <strong>sin cortar un soplo</strong> esperando una calma, y luego la <strong>banda sonora por bioma</strong> y su transición de ronda — fundido cruzado de los volúmenes <strong>y</strong> deslizamiento del tempo sobre la misma curva.",
+
+  "s1.h2": "Encadenar sin cortar un soplo",
+  "s1.p1": "En reproducción aleatoria, cada carácter suena un rato y luego toma el relevo <b>otro</b>. Como el viento es un bucle continuo, evitamos cortarlo a mitad de una racha: una vez agotada la duración, <b>esperamos una calma</b> (un bajón de nivel) antes de cambiar, con un fundido encadenado de unos 1,4 s. Un tope de 2,5 s garantiza que al final siempre cambia.",
+  "s1.code.cap": "el cambio de carácter, sincronizado con una calma",
+  "s1.code.c1": "// ¿se ha agotado la duración?",
+  "s1.code.c2": "// fundido suave hacia otro carácter",
+  "s1.p2": "El resultado: nunca se oye una racha cortada en seco — la transición se cuela en los silencios relativos del viento.",
+  "s1.callout.tip": "<b>La moraleja.</b> Un buen sonido procedural no es solo síntesis: también es <em>cuándo</em> disparas las cosas. Esperar el momento justo suele ganar a un fundido más largo.",
+
+  "s3.h2": "¡Y con esto el cuaderno queda cerrado!",
+  "s3.lead": "Del bucle de juego al sonido sintetizado, has dado la vuelta completa a Tower Duel.",
+  "s3.p1": "Cinco fases, tres niveles de lectura, un puñado de simuladores: ahora sabes cómo un pequeño juego web cobra vida, pantalla tras pantalla, soplo tras soplo. Gracias por leer hasta el final.",
+  "s3.back": "↩ Volver al inicio",
+
+  "s2.h2": "Banda sonora por bioma — propuestas &amp; transición de ronda",
+  "s2.try": "Pon el sonido: todo está sintetizado en directo, ningún archivo de audio.",
+  "s2.p1": "Cada bioma tiene su clima sonoro, declinado en varias propuestas. Durante un combate, las <b>dos ambientaciones</b> de un bioma se alternan en cada ronda; la <b>última ronda</b> tiene su propia música. Cuando la escena se desliza hacia la siguiente colina, la música la sigue: <b>fundido cruzado</b> de los volúmenes <i>y</i> <b>deslizamiento del tempo</b> (BPM) sobre la misma curva smoothstep, para que ambas pistas sigan acompasadas durante la transición.",
+  "s2.p2": "El catálogo conserva todas las propuestas — incluidas las cinco del Desierto. La mesa de mezclas reproduce la lista elegida por bioma (Desierto: <b>Mirage</b> y <b>Fournaise</b> en rotación, <b>Simoun</b> en la final). Elige un bioma y luego encadena las rondas.",
+  "s2.frameTitle": "Simulador de banda sonora por bioma",
+
+  "footer.suffix": "capítulo {n}/{total} · nivel experto",
+
+  "pager.prev": "← Capítulo 4 · Terreno destructible",
+  "pager.next": "El final 🎉"
+}

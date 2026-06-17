@@ -208,22 +208,27 @@ export function injectStyles() {
   const style = document.createElement('style');
   style.id = 'tp-styles';
   style.textContent = `
+    /* Neutral, camp-agnostic connection screen: a slate night backdrop (no camp
+       blue). The "two camps" are evoked only as a BALANCED accent — a blue left
+       edge and a red right edge in equal measure — so neither side is favoured. */
     .tp-overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:center;
       justify-content:center;padding:env(safe-area-inset-top) 20px;
       font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;color:#fff;
-      background:radial-gradient(circle at 50% 0%,#1b2a4a,#0b1020);box-sizing:border-box;}
+      background:radial-gradient(circle at 50% 0%,#232a3a,#0b1020);box-sizing:border-box;}
     .tp-card{width:100%;max-width:440px;text-align:center;}
     .tp-logo{width:clamp(72px,18vw,108px);height:auto;display:block;margin:0 auto 14px;
       filter:drop-shadow(0 10px 26px rgba(0,0,0,.45));}
     .tp-card h1{font-size:clamp(36px,9vw,64px);margin:0 0 6vh;letter-spacing:2px;}
     .tp-overlay .big{display:flex;flex-direction:column;align-items:center;width:100%;
       margin:14px 0;padding:clamp(18px,3.4vh,26px);font-size:clamp(20px,5.4vw,28px);
-      font-weight:bold;border:none;border-radius:16px;background:#3a6df0;color:#fff;cursor:pointer;}
+      font-weight:bold;border:none;border-left:5px solid #4f8fff;border-right:5px solid #ff6b5e;
+      border-radius:14px;background:#3a4660;color:#fff;cursor:pointer;}
     .tp-overlay .big span{font-size:.6em;opacity:.8;font-weight:normal;margin-top:4px;}
-    .tp-overlay .big:active{background:#4f8fff;}
+    .tp-overlay .big:active{background:#46557a;}
     .tp-overlay input{display:block;width:100%;box-sizing:border-box;margin:12px 0;
       padding:clamp(14px,2.6vh,20px);font-size:clamp(20px,5.4vw,28px);border-radius:12px;
-      border:2px solid #4f8fff;background:#0e1730;color:#fff;text-align:center;}
+      border:2px solid #5a6680;background:#0e1730;color:#fff;text-align:center;}
+    .tp-overlay input:focus{outline:none;border-color:#8b97ad;}
     #code{text-transform:uppercase;letter-spacing:6px;}
     .tp-overlay .link{background:none;border:none;color:#9fb0c8;font-size:18px;
       cursor:pointer;margin-top:8px;}
@@ -232,14 +237,16 @@ export function injectStyles() {
       font-size:11px;letter-spacing:1px;color:#ffffff30;pointer-events:none;}
     /* Connect: the "stone tablet" treatment — softly chamfered, chunky 3D bevel
        and a hard base edge it presses into (not a flat rounded rectangle). */
+    /* Connect: neutral stone tablet with balanced blue-left / red-right inner
+       edges (inset shadows follow the chamfer; real borders would be clipped). */
     #connect{position:relative;border-radius:12px;
       -webkit-clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%,0 10px);
       clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%,0 10px);
-      background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(0,0,0,.22)),#3a6df0;
-      box-shadow:inset 0 3px 0 rgba(255,255,255,.5),inset 0 -4px 10px rgba(0,0,0,.4),inset 0 0 0 2px rgba(0,0,0,.18),0 6px 0 rgba(0,0,0,.35),0 12px 22px -10px #000;
+      background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(0,0,0,.24)),#4b5366;
+      box-shadow:inset 5px 0 0 #4f8fff,inset -5px 0 0 #ff6b5e,inset 0 3px 0 rgba(255,255,255,.45),inset 0 -4px 10px rgba(0,0,0,.4),0 6px 0 rgba(0,0,0,.35),0 12px 22px -10px #000;
       transition:transform .08s ease,filter .2s ease;}
     #connect:active{transform:translateY(4px);filter:brightness(1.06);
-      box-shadow:inset 0 3px 0 rgba(255,255,255,.5),inset 0 -4px 10px rgba(0,0,0,.4),inset 0 0 0 2px rgba(0,0,0,.18),0 2px 0 rgba(0,0,0,.35);}
+      box-shadow:inset 5px 0 0 #4f8fff,inset -5px 0 0 #ff6b5e,inset 0 3px 0 rgba(255,255,255,.45),inset 0 -4px 10px rgba(0,0,0,.4),0 2px 0 rgba(0,0,0,.35);}
   `;
   document.head.appendChild(style);
 }

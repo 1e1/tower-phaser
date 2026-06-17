@@ -25,6 +25,7 @@ body[data-biome='meadow'] { --accent: #3f8f2f; --accent-2: #7ed957; --sky-1: #6f
 body[data-biome='desert'] { --accent: #c07d22; --accent-2: #f0cd7a; --sky-1: #f6b66b; --sky-2: #fde9c8; }
 body[data-biome='tundra'] { --accent: #5b7da6; --accent-2: #aecbe8; --sky-1: #9fb8d6; --sky-2: #eaf2fb; }
 body[data-biome='volcano'] { --accent: #d8552f; --accent-2: #ff8c42; --sky-1: #3a1f3a; --sky-2: #6e2535; }
+body[data-biome='storm']   { --accent: #4f6fb0; --accent-2: #7da6ff; --sky-1: #0d1322; --sky-2: #2a3a5c; }
 
 * { box-sizing: border-box; }
 
@@ -250,6 +251,7 @@ figure.diagram figcaption { font-size: 14px; color: var(--ink-soft); margin-top:
 .chap-card.desert { background: linear-gradient(140deg, #f6b66b, #c07d22); }
 .chap-card.tundra { background: linear-gradient(140deg, #9fb8d6, #5b7da6); }
 .chap-card.volcano { background: linear-gradient(140deg, #6e2535, #d8552f); }
+.chap-card.storm { background: linear-gradient(140deg, #38507e, #0d1322); }
 
 /* ---- Prev / next ----------------------------------------------------- */
 .pager { display: flex; justify-content: space-between; gap: 12px; margin: 30px 0 60px; }

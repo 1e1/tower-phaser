@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
 
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, ROUND_OPTIONS, turboBars } from '../config/constants.js';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS, WIN_OPTIONS, turboBars, SHIELD } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { generateHeights } from '../sim/terrain.js';
 import { PHASE } from '../sim/Simulation.js';
@@ -54,6 +54,11 @@ export default class TvScene extends Phaser.Scene {
   create() {
     this.client = this.registry.get('client');
     this.sfx = this.registry.get('sfx');
+    this.events.once('shutdown', () => this.sfx.windStop());
+    this.input.keyboard.on('keydown-M', () => {
+      const on = this.sfx.toggle();
+      if (this.hud) this.hud.showBanner(on ? 'Sound on' : 'Sound off', 700);
+    });
     // Probe render performance on the screen that actually renders the match,
     // and pick a quality tier (read later, in enterMatch).
     runBenchmark(this);
@@ -169,7 +174,7 @@ export default class TvScene extends Phaser.Scene {
   drawConfigBar() {
     const biome = BIOMES[this.biomeIndex] || BIOMES[0];
     const hp = this.cfgHp || 1;
-    const rounds = ROUND_OPTIONS[this.roundsIndex] || 3;
+    const rounds = WIN_OPTIONS[this.roundsIndex] || 3;
     const g = this.cfgBar;
     g.clear();
 
@@ -406,7 +411,7 @@ export default class TvScene extends Phaser.Scene {
     this.campChooser = m.campChooser ?? -1;
     if (m.config) {
       this.biomeIndex = Math.max(0, BIOMES.findIndex((b) => b.id === m.config.biomeId));
-      this.roundsIndex = Math.max(0, ROUND_OPTIONS.indexOf(m.config.rounds));
+      this.roundsIndex = Math.max(0, WIN_OPTIONS.indexOf(m.config.wins));
       this.cfgHp = m.config.hp || 1;
       this.cfgTurbo = !!m.config.turbo;
       this.cfgCadence = m.config.cadence ?? 0;
@@ -479,6 +484,9 @@ export default class TvScene extends Phaser.Scene {
 
     this.towers = this.buildTowers(state, 0);
     this.windsockGfx = this.add.graphics().setDepth(2);
+    this.shieldGfx = this.add.graphics().setDepth(3);
+    this.shieldFx = [null, null];     // per-tower eased render state {x,y,ux,uy,appear,open}
+    this.shieldTarget = [null, null]; // latest authoritative shield (or null)
 
     this.createEmitters();
     this.shotGfx = this.add.graphics().setDepth(5);
@@ -493,6 +501,16 @@ export default class TvScene extends Phaser.Scene {
     this.lastDestroyed = 1;
     this.panActive = false;
     this.cameras.main.setScroll(0, 0);
+
+    this.sfx.windStart();
+    this.sfx.musicStart(this.biome.id, this.roundNo, this.isDecider(state));
+  }
+
+  // True when the current round can hand a player the match — someone is one win
+  // short of the target (round.total carries the first-to-N win goal). Drives the
+  // tension theme.
+  isDecider(state) {
+    return Math.max(state.scores[0], state.scores[1]) >= state.round.total - 1;
   }
 
   // Create the two towers at a world offset (used by the camera-pan transition).
@@ -567,8 +585,10 @@ export default class TvScene extends Phaser.Scene {
     if (this.mode !== 'match') return;
     const dt = Math.min(delta / 1000, 0.05);
     this.background.update(dt);
+    this.sfx.windUpdate(this.background.windValue); // eased wind drives the ambient bed
     if (this.panActive) return;
     this.drawMidWindsock(_time);
+    this.animateShields(dt);
     // Spark the fuse of any ready cannon.
     if (this.towers && this.fuseSpark) {
       for (const t of this.towers) {
@@ -642,6 +662,45 @@ export default class TvScene extends Phaser.Scene {
     }
   }
 
+  // Deployed shields, drawn each frame with eased transitions: a plate that
+  // scales in on deploy (appear), splits open down the middle while its owner
+  // fires through it (open), and fades out when it shatters or the round ends.
+  animateShields(dt) {
+    const g = this.shieldGfx;
+    if (!g) return;
+    g.clear();
+    const k = Math.min(1, dt * 12); // easing rate
+    for (let i = 0; i < 2; i += 1) {
+      const target = this.shieldTarget?.[i] || null;
+      let fx = this.shieldFx[i];
+      if (target) {
+        if (!fx) fx = this.shieldFx[i] = { x: target.x, y: target.y, ux: target.ux, uy: target.uy, appear: 0, open: target.open ? 1 : 0 };
+        fx.x = target.x; fx.y = target.y; fx.ux = target.ux; fx.uy = target.uy;
+        fx.appear += (1 - fx.appear) * k;
+        fx.open += ((target.open ? 1 : 0) - fx.open) * Math.min(1, dt * 16);
+      } else if (fx) {
+        fx.appear += (0 - fx.appear) * k; // shatter / round-end fade-out
+        if (fx.appear < 0.03) { this.shieldFx[i] = null; continue; }
+      } else {
+        continue;
+      }
+      const col = i === 0 ? COLORS.towerP1 : COLORS.towerP2;
+      const half = SHIELD.plateHalf * fx.appear;
+      const gap = fx.open * 13; // middle opening when the owner fires through it
+      const alpha = Math.max(0, fx.appear) * (1 - 0.45 * fx.open);
+      const ux = fx.ux; const uy = fx.uy;
+      // Two half-plates with a gap in the centre (gap 0 = solid).
+      const segs = [[gap, half], [-gap, -half]];
+      for (const [from, to] of segs) {
+        const bx = fx.x + ux * from; const by = fx.y + uy * from;
+        const ex = fx.x + ux * to; const ey = fx.y + uy * to;
+        g.lineStyle(10, 0xdfe6f2, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
+        g.lineStyle(4, col, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
+      }
+      g.fillStyle(0xffffff, alpha * (1 - fx.open)); g.fillCircle(fx.x, fx.y, 4 * fx.appear);
+    }
+  }
+
   renderState(state) {
     this.wind = state.wind;
     this.background.setWind(state.wind);
@@ -680,6 +739,8 @@ export default class TvScene extends Phaser.Scene {
       t.draw();
     });
 
+    this.shieldTarget = state.towers.map((t) => t.shield); // eased + drawn in update()
+
     // Projectiles aren't drawn here: their positions are buffered and rendered,
     // interpolated, from update() at the display refresh rate.
     this.projSnaps.push({ time: this.time.now, list: state.projectiles });
@@ -702,6 +763,8 @@ export default class TvScene extends Phaser.Scene {
   // Inter-round camera pan toward the destroyed tower, advancing one screen.
   startPan(state) {
     this.panActive = true;
+    // Crossfade the music (volume + tempo) across the same 1.1 s camera slide.
+    this.sfx.musicTransition(this.biome.id, state.round.current, this.isDecider(state), 1.1);
     const dir = this.lastDestroyed === 0 ? -1 : 1;
     const ox = dir * GAME_WIDTH;
 
@@ -785,6 +848,17 @@ export default class TvScene extends Phaser.Scene {
         this.explode(e.x, e.y, e.target === 0 ? COLORS.towerP1 : COLORS.towerP2, true);
       } else if (e.type === 'destroyed') {
         this.explodeTower(e.tower);
+      } else if (e.type === 'shield') {
+        this.sfx.shieldUp();
+        this.flashEmitter.emitParticleAt(e.x, e.y, 1);
+      } else if (e.type === 'shieldHit') {
+        this.sfx.shieldBlock();
+        const col = e.owner === 0 ? COLORS.towerP1 : COLORS.towerP2;
+        const ring = this.add.circle(e.x, e.y, 6, col, 0.9).setDepth(7);
+        this.tweens.add({ targets: ring, radius: 46, alpha: 0, duration: 360, onComplete: () => ring.destroy() });
+        this.flashEmitter.emitParticleAt(e.x, e.y, 1);
+        this.sparkEmitter.emitParticleAt(e.x, e.y, this.quality === 'lite' ? 6 : 14);
+        this.shake(150, 0.006);
       }
     }
   }
@@ -837,6 +911,8 @@ export default class TvScene extends Phaser.Scene {
 
   showEnd(state) {
     this.endShown = true;
+    this.sfx.windStop();
+    this.sfx.musicStop();
     const cx = GAME_WIDTH / 2;
     const [s1, s2] = state.scores;
     let title;
