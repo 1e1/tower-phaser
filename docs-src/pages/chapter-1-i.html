@@ -1,0 +1,91 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,20 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>
+        <path d="M0,95 C260,55 520,120 760,90 C1020,58 1240,120 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <p>{{s1.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre><span class="f">update</span>(time, delta) {
+  <span class="k">const</span> dt = delta / <span class="s">1000</span>;       <span class="c">{{s1.code.c1}}</span>
+  x += {{s1.code.var}}<span class="c">{{s1.code.c2}}</span>
+}</pre>
+        </figure>
+        <div class="callout tip">{{s1.callout}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <figure class="diagram" aria-label="{{s2.fig.alt}}">
+          <svg viewBox="0 0 720 170" width="720" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <g text-anchor="middle">
+              <rect x="20" y="64" width="110" height="44" rx="10" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+              <text x="75" y="91" font-weight="800" fill="#2b2535">Boot</text>
+              <rect x="170" y="64" width="110" height="44" rx="10" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+              <text x="225" y="91" font-weight="800" fill="#2b2535">Lobby</text>
+              <rect x="320" y="20" width="130" height="44" rx="10" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="385" y="47" font-weight="800" fill="#2b2535">{{s2.fig.tv}}</text>
+              <rect x="320" y="108" width="130" height="44" rx="10" fill="#fff3d6" stroke="#c07d22" stroke-width="2"/>
+              <text x="385" y="135" font-weight="800" fill="#2b2535">Controller</text>
+              <rect x="500" y="64" width="120" height="44" rx="10" fill="#f3ecff" stroke="#8a5cf0" stroke-width="2"/>
+              <text x="560" y="91" font-weight="800" fill="#2b2535">{{s2.fig.match}}</text>
+            </g>
+            <g stroke="#5b5470" stroke-width="2" fill="none" marker-end="url(#a)">
+              <path d="M130,86 L168,86"/>
+              <path d="M280,80 L318,52"/>
+              <path d="M280,92 L318,124"/>
+              <path d="M450,42 L560,42 L560,62"/>
+              <path d="M450,130 L560,130 L560,110"/>
+            </g>
+            <defs><marker id="a" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5b5470"/></marker></defs>
+          </svg>
+          <figcaption>{{s2.fig.cap}}</figcaption>
+        </figure>
+        <p>{{s2.p2}}</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <ul class="clean">
+          <li>{{s3.li1}}</li>
+          <li>{{s3.li2}}</li>
+          <li>{{s3.li3}}</li>
+        </ul>
+        <div class="callout nerd">{{s3.callout}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code.cap}}</figcaption>
+<pre><span class="c">{{s4.code.c1}}</span>
+<span class="k">FROM</span> node:24-alpine <span class="k">AS</span> build
+<span class="k">RUN</span> npm ci &amp;&amp; npm run build
+
+<span class="c">{{s4.code.c2}}</span>
+<span class="k">FROM</span> node:24-alpine
+<span class="k">RUN</span> npm ci --omit=dev
+<span class="k">COPY</span> --from=build /app/dist ./dist</pre>
+        </figure>
+        <p>{{s4.p2}}</p>
+        <div class="callout tip">{{s4.callout}}</div>
+      </section>
+
+      <div class="pager wrap">
+        <a class="disabled">{{pager.prev}}</a>
+        <a href="chapter-2-i.html">{{pager.next}}</a>
+      </div>
+    </main>

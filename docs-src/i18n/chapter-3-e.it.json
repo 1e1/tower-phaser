@@ -1,0 +1,62 @@
+{
+  "title": "Capitolo 3 (esperto) — Protocollo di rete &amp; coerenza dello stato",
+  "meta.desc": "Livello esperto: lo schema dei messaggi, il modello autoritativo, snapshot compatto vs delta, l'asimmetria informativa, i casi limite (subentro, coda, disconnessione, reset lobby), la validazione delle intenzioni e l'economia di banda.",
+
+  "hero.badge": "Esperto · Lotto 3 · Tundra",
+  "hero.kicker": "Capitolo 3 · livello esperto",
+  "hero.title": "Protocollo di rete &amp; coerenza dello stato",
+  "hero.lead": "Il cuore della rete: lo <strong>schema dei messaggi</strong>, il modello <strong>autoritativo</strong>, snapshot compatto contro delta, l'<strong>asimmetria informativa</strong>, i casi limite di una stanza viva, la <strong>validazione</strong> lato server e l'economia di banda.",
+
+  "s1.h2": "Lo schema dei messaggi",
+  "s1.lead": "Il canale è un WebSocket e ogni messaggio è un piccolo JSON con un campo discriminante <code class=\"inline\">t</code> (type). Il server <code class=\"inline\">server/index.js</code> smista su questo campo e delega alla stanza; tutto il resto sono parametri.",
+  "s1.code.cap": "server/index.js — un dispatch per tipo di messaggio",
+  "s1.code.c1": "/* la TV crea una stanza, riceve il codice */",
+  "s1.code.c2": "/* un telefono entra con un codice */",
+  "s1.p1": "Due famiglie: i messaggi <b>in salita</b> (<code class=\"inline\">host</code>, <code class=\"inline\">join</code>, <code class=\"inline\">aim</code>, <code class=\"inline\">ready</code>, <code class=\"inline\">shell</code>, <code class=\"inline\">config</code>, <code class=\"inline\">leave</code>…) e i messaggi <b>in discesa</b> del server (<code class=\"inline\">hosted</code>, <code class=\"inline\">joined</code>, <code class=\"inline\">roster</code>, <code class=\"inline\">snapshot</code>, <code class=\"inline\">promote</code>, <code class=\"inline\">queue</code>…). Un tipo, un'intenzione, una rotta chiara.",
+  "s1.callout.events": "<b>Per i curiosi.</b> Uno <code class=\"inline\">snapshot</code> trasporta lo stato continuo; un array <code class=\"inline\">events</code> vi aggancia i momenti puntuali (<code class=\"inline\">fire</code>, <code class=\"inline\">hit</code>, <code class=\"inline\">impact</code>, <code class=\"inline\">destroyed</code>). Separare lo <em>stato</em> (dove si trova ogni cosa) dagli <em>eventi</em> (ciò che è appena accaduto) è un pattern di netcode comune: lo stato può essere rinviato o perso senza conseguenze, mentre gli eventi sono i segnali fugaci che si attivano esattamente una volta.",
+
+  "s2.h2": "Modello autoritativo &amp; validazione delle intenzioni",
+  "s2.p1": "« Autoritativo » non significa « ingenuo ». Il server non crede mai a un client sulla parola: <b>valida</b> ogni intenzione prima di applicarla. Un'intenzione ha effetto solo se il mittente ne ha diritto e il valore è plausibile.",
+  "s2.code1.cap": "server/Room.js — agisce solo un giocatore seduto, e solo sulla sua simulazione",
+  "s2.p2": "La configurazione della partita è bloccata ancora più saldamente: solo il giocatore designato come <code class=\"inline\">biomeChooser</code> (il primo giocatore, poi il perdente) può cambiarla, e ogni campo è <b>filtrato</b> per tipo e per dominio.",
+  "s2.code2.cap": "server/Room.js — validazione stretta delle impostazioni",
+  "s2.p3": "E persino le intenzioni autorizzate vengono <b>clampate</b> dove conta: la simulazione forza angolo e potenza nei loro intervalli legali e agisce solo durante la fase di mira. Un controller modificato che chiede un tiro a 999° semplicemente non lo ottiene.",
+  "s2.setaim.cap": "src/sim/Simulation.js — clampare &amp; vincolare ogni intenzione",
+  "s2.setaim.c1": "// solo durante la mira",
+  "s2.setaim.c2": "// non più dopo aver confermato",
+  "s2.setaim.c3": "// clampato in AIM.min/maxAngle",
+  "s2.callout": "<b>Anti-cheat.</b> Un client modificato può <em>inviare</em> ciò che vuole; non può <em>far accadere</em> ciò che vuole. Poiché la fisica gira sul server e le intenzioni sono filtrate, il peggio che un baro ottiene è… che il suo stesso messaggio venga ignorato.",
+
+  "s3.h2": "Snapshot compatto vs delta, e asimmetria informativa",
+  "s3.p1": "A 30 Hz, la dimensione dello snapshot conta. La scelta qui è lo <b>stato compatto completo</b> invece dei delta: i campi pesanti sono già assenti (il terreno = un seme), le coordinate sono <b>arrotondate</b>, e solo i proiettili vivi sono inclusi.",
+  "s3.code1.cap": "src/sim/Simulation.js — lo snapshot completo, tenuto minuscolo",
+  "s3.code1.c1": "// il terreno è una funzione del seme",
+  "s3.code1.c2": "// solo le modifiche, non tutte le altezze",
+  "s3.code1.c3": "/* ready, groundY, angle, power, hp */",
+  "s3.p2": "Il più sottile è ciò che <b>non</b> è nello snapshot. L'angolo e la potenza scelti in mira non vi figurano per la TV: la simulazione espone i flag « pronto » e, una volta partito il tiro, i proiettili — mai le impostazioni segrete.",
+  "s3.code2.cap": "src/sim/Simulation.js — l'informazione nascosta è una decisione di protocollo",
+  "s3.code2.c1": "// angle/power sono omessi di proposito perché la TV spettatrice non",
+  "s3.code2.c2": "// riveli mai ciò che i giocatori stanno regolando; solo i flag ready",
+  "s3.code2.c3": "// e, una volta sparati, i proiettili vengono condivisi.",
+  "s3.callout.nerd": "<b>Compatto invece di delta.</b> Un delta risparmia byte ma obbliga il server a ricordare ciò che ogni client conosce già, e complica le riconnessioni. Qui lo stato è già così magro (seme + lista di crateri + qualche oggetto) che uno snapshot completo resta piccolo <em>e</em> banalmente idempotente: un client che entra a metà partita è aggiornato fin dal primo messaggio.",
+
+  "s4.h2": "I casi limite: dove vivono i bug veri",
+  "s4.p1": "La parte felice è « due giocatori giocano e rigiocano ». Il resto sono le transizioni. La stanza le copre esplicitamente. <b>Subentro a metà partita</b>: se un posto si libera, il primo della coda vi viene promosso.",
+  "s4.code1.cap": "server/Room.js — promozione del primo della coda",
+  "s4.p2": "<b>Disconnessione</b>: <code class=\"inline\">removeSocket</code> rimuove il socket da ogni parte (TV, coda, posto), tenta una promozione, e altrimenti riporta la stanza alla lobby. <b>Uscita volontaria</b>: chi esce finisce in fondo alla coda e riceve un messaggio <code class=\"inline\">demoted</code>. <b>Reset lobby</b>: non appena una partita perde uno dei suoi due giocatori, la simulazione viene annullata e la TV rimostra il codice e il QR.",
+  "s4.code2.cap": "server/Room.js — un posto vuoto in piena partita ⇒ ritorno alla lobby",
+  "s4.callout": "<b>Invariante.</b> La stanza si pulisce da sola: non appena non ha più alcuna TV, alcun giocatore e alcuna coda, <code class=\"inline\">dispose()</code> ferma il ciclo e la rimuove dalla tabella delle stanze. Nessuna perdita di <code class=\"inline\">setInterval</code>, nessuna stanza fantasma.",
+
+  "s5.h2": "Economia di banda",
+  "s5.p1": "Tutte queste decisioni convergono verso uno stesso scopo: <b>inviare il meno possibile, il più spesso possibile</b>. Il terreno — potenzialmente migliaia di altezze — si riduce a un seme.",
+  "s5.code.cap": "src/sim/Simulation.js — il seme porta tutto il rilievo",
+  "s5.code.c1": "// un intero → migliaia di altezze rigenerate",
+  "s5.code.c2": "// la lista dei buchi (piccoli cerchi)",
+  "s5.p2": "Inviare il <b>seme</b> invece del terreno significa scambiare banda con un po' di CPU client (ciascuno rigenera lo stesso rilievo). Unito all'arrotondamento delle posizioni, al filtraggio dei proiettili morti e all'assenza di asset, il flusso a 30 Hz resta leggero anche su un Wi-Fi domestico.",
+  "s5.callout": "<b>Da ricordare.</b> Un buon protocollo in tempo reale non è solo una questione di velocità: è un dosaggio tra <b>autorità</b>, <b>dimensione dei messaggi</b>, <b>informazione rivelata</b> e <b>robustezza alle transizioni</b>. Tower Duel sceglie la semplicità ovunque lo stato già lo consenta.",
+
+  "footer.suffix": "capitolo {n}/{total} · livello esperto",
+
+  "pager.prev": "← Capitolo 2 · Rendering senza asset",
+  "pager.next": "Capitolo 4 · Terreno distruttibile &amp; matematica veloce →"
+}

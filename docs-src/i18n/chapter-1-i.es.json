@@ -1,0 +1,46 @@
+{
+  "title": "Capítulo 1 (intermedio) — La arquitectura de un juego",
+  "meta.desc": "Nivel intermedio: el bucle de juego y el paso de tiempo, las escenas como máquina de estados, la separación simulación/renderizado y el reparto en módulos de Tower Duel.",
+
+  "hero.badge": "Intermedio · Fase 1 · Pradera",
+  "hero.kicker": "Capítulo 1 · nivel intermedio",
+  "hero.title": "La arquitectura de un juego",
+  "hero.lead": "Retomamos la Fase 1 con ojos de desarrollador: el bucle y el <strong>paso de tiempo</strong>, las escenas como <strong>máquina de estados</strong>, y la gran idea que estructura todo el proyecto — <strong>separar la simulación del renderizado</strong>.",
+
+  "s1.h2": "El bucle, y la trampa del tiempo",
+  "s1.lead": "Todo juego en tiempo real es un bucle: <b>leer las entradas → actualizar el estado → dibujar</b>, una y otra vez. La sutileza está en el « actualizar ».",
+  "s1.p1": "Si mueves un objeto un número fijo de píxeles en cada imagen, tu velocidad depende de la <b>tasa de fotogramas</b>: el doble de rápido en una pantalla de 120 Hz que en una de 60 Hz. El remedio es el <b>paso de tiempo</b> (<code class=\"inline\">dt</code>): multiplicamos cada movimiento por el tiempo realmente transcurrido, expresado en segundos.",
+  "s1.code.cap": "el paso de tiempo hace el juego independiente de la máquina",
+  "s1.code.c1": "// ms → s",
+  "s1.code.var": "velocidad * dt;           ",
+  "s1.code.c2": "// la misma velocidad real en todas partes",
+  "s1.callout": "<b>Dos relojes.</b> El cliente <b>dibuja</b> tan rápido como la pantalla lo permite (a menudo 60 fps). Pero la <b>partida</b> avanza a un ritmo fijo del lado del servidor — volvemos a ello en el capítulo 3. Mantener estos dos relojes separados es una decisión de arquitectura, no un detalle.",
+
+  "s2.h2": "Las escenas: una máquina de estados",
+  "s2.p1": "Phaser organiza el juego en <b>escenas</b>. Visto desde más arriba, es una <b>máquina de estados finitos</b>: en todo momento una escena está activa, y transiciones explícitas llevan de una a otra.",
+  "s2.fig.alt": "Máquina de estados de las escenas",
+  "s2.fig.tv": "Tv (pantalla)",
+  "s2.fig.match": "partida…",
+  "s2.fig.cap": "El <b>tipo de dispositivo</b> decide la rama: una pantalla grande aloja (TV), un teléfono se une (Controller).",
+  "s2.p2": "Cada escena tiene un ciclo de vida claro: <code class=\"inline\">init</code> (recibir datos), <code class=\"inline\">create</code> (construir la visualización), <code class=\"inline\">update</code> (cada imagen), y un <code class=\"inline\">SHUTDOWN</code> donde se <b>limpia</b> (quitar los escuchadores, los elementos del DOM). Olvidar esa limpieza es la fuga de memoria asegurada al pasar de una escena a otra.",
+
+  "s3.h2": "La gran idea: simulación ≠ renderizado",
+  "s3.p1": "La decisión más importante del proyecto: el <b>corazón del juego no conoce Phaser</b>. Toda la lógica — trayectorias, colisiones, viento, puntuación — vive en <code class=\"inline\">src/sim/</code>, en JavaScript puro, <b>sin ninguna dependencia gráfica</b>.",
+  "s3.li1": "🧠 <code class=\"inline\">src/sim/</code> — la <b>simulación</b>: ¿qué pasa? (puede correr bajo Node, sin navegador)",
+  "s3.li2": "🎨 <code class=\"inline\">src/scenes/</code>, <code class=\"inline\">src/objects/</code> — el <b>renderizado</b>: ¿qué aspecto tiene?",
+  "s3.li3": "⚙️ <code class=\"inline\">src/config/</code> — los <b>datos</b>: ajustes y temas, separados del código.",
+  "s3.callout": "<b>¿Por qué tomarse esta molestia?</b> Porque la misma simulación correrá <b>en el servidor</b> (el único juez de la partida) sin dejar de ser comprobable y reproducible. Desacoplar el « qué » del « cómo » es lo que hará posible el modo multipantalla de la Fase 3, sin reescribir la física.",
+
+  "s4.h2": "Docker, visto como una frontera reproducible",
+  "s4.p1": "El <code class=\"inline\">Dockerfile</code> es <b>multietapa</b> por una razón de arquitectura: separar el <b>tiempo de construcción</b> del <b>tiempo de ejecución</b>. La primera etapa instala todas las herramientas y compila; la segunda solo conserva lo estrictamente necesario para <em>ejecutar</em>.",
+  "s4.code.cap": "Dockerfile — dos etapas, dos responsabilidades",
+  "s4.code.c1": "# etapa 1: construir (necesita todo el toolchain)",
+  "s4.code.c2": "# etapa 2: ejecutar (ligera, solo deps de producción)",
+  "s4.p2": "Resultado: una imagen más pequeña, sin compiladores ni dependencias de desarrollo en producción. La misma lógica inspira el <b>bundle del servidor</b> (zip / tar.gz) añadido en v1.1.0: llevar solo <code class=\"inline\">dist/</code>, <code class=\"inline\">server/</code> y la simulación compartida.",
+  "s4.callout": "<b>Recuerda.</b> La arquitectura de la Fase 1 cabe en una frase: un bucle gobernado por el tiempo, escenas en máquina de estados, y una <b>simulación desacoplada del renderizado</b> — el cimiento sobre el que se construye todo lo demás.",
+
+  "footer.suffix": "capítulo {n}/{total} · nivel intermedio",
+
+  "pager.prev": "← Inicio",
+  "pager.next": "Capítulo 2 · Datos, renderizado &amp; síntesis →"
+}

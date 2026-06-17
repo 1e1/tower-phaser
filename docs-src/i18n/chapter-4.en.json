@@ -1,0 +1,49 @@
+{
+  "title": "Chapter 4 — Destroy the landscape",
+
+  "hero.badge": "Batch 4 · Volcano",
+  "hero.kicker": "Chapter 4",
+  "hero.title": "Destroy the landscape",
+  "hero.lead": "Like in <em>Worms</em>: every shot digs a real hole in the scenery. We'll discover the magic trick to “punch a hole” in an image — and you'll get to dig yourself!",
+
+  "s1.h2": "Scenery that keeps its scars",
+  "s1.lead": "Until now, the landscape was a nice fixed background. Now, every ball that lands <b>tears off</b> a piece of terrain. The holes stay: by the end of the round, the battlefield is all pockmarked.",
+
+  "s2.h2": "The magic: the canvas “eraser”",
+  "s2.p1": "The canvas knows how to draw… but also how to <b>erase in a shape</b>! We switch to <code class=\"inline\">destination-out</code> mode: everything we “draw” then becomes an <b>eraser</b>. Draw a circle → a perfect round hole in the terrain.",
+  "s2.code.cap": "src/objects/Terrain.js (digging a crater)",
+  "s2.code.c1": "// eraser mode",
+  "s2.code.c2": "// a circle…",
+  "s2.code.c3": "// …that erases!",
+  "s2.callout.try": "<b>Try it!</b> Click (or drag your finger) on the hill to dig. Look: you can make caves, bridges, overhangs… exactly like in Worms.",
+  "s2.sim.title": "Dig the terrain!",
+  "s2.sim.reset": "↺ Rebuild the hill",
+  "s2.sim.hint": "Tip: aim under a bump to dig a cave and leave a “bridge” above.",
+
+  "s3.h2": "Solid or not? The game's rule",
+  "s3.p1": "How does the game know whether a ball has hit the ground? No need to store a huge image in memory. We keep: the <b>ground height</b> at each spot, and the <b>list of craters</b>. A point is <b>solid</b> if:",
+  "s3.callout.tip": "<b>The rule.</b> “I'm <b>below the surface</b> of the ground <b>AND</b> I'm <b>in no crater</b>.” Otherwise, it's empty space.",
+  "s3.p2": "This little rule is enough to create <b>caves</b> and <b>overhangs</b>: a crater dug under a bump leaves the matter above it “floating”.",
+  "s3.fig.alt": "Solid or empty",
+  "s3.fig.empty": "empty (crater)",
+  "s3.fig.solid": "solid",
+  "s3.fig.overhang": "↑ overhang that “floats”",
+  "s3.fig.cap": "Below the surface but inside a crater → empty. The bump above still holds.",
+  "s3.callout.nerd": "<b>For the curious.</b> Testing “am I in a crater?” = comparing the distance to each crater's centre with its radius. That's the Pythagorean theorem! (<code class=\"inline\">dx² + dy² ≤ radius²</code>).",
+
+  "s4.h2": "The details that make it feel real",
+  "s4.li1": "🟫 <b>Scorched rim.</b> We darken the edge of the hole — but <b>only where there is terrain</b> (<code class=\"inline\">source-atop</code> mode), otherwise we'd see a circle floating in the sky.",
+  "s4.li2": "🌫️ <b>Dust behind the terrain.</b> The impact kicks up dust drawn <b>behind</b> the terrain: the relief hides it, as if it came out of the hole.",
+  "s4.li3": "🌱 <b>Scenery carried off.</b> Grass and pebbles are “baked” into the terrain image: the eraser removes them along with the earth.",
+
+  "s5.h2": "Well done, you've been all the way round!",
+  "s5.lead": "You now roughly know how a web game comes to life:",
+  "s5.p1": "a <b>loop</b> that redraws 60×/s, a bit of <b>maths</b> for the physics and the scenery, a networked <b>referee</b> to play together, and <b>drawing tricks</b> to smash it all up. And above all: we move forward <b>step by step</b>, each one tested before the next.",
+  "s5.callout.tip": "<b>The pros' secret.</b> Nobody writes a big game in one go. You make a <b>small</b> version that works, you improve it, again and again. Exactly the 4 batches of this notebook.",
+  "s5.back": "↩ Back to home",
+
+  "footer.suffix": "chapter {n}/{total} · thanks for reading!",
+
+  "pager.prev": "← Chapter 3",
+  "pager.next": "The end 🎉"
+}

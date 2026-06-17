@@ -1,0 +1,62 @@
+{
+  "title": "Kapitel 3 (Profi) — Netzwerkprotokoll &amp; Zustandskonsistenz",
+  "meta.desc": "Profi-Niveau: das Nachrichtenschema, das autoritative Modell, kompakter Snapshot, Informationsasymmetrie, Randfälle wie Übernahme mitten im Match und Trennung, serverseitige Validierung der Absichten und die Bandbreiten-Ökonomie des Seeds.",
+
+  "hero.badge": "Profi · Lot 3 · Tundra",
+  "hero.kicker": "Kapitel 3 · Profi-Niveau",
+  "hero.title": "Netzwerkprotokoll &amp; Zustandskonsistenz",
+  "hero.lead": "Das Nervensystem des Multiscreen-Modus: ein klares <strong>Nachrichtenschema</strong>, ein <strong>autoritatives Modell</strong>, Informationsasymmetrie, die hässlichen <strong>Randfälle</strong>, serverseitige <strong>Validierung</strong> und die Ökonomie, den <strong>Seed</strong> zu senden statt das Gelände.",
+
+  "s1.h2": "Das Nachrichtenschema",
+  "s1.lead": "Jede Nachricht ist ein JSON-Objekt mit einem Typ-Tag <code class=\"inline\">t</code>. Der Server <code class=\"inline\">server/index.js</code> schaltet darauf und ruft die passende Raum-Methode auf — ein einziger Eingangspunkt, klar lesbar.",
+  "s1.code.cap": "server/index.js — ein Dispatch pro Nachrichtentyp",
+  "s1.code.c1": "/* einen Raum + Code anlegen */",
+  "s1.code.c2": "/* ein Gerät tritt per Code bei */",
+  "s1.p1": "Zwei Familien: <b>hinaufreisende</b> Nachrichten (<code class=\"inline\">host</code>, <code class=\"inline\">join</code>, <code class=\"inline\">aim</code>, <code class=\"inline\">ready</code>, <code class=\"inline\">shell</code>, <code class=\"inline\">config</code>, <code class=\"inline\">leave</code>…) und die <b>herabreisenden</b> Nachrichten des Servers (<code class=\"inline\">hosted</code>, <code class=\"inline\">joined</code>, <code class=\"inline\">roster</code>, <code class=\"inline\">snapshot</code>, <code class=\"inline\">promote</code>, <code class=\"inline\">queue</code>…). Ein Typ, eine Absicht, eine klare Route.",
+  "s1.callout.events": "<b>Für Neugierige.</b> Ein <code class=\"inline\">snapshot</code> trägt den kontinuierlichen Zustand; ein <code class=\"inline\">events</code>-Array nimmt einmalige Momente huckepack (<code class=\"inline\">fire</code>, <code class=\"inline\">hit</code>, <code class=\"inline\">impact</code>, <code class=\"inline\">destroyed</code>). Den <em>Zustand</em> (wo alles ist) von den <em>Ereignissen</em> (was gerade geschah) zu trennen, ist ein verbreitetes Netcode-Muster: Zustand darf neu gesendet oder folgenlos verpasst werden, während Ereignisse die flüchtigen Signale sind, die man genau einmal auslöst.",
+
+  "s2.h2": "Autoritatives Modell &amp; Validierung der Absichten",
+  "s2.p1": "„Autoritativ“ heißt nicht „naiv“. Der Server glaubt einem Client nie aufs Wort: Er <b>validiert</b> jede Absicht, bevor er sie anwendet. Eine Absicht wirkt nur, wenn der Absender das Recht hat und der Wert plausibel ist.",
+  "s2.code1.cap": "server/Room.js — nur ein sitzender Spieler handelt, und nur auf seiner Simulation",
+  "s2.p2": "Die Match-Konfiguration ist noch stärker verriegelt: Nur der als <code class=\"inline\">biomeChooser</code> bestimmte Spieler (der erste Spieler, dann der Verlierer) darf sie ändern, und jedes Feld wird <b>nach Typ und Wertebereich gefiltert</b>.",
+  "s2.code2.cap": "server/Room.js — strikte Validierung der Einstellungen",
+  "s2.p3": "Und selbst erlaubte Absichten werden dort <b>begrenzt</b>, wo es zählt: Die Simulation zwingt Winkel und Stärke in ihre legalen Bereiche und handelt nur während der Zielphase. Ein manipulierter Controller, der einen 999°-Schuss verlangt, bekommt schlicht keinen.",
+  "s2.setaim.cap": "src/sim/Simulation.js — jede Absicht begrenzen &amp; absichern",
+  "s2.setaim.c1": "// nur während des Zielens",
+  "s2.setaim.c2": "// nicht mehr, sobald du bestätigt hast",
+  "s2.setaim.c3": "// auf AIM.min/maxAngle begrenzt",
+  "s2.callout": "<b>Anti-Cheat.</b> Ein manipulierter Client kann <em>senden</em>, was er will; er kann nicht <em>geschehen lassen</em>, was er will. Da die Physik auf dem Server läuft und die Absichten gefiltert werden, ist das Schlimmste für einen Betrüger… dass seine eigene Nachricht ignoriert wird.",
+
+  "s3.h2": "Kompakter Snapshot vs. Delta und Informationsasymmetrie",
+  "s3.p1": "Bei 30 Hz zählt die Größe des Snapshots. Die Wahl hier ist der <b>vollständige kompakte Zustand</b> statt Deltas: Die schweren Felder fehlen bereits (Gelände = ein Seed), die Koordinaten sind <b>gerundet</b>, und nur lebende Geschosse sind enthalten.",
+  "s3.code1.cap": "src/sim/Simulation.js — der volle Snapshot, klein gehalten",
+  "s3.code1.c1": "// das Gelände ist eine Funktion des Seeds",
+  "s3.code1.c2": "// nur die Änderungen, nicht alle Höhen",
+  "s3.code1.c3": "/* ready, groundY, angle, power, hp */",
+  "s3.p2": "Das Feinste ist, was <b>nicht</b> im Snapshot steckt. Der beim Zielen gewählte Winkel und die Stärke sind für die TV nicht dabei: Die Simulation gibt die „bereit“-Flags preis und, sobald der Schuss raus ist, die Geschosse — nie die geheimen Einstellungen.",
+  "s3.code2.cap": "src/sim/Simulation.js — verborgene Information ist eine Protokollentscheidung",
+  "s3.code2.c1": "// angle/power werden absichtlich weggelassen, damit die Zuschauer-TV",
+  "s3.code2.c2": "// nie verrät, was die Spieler einstellen; nur die ready-Flags und,",
+  "s3.code2.c3": "// nach dem Schuss, die Geschosse werden geteilt.",
+  "s3.callout.nerd": "<b>Kompakt statt Delta.</b> Ein Delta spart Bytes, zwingt den Server aber, sich zu merken, was jeder Client schon kennt, und erschwert Reconnects. Hier ist der Zustand schon so schlank (Seed + Kraterliste + ein paar Objekte), dass ein voller Snapshot klein <em>und</em> trivial idempotent bleibt: Ein mitten im Spiel beitretender Client ist ab der ersten Nachricht aktuell.",
+
+  "s4.h2": "Die Randfälle: wo die echten Bugs wohnen",
+  "s4.p1": "Das Glück ist „zwei Spieler spielen und spielen wieder“. Der Rest sind die Übergänge. Der Raum deckt sie ausdrücklich ab. <b>Übernahme mitten im Match</b>: Wird ein Sitz frei, wird der Erste der Schlange darauf befördert.",
+  "s4.code1.cap": "server/Room.js — den Ersten der Schlange befördern",
+  "s4.p2": "<b>Trennung</b>: <code class=\"inline\">removeSocket</code> entfernt den Socket von überall (TV, Schlange, Sitz), versucht eine Beförderung, und führt den Raum sonst in die Lobby zurück. <b>Freiwilliger Abgang</b>: Der Gehende fällt ans Ende der Schlange und erhält eine <code class=\"inline\">demoted</code>-Nachricht. <b>Lobby-Reset</b>: Sobald ein Match einen seiner beiden Spieler verliert, wird die Simulation verworfen und die TV zeigt Code und QR wieder an.",
+  "s4.code2.cap": "server/Room.js — ein leerer Sitz mitten im Match ⇒ zurück in die Lobby",
+  "s4.callout": "<b>Invariante.</b> Der Raum räumt sich selbst auf: Sobald er keine TV, keinen Spieler und keine Schlange mehr hat, stoppt <code class=\"inline\">dispose()</code> die Schleife und entfernt ihn aus der Raumtabelle. Kein <code class=\"inline\">setInterval</code>-Leck, kein Geisterraum.",
+
+  "s5.h2": "Bandbreiten-Ökonomie",
+  "s5.p1": "All diese Entscheidungen laufen auf ein einziges Ziel zu: <b>so wenig wie möglich, so oft wie möglich senden</b>. Das Gelände — potenziell tausende Höhen — schrumpft auf einen Seed.",
+  "s5.code.cap": "src/sim/Simulation.js — der Seed trägt das ganze Relief",
+  "s5.code.c1": "// eine ganze Zahl → tausende regenerierte Höhen",
+  "s5.code.c2": "// die Liste der Löcher (kleine Kreise)",
+  "s5.p2": "Den <b>Seed</b> statt das Gelände zu senden tauscht Bandbreite gegen ein wenig Client-CPU (jeder regeneriert dasselbe Relief). Zusammen mit gerundeten Positionen, dem Filtern toter Geschosse und dem Fehlen von Assets bleibt der 30-Hz-Strom selbst über ein heimisches WLAN leicht.",
+  "s5.callout": "<b>Merke dir.</b> Ein gutes Echtzeitprotokoll ist nicht nur eine Frage der Geschwindigkeit: Es ist eine Abwägung zwischen <b>Autorität</b>, <b>Nachrichtengröße</b>, <b>preisgegebener Information</b> und <b>Robustheit gegenüber Übergängen</b>. Tower Duel wählt die Einfachheit überall dort, wo der Zustand sie schon erlaubt.",
+
+  "footer.suffix": "Kapitel {n}/{total} · Profi-Niveau",
+
+  "pager.prev": "← Kapitel 2 · Rendering ohne Assets",
+  "pager.next": "Kapitel 4 · Terrain &amp; schnelle Mathematik →"
+}

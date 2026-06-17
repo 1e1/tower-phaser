@@ -1,0 +1,108 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#e7eef6"/>
+        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#c7d6e8"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre><span class="k">const</span> TICK_MS = <span class="s">33</span>; <span class="c">{{s1.code.c1}}</span>
+
+<span class="k">this</span>.players = [<span class="k">null</span>, <span class="k">null</span>]; <span class="c">{{s1.code.c2}}</span>
+<span class="k">this</span>.waiting = [];          <span class="c">{{s1.code.c3}}</span>
+<span class="k">this</span>.tvs = <span class="k">new</span> <span class="f">Set</span>();      <span class="c">{{s1.code.c4}}</span>
+<span class="k">this</span>.sim = <span class="k">null</span>;            <span class="c">{{s1.code.c5}}</span></pre>
+        </figure>
+        <p>{{s1.p1}}</p>
+        <div class="callout tip">{{s1.callout}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <figure class="diagram" aria-label="{{s2.fig.alt}}">
+          <svg viewBox="0 0 700 180" width="700" xmlns="http://www.w3.org/2000/svg" font-family="Nunito">
+            <g font-weight="800" font-size="13" text-anchor="middle">
+              <rect x="20" y="20" width="150" height="50" rx="10" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="95" y="50" fill="#2b2535">{{s2.fig.ctrl1}}</text>
+              <rect x="20" y="110" width="150" height="50" rx="10" fill="#ffe9e6" stroke="#ff6b5e" stroke-width="2"/>
+              <text x="95" y="140" fill="#2b2535">{{s2.fig.ctrl2}}</text>
+              <rect x="280" y="65" width="150" height="50" rx="10" fill="#eef4fb" stroke="#5b7da6" stroke-width="2"/>
+              <text x="355" y="95" fill="#2b2535">{{s2.fig.server}}</text>
+              <rect x="540" y="65" width="140" height="50" rx="10" fill="#fff" stroke="#2b2535" stroke-width="2"/>
+              <text x="610" y="95" fill="#2b2535">{{s2.fig.viewers}}</text>
+            </g>
+            <g stroke="#5b5470" stroke-width="2" fill="none" marker-end="url(#a3i)">
+              <path d="M170,45 C230,45 240,78 278,82"/>
+              <path d="M170,135 C230,135 240,102 278,98"/>
+              <path d="M430,90 L538,90"/>
+            </g>
+            <text x="220" y="30" font-size="11" fill="#3a6df0">{{s2.fig.intents}}</text>
+            <text x="470" y="80" font-size="11" fill="#3f8f2f">{{s2.fig.snapshots}}</text>
+            <defs><marker id="a3i" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#5b5470"/></marker></defs>
+          </svg>
+          <figcaption>{{s2.fig.cap}}</figcaption>
+        </figure>
+        <p>{{s2.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s2.code.cap}}</figcaption>
+<pre><span class="f">step</span>() {
+  this.sim.<span class="f">tick</span>(DT);
+  <span class="k">const</span> events = this.sim.<span class="f">drainEvents</span>();
+  this.<span class="f">broadcast</span>({ t: <span class="s">'snapshot'</span>, state: this.sim.<span class="f">snapshot</span>(), events });
+}</pre>
+        </figure>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code.cap}}</figcaption>
+<pre><span class="k">import</span> Simulation, { PHASE } <span class="k">from</span> <span class="s">'../src/sim/Simulation.js'</span>;
+<span class="k">import</span> { BIOMES } <span class="k">from</span> <span class="s">'../src/config/biomes.js'</span>;</pre>
+        </figure>
+        <p>{{s3.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s3.snapomit.cap}}</figcaption>
+<pre><span class="c">{{s3.snapomit.c1}}</span>
+<span class="c">{{s3.snapomit.c2}}</span>
+projectiles: <span class="k">this</span>.projectiles
+  .<span class="f">filter</span>((p) =&gt; p.alive)
+  .<span class="f">map</span>((p) =&gt; ({ id: p.id, x: Math.<span class="f">round</span>(p.x), y: Math.<span class="f">round</span>(p.y), owner: p.owner })),</pre>
+        </figure>
+        <div class="callout nerd">{{s3.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code1.cap}}</figcaption>
+<pre><span class="k">const</span> slot = this.players.<span class="f">findIndex</span>((p) =&gt; p === <span class="k">null</span>);
+<span class="k">if</span> (slot !== <span class="s">-1</span>) { this.<span class="f">assignPlayer</span>(slot, socket, name); <span class="c">{{s4.code1.c1}}</span> }
+<span class="k">else</span> { this.waiting.<span class="f">push</span>({ socket, name }); <span class="c">{{s4.code1.c2}}</span> }</pre>
+        </figure>
+        <p>{{s4.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code2.cap}}</figcaption>
+<pre>this.<span class="f">promoteInto</span>(i); <span class="c">{{s4.code2.c1}}</span>
+<span class="k">if</span> (this.sim &amp;&amp; !this.<span class="f">bothFilled</span>()) this.<span class="f">resetToLobby</span>();</pre>
+        </figure>
+        <div class="callout tip">{{s4.callout}}</div>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-2-i.html">{{pager.prev}}</a>
+        <a href="chapter-4-i.html">{{pager.next}}</a>
+      </div>
+    </main>

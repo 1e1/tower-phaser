@@ -1,0 +1,61 @@
+    <script>
+      (function () {
+        const cv = document.getElementById('dig'), ctx = cv.getContext('2d');
+        const W = cv.width, H = cv.height;
+        function build() {
+          ctx.globalCompositeOperation = 'source-over';
+          // Laisse le ciel transparent : le fond CSS sombre du canvas
+          // transparaît à travers le ciel et tous les trous qu'on creuse.
+          ctx.clearRect(0, 0, W, H);
+          // terrain
+          ctx.beginPath(); ctx.moveTo(0, H);
+          for (let x = 0; x <= W; x += 3) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            ctx.lineTo(x, y);
+          }
+          ctx.lineTo(W, H); ctx.closePath();
+          ctx.fillStyle = '#46303f'; ctx.fill();
+          // ligne de surface incandescente
+          ctx.lineWidth = 4; ctx.strokeStyle = '#ff6b35'; ctx.beginPath();
+          for (let x = 0; x <= W; x += 3) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          // un petit décor
+          ctx.fillStyle = '#2a1c26';
+          for (let x = 30; x < W; x += 38) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            ctx.fillRect(x, y - 6, 3, 6);
+          }
+        }
+        function dig(x, y) {
+          // bord bruni seulement là où le terrain existe
+          ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+          ctx.fillStyle = '#5a3a1e'; ctx.beginPath(); ctx.arc(x, y, 27, 0, 7); ctx.fill(); ctx.restore();
+          // perce le trou
+          ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath(); ctx.arc(x, y, 22, 0, 7); ctx.fill(); ctx.restore();
+        }
+        function pos(e) {
+          const r = cv.getBoundingClientRect();
+          const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+          const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+          return { x: cx * (W / r.width), y: cy * (H / r.height) };
+        }
+        let down = false;
+        const start = (e) => { down = true; const p = pos(e); dig(p.x, p.y); e.preventDefault(); };
+        const move = (e) => { if (!down) return; const p = pos(e); dig(p.x, p.y); e.preventDefault(); };
+        const end = () => { down = false; };
+        cv.addEventListener('mousedown', start); cv.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+        cv.addEventListener('touchstart', start, { passive: false });
+        cv.addEventListener('touchmove', move, { passive: false });
+        window.addEventListener('touchend', end);
+        document.getElementById('reset').addEventListener('click', build);
+        build();
+      })();
+    </script>

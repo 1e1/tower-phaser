@@ -1,0 +1,96 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#e7eef6"/>
+        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#c7d6e8"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <p>{{s1.p1}}</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <ul class="clean">
+          <li>{{s2.li1}}</li>
+          <li>{{s2.li2}}</li>
+          <li>{{s2.li3}}</li>
+        </ul>
+        <div class="callout tip">{{s2.callout}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <div class="callout try">{{s3.callout.try}}</div>
+        <div class="sim">
+          <h4>{{s3.sim.title}}</h4>
+          <canvas id="net" width="640" height="300"></canvas>
+          <div class="controls">
+            <button id="play">{{s3.sim.play}}</button>
+          </div>
+          <div class="hint">{{s3.sim.hint}}</div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code.cap}}</figcaption>
+<pre><span class="c">{{s4.code.c1}}</span>
+{ seed: <span class="s">428193</span> }
+<span class="c">{{s4.code.c2}}</span>
+const terrain = <span class="f">generateTerrain</span>(<span class="s">428193</span>); <span class="c">{{s4.code.c3}}</span></pre>
+        </figure>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">5</span>{{s5.h2}}</h2>
+        <p>{{s5.p1}}</p>
+        <figure class="diagram" aria-label="{{s5.fig.alt}}">
+          <svg viewBox="0 0 700 180" width="700" xmlns="http://www.w3.org/2000/svg" font-family="Nunito">
+            <rect x="40" y="30" width="180" height="120" rx="12" fill="#fff" stroke="#5b7da6" stroke-width="3"/>
+            <text x="130" y="22" text-anchor="middle" font-size="13" fill="#5b5470">{{s5.fig.tv}}</text>
+            <text x="130" y="78" text-anchor="middle" font-family="Fredoka" font-size="30" font-weight="700" fill="#2b2535">7F3K</text>
+            <rect x="105" y="92" width="50" height="50" fill="#2b2535"/><rect x="115" y="102" width="12" height="12" fill="#fff"/><rect x="133" y="120" width="12" height="12" fill="#fff"/>
+            <g font-family="Nunito" font-weight="800" font-size="13" text-anchor="middle">
+              <rect x="470" y="20" width="180" height="55" rx="12" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="560" y="52" fill="#2b2535">{{s5.fig.scan1}}</text>
+              <rect x="470" y="105" width="180" height="55" rx="12" fill="#ffe9e6" stroke="#ff6b5e" stroke-width="2"/>
+              <text x="560" y="137" fill="#2b2535">{{s5.fig.scan2}}</text>
+            </g>
+            <g stroke="#5b5470" stroke-width="2" fill="none" marker-end="url(#a3)">
+              <path d="M220,70 C330,70 360,48 468,48"/>
+              <path d="M220,110 C330,110 360,132 468,132"/>
+            </g>
+            <defs><marker id="a3" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#5b5470"/></marker></defs>
+          </svg>
+          <figcaption>{{s5.fig.cap}}</figcaption>
+        </figure>
+        <div class="callout nerd">{{s5.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">6</span>{{s6.h2}}</h2>
+        <ul class="clean">
+          <li>{{s6.li1}}</li>
+          <li>{{s6.li2}}</li>
+          <li>{{s6.li3}}</li>
+        </ul>
+        <div class="callout tip">{{s6.callout}}</div>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-2.html">{{pager.prev}}</a>
+        <a href="chapter-4.html">{{pager.next}}</a>
+      </div>
+    </main>

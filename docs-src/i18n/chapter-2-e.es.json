@@ -1,0 +1,59 @@
+{
+  "title": "Capítulo 2 (experto) — Renderizado sin assets: síntesis procedural",
+  "meta.desc": "Nivel experto: generación de texturas en runtime, síntesis con Web Audio, la matemática de color lerp/shade/barrelColor, la geometría animada de la manga de viento, los sistemas de partículas con blend modes y los niveles de calidad.",
+
+  "hero.badge": "Experto · Fase 2 · Desierto",
+  "hero.kicker": "Capítulo 2 · nivel experto",
+  "hero.title": "Renderizado sin assets: síntesis procedural",
+  "hero.lead": "Cómo se fabrica una imagen y un sonido a partir de <strong>nada más que código</strong>: texturas dibujadas al arrancar, sonido sintetizado, matemática de color, geometría animada y sistemas de partículas mezclados.",
+
+  "s1.h2": "Texturas generadas en tiempo de ejecución",
+  "s1.lead": "Ningún archivo de imagen viaja con el juego. Las pequeñas texturas reutilizables (chispa, humo, destello, nube) se <b>dibujan una vez al arrancar</b> y luego las tintan y mezclan los emisores de partículas.",
+  "s1.code.cap": "src/systems/textures.js — el humo apilando círculos translúcidos",
+  "s1.code.c1": "// capas casi transparentes",
+  "s1.code.c2": "// del más grande al más pequeño",
+  "s1.p1": "Una chispa blanca dura, un humo difuso, un destello aditivo y una nube de blobs cubren todas las necesidades. Todo se <b>tinta en runtime</b> con el color del bioma, lo que evita tener una textura por cada color.",
+  "s1.callout.nerd": "<b>Para los curiosos.</b> Las texturas son blancas a propósito: dibujadas en blanco, se pueden <b>tintar</b> con cualquier color en runtime (el ámbar de la arena, el blanco de la nieve, el naranja de las brasas). Una textura, mil usos.",
+
+  "s2.h2": "Sonido sintetizado con Web Audio",
+  "s2.p1": "Tampoco hay archivos de audio. Cada efecto se construye con <b>osciladores</b> y <b>ruido filtrado</b>, modelados por <b>envolventes</b> de ganancia. El disparo de cañón, por ejemplo, es un chasquido de ruido filtrado más un golpe grave descendente.",
+  "s2.code.cap": "src/systems/Sfx.js — explosión: ruido filtrado + envolvente descendente",
+  "s2.code.c1": "// ruido blanco (búfer aleatorio)",
+  "s2.code.c2": "// se vuelve grave",
+  "s2.code.c3": "// se apaga",
+  "s2.p2": "El silbido de una bala que se acerca usa el mismo principio, pero al revés: una banda de paso (<code class=\"inline\">bandpass</code>) cuyo volumen y tono <b>suben</b> a medida que el proyectil se aproxima a tu torre. En iOS, donde la API de vibración está bloqueada, este zumbido de audio reemplaza al háptico.",
+  "s2.callout.suspended": "<b>El contexto suspendido.</b> Los navegadores crean el <code class=\"inline\">AudioContext</code> suspendido y solo lo reanudan tras un gesto del usuario. Una única instancia <code class=\"inline\">Sfx</code> compartida vive en el registry del juego y se desbloquea (<code class=\"inline\">unlock()</code>) en la primera interacción — de lo contrario, los primeros sonidos desaparecen en silencio.",
+  "s2.callout.tip": "<b>La idea.</b> Frecuencia + envolvente + filtro = un efecto de sonido. Tres conceptos de Web Audio bastan para todo el banco de sonidos del juego, sin un solo byte de audio embarcado.",
+
+  "s3.h2": "La matemática del color: lerp, shade, barrelColor",
+  "s3.p1": "Todo el color pasa por dos ayudantes minúsculos: <code class=\"inline\">lerp</code> (interpolación lineal entre dos valores) y <code class=\"inline\">shade</code> (multiplicar el brillo). De ahí salen el tinte de carga del cañón y los matices del relieve.",
+  "s3.code.cap": "src/render/visuals.js — interpolar y oscurecer un color",
+  "s3.code.c1": "// recompone el entero",
+  "s3.p2": "<code class=\"inline\">barrelColor(power)</code> interpola del acero frío al rojo ardiente según un ratio de potencia acotado a [0, 1]; los desplazamientos de bits (<code class=\"inline\">&gt;&gt; 16</code>, <code class=\"inline\">&amp; 0xff</code>) extraen cada canal de un entero 0xRRGGBB y el shift-OR los recompone.",
+  "s3.callout.nerd": "<b>Para los curiosos.</b> Todo está <b>acotado</b> (<code class=\"inline\">clamp 0..255</code>) antes de recomponer: un <code class=\"inline\">factor &gt; 1</code> que aclara nunca desborda de un canal al siguiente.",
+
+  "s4.h2": "Geometría animada: la manga de viento",
+  "s4.p1": "La <b>manga de viento</b> (windsock) es geometría pura, animada en el tiempo: una serie de segmentos que se afinan hacia la punta, apuntan a favor del viento, se levantan con su fuerza y ondean con el tiempo.",
+  "s4.code.cap": "src/render/visuals.js — computeWindsock, el ondeo",
+  "s4.code.c1": "// más larga si sopla fuerte",
+  "s4.code.c2": "// más horizontal con viento",
+  "s4.code.c3": "// ondeo",
+  "s4.p2": "Como <code class=\"inline\">computeWindsock</code> devuelve solo geometría (puntos y cuadriláteros de color), la dibuja idéntica la TV con Phaser <em>y</em> el mini-mando con un canvas normal — el mismo módulo agnóstico de la Fase 2.",
+
+  "s5.h2": "Partículas, blend modes y calidad adaptativa",
+  "s5.p1": "Cada bioma tiene su <b>partícula ambiental</b>: hojas, arena, nieve, brasas. Solo cambia la configuración del emisor — direcciones, velocidades, vidas, y para las brasas un modo de mezcla <b>aditivo</b> que las hace brillar.",
+  "s5.code.cap": "src/objects/Background.js — brasas que suben y se mezclan en aditivo",
+  "s5.code.c1": "// nacen abajo",
+  "s5.code.c2": "// suben",
+  "s5.code.c3": "// se encogen",
+  "s5.code.c4": "// brillo incandescente",
+  "s5.p2": "El coste de todo esto se mide al arrancar con un <b>benchmark</b>: si los fps caen por debajo de un umbral, el nivel pasa a <code class=\"inline\">lite</code> y la capa ambiental — lo más barato de soltar — ni siquiera se crea.",
+  "s5.code2.cap": "src/objects/Background.js — la calidad decide qué se dibuja",
+  "s5.code2.c1": "// la capa ambiental es lo más fácil de soltar en un dispositivo modesto",
+  "s5.callout.tip": "<b>Recuerda.</b> Sin assets, todo es matemática: dibujar texturas, sintetizar sonido, interpolar colores, animar geometría, configurar partículas. A cambio: un bundle minúsculo, infinitamente tintable y que se adapta a la máquina.",
+
+  "footer.suffix": "capítulo {n}/{total} · nivel experto",
+
+  "pager.prev": "← Capítulo 1 · Bucle determinista",
+  "pager.next": "Capítulo 3 · Protocolo de red →"
+}

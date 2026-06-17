@@ -1,0 +1,57 @@
+{
+  "title": "Capitolo 3 (intermedio) — Client/server in tempo reale",
+  "meta.desc": "Livello intermedio: server autoritativo e stanze, il protocollo intenzioni/snapshot, la simulazione priva di Phaser condivisa, l'informazione nascosta e la gestione di spettatori, subentri e abbandoni.",
+
+  "hero.badge": "Intermedio · Lotto 3 · Tundra",
+  "hero.kicker": "Capitolo 3 · livello intermedio",
+  "hero.title": "Client/server in tempo reale",
+  "hero.lead": "La TV mostra, i telefoni comandano — ma chi decide davvero? Un <strong>server autoritativo</strong> arbitra la partita in <strong>stanze</strong>, scambia <strong>intenzioni</strong> contro <strong>snapshot</strong>, e tiene per sé ciò che i giocatori non devono vedere.",
+
+  "s1.h2": "Un server autoritativo, organizzato in stanze",
+  "s1.lead": "In multischermo, il browser non si fida più di se stesso. Un piccolo processo Node ospita la partita: è la <b>sola fonte di verità</b>. Ogni partita vive in una <b>stanza</b> (<code class=\"inline\">server/Room.js</code>), identificata da un codice di 4 caratteri.",
+  "s1.code.cap": "server/Room.js — i posti, la coda, e l'orologio della partita",
+  "s1.code.c1": "// ~30 Hz: il passo della simulazione E la cadenza di trasmissione",
+  "s1.code.c2": "// due posti giocatore",
+  "s1.code.c3": "// coda d'attesa ordinata",
+  "s1.code.c4": "// tutte le TV spettatrici",
+  "s1.code.c5": "// la simulazione autoritativa, creata all'avvio della partita",
+  "s1.p1": "Il server (<code class=\"inline\">server/index.js</code>) si limita a <b>smistare</b> i messaggi WebSocket verso la stanza giusta: <code class=\"inline\">host</code> crea una stanza, <code class=\"inline\">join</code> vi colloca un partecipante, e tutto il resto (<code class=\"inline\">aim</code>, <code class=\"inline\">ready</code>, <code class=\"inline\">shell</code>…) è instradato verso i metodi della stanza. Nessuna logica di gioco vive nello strato di rete.",
+  "s1.callout": "<b>Da ricordare.</b> «Autoritativo» significa: i client propongono, il server dispone. Lo stato della partita non esiste mai su un telefono — solo sul server, che lo trasmette a tutti.",
+
+  "s2.h2": "Il protocollo: intenzioni contro snapshot",
+  "s2.p1": "Il dialogo è asimmetrico. Il telefono invia delle <b>intenzioni</b> minuscole: «punto a questo angolo / questa potenza», «scelgo questo proiettile», «sono pronto». Il server le applica alla simulazione, poi trasmette uno <b>snapshot</b> dello stato a tutti, circa <b>30 volte al secondo</b>.",
+  "s2.fig.alt": "Intenzioni contro snapshot",
+  "s2.fig.ctrl1": "📱 Controller",
+  "s2.fig.ctrl2": "📱 Controller",
+  "s2.fig.server": "🖧 Server",
+  "s2.fig.viewers": "📺 TV",
+  "s2.fig.intents": "intenzioni →",
+  "s2.fig.snapshots": "snapshot ~30 Hz →",
+  "s2.fig.cap": "I telefoni mandano piccole intenzioni; il server arbitra e trasmette lo stato a tutte le viste.",
+  "s2.p2": "A ogni tick, la stanza fa avanzare la simulazione di un passo fisso, raccoglie gli eventi avvenuti, poi trasmette lo snapshot a tutti gli abbonati della stanza:",
+  "s2.code.cap": "server/Room.js — un giro di ciclo",
+
+  "s3.h2": "Una simulazione, due esecuzioni",
+  "s3.p1": "Ecco dove ripaga la scelta del capitolo 1: la simulazione di <code class=\"inline\">src/sim/</code> è <b>priva di Phaser</b>. Lo stesso identico file gira sotto Node sul server <em>e</em> nel browser quando si gioca in solo. Il server <b>importa lo stesso file</b> dei client:",
+  "s3.code.cap": "server/Room.js — il server istanzia la stessa simulazione del client",
+  "s3.p2": "È il dividendo della decisione di architettura del capitolo 1: la stessa fisica gira sul server (il giudice) e resta testabile sotto Node. Nessuno riscrive le traiettorie « per la rete ».",
+  "s3.snapomit.cap": "src/sim/Simulation.js — ciò che uno snapshot trasporta davvero",
+  "s3.snapomit.c1": "// la TV spettatrice non riceve mai i valori di mira scelti dai giocatori;",
+  "s3.snapomit.c2": "// solo i flag ready e, una volta sparato, i proiettili risultanti.",
+  "s3.callout.nerd": "<b>Informazione nascosta.</b> Lo snapshot <b>non contiene</b> l'angolo né la potenza dei giocatori in fase di mira — quei numeri non sono mai mostrati sulla TV. Si trasmettono solo i flag « pronto » e, una volta partito il tiro, i proiettili. L'asimmetria informativa è <em>nel protocollo</em>.",
+
+  "s4.h2": "Posti, coda d'attesa e abbandoni",
+  "s4.p1": "Una stanza è viva: la gente arriva, esce, subentra. La stanza gestisce queste transizioni senza rompere la partita. Un partecipante che arriva prende un posto libero, altrimenti si mette in <b>coda</b> come spettatore.",
+  "s4.code1.cap": "server/Room.js — posto libero o coda d'attesa",
+  "s4.code1.c1": "/* giocatore */",
+  "s4.code1.c2": "/* spettatore in coda */",
+  "s4.p2": "Quando un giocatore libera il suo posto (uscita volontaria o disconnessione), il primo della coda <b>subentra</b> (<code class=\"inline\">promoteInto</code>). E se nessuno completa più i due posti a metà partita, la stanza <b>torna alla lobby</b>: la TV rimostra il codice e il QR.",
+  "s4.code2.cap": "server/Room.js — ritorno alla lobby se un posto resta vuoto",
+  "s4.code2.c1": "// uno spettatore in attesa prende il posto",
+  "s4.callout": "<b>Da ricordare.</b> La rete è anche tutti i casi « non felici »: abbandoni, riconnessioni, posti che si liberano. Centralizzare questo stato in un unico oggetto <code class=\"inline\">Room</code> rende queste transizioni leggibili e testabili.",
+
+  "footer.suffix": "capitolo {n}/{total} · livello intermedio",
+
+  "pager.prev": "← Capitolo 2 · Dati, rendering &amp; sintesi",
+  "pager.next": "Capitolo 4 · Terreno distruttibile &amp; stato condiviso →"
+}

@@ -1,0 +1,118 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#d9a441"/>
+        <path d="M0,95 C260,60 520,115 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#9c6f25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre>{
+  id: <span class="s">'volcano'</span>,
+  sky:     [<span class="s">0x2a1430</span>, <span class="s">0x6e2535</span>], <span class="c">{{s1.code.c1}}</span>
+  terrain: { fill: <span class="s">0x3a2f3a</span>, edge: <span class="s">0xff6b35</span> },
+  ambient: <span class="s">'embers'</span>            <span class="c">{{s1.code.c2}}</span>
+}</pre>
+        </figure>
+        <p>{{s1.p1}}</p>
+        <figure class="diagram" aria-label="{{s1.fig.alt}}">
+          <svg viewBox="0 0 720 90" width="720" xmlns="http://www.w3.org/2000/svg">
+            <g font-family="Nunito" font-weight="800" font-size="13" text-anchor="middle" fill="#fff">
+              <rect x="10"  y="10" width="165" height="70" rx="10" fill="#4f8f2f"/><text x="92" y="50">{{s1.fig.meadow}}</text>
+              <rect x="190" y="10" width="165" height="70" rx="10" fill="#d9a441"/><text x="272" y="50">{{s1.fig.desert}}</text>
+              <rect x="370" y="10" width="165" height="70" rx="10" fill="#9fb8d6"/><text x="452" y="50" fill="#2b2535">{{s1.fig.tundra}}</text>
+              <rect x="550" y="10" width="160" height="70" rx="10" fill="#6e2535"/><text x="630" y="50">{{s1.fig.volcano}}</text>
+            </g>
+          </svg>
+        </figure>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s2.code.cap}}</figcaption>
+<pre><span class="c">{{s2.code.c1}}</span>
+height = base
+  - big_wave(x)     <span class="c">{{s2.code.c2}}</span>
+  - mid_wave(x)     <span class="c">{{s2.code.c3}}</span>
+  - small_wave(x);  <span class="c">{{s2.code.c4}}</span></pre>
+        </figure>
+        <div class="callout try">{{s2.callout.try}}</div>
+        <div class="sim">
+          <h4>{{s2.sim.title}}</h4>
+          <canvas id="land" width="640" height="240"></canvas>
+          <div class="controls">
+            <label>{{s2.sim.rough}}<span id="rV">1.0</span><input id="r" type="range" min="40" max="180" value="100" /></label>
+            <button id="gen">{{s2.sim.gen}}</button>
+          </div>
+          <div class="hint">{{s2.sim.hint}}</div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <figure class="diagram" aria-label="{{s3.fig.alt}}">
+          <svg viewBox="0 0 700 170" width="700" xmlns="http://www.w3.org/2000/svg" font-family="Nunito">
+            <rect x="0" y="0" width="700" height="170" rx="12" fill="#cfe8ff"/>
+            <text x="14" y="28" font-size="13" fill="#5b5470">{{s3.fig.far}}</text>
+            <circle cx="120" cy="40" r="16" fill="#fff" opacity="0.8"/><circle cx="150" cy="40" r="20" fill="#fff" opacity="0.8"/>
+            <path d="M0,120 Q175,80 350,120 T700,120 L700,170 L0,170Z" fill="#9bbce0"/>
+            <path d="M0,140 Q175,110 350,145 T700,140 L700,170 L0,170Z" fill="#6f9bd0"/>
+            <text x="600" y="162" font-size="13" fill="#fff">{{s3.fig.near}}</text>
+            <g stroke="#2b2535" stroke-width="2" fill="none" marker-end="url(#ar2)">
+              <path d="M130,55 l40 0"/><path d="M350,150 l70 0"/>
+            </g>
+            <defs><marker id="ar2" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#2b2535"/></marker></defs>
+          </svg>
+          <figcaption>{{s3.fig.cap}}</figcaption>
+        </figure>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <ul class="clean">
+          <li>{{s4.li1}}</li>
+          <li>{{s4.li2}}</li>
+          <li>{{s4.li3}}</li>
+        </ul>
+        <div class="callout nerd">{{s4.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">5</span>{{s5.h2}}</h2>
+        <p>{{s5.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s5.code.cap}}</figcaption>
+<pre><span class="c">{{s5.code.c1}}</span>
+const noise = <span class="f">makeNoise</span>();
+filter.frequency.<span class="f">rampTo</span>(<span class="s">120</span>);    <span class="c">{{s5.code.c2}}</span>
+volume.gain.<span class="f">rampTo</span>(<span class="s">0</span>, <span class="s">0.5</span>);      <span class="c">{{s5.code.c3}}</span></pre>
+        </figure>
+        <div class="callout try">{{s5.callout.try}}</div>
+        <div class="sim">
+          <h4>{{s5.sim.title}}</h4>
+          <div class="controls">
+            <button id="boom">{{s5.sim.boom}}</button>
+            <button id="expl">{{s5.sim.expl}}</button>
+            <button id="blip">{{s5.sim.blip}}</button>
+          </div>
+          <div class="hint">{{s5.sim.hint}}</div>
+        </div>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-1.html">{{pager.prev}}</a>
+        <a href="chapter-3.html">{{pager.next}}</a>
+      </div>
+    </main>

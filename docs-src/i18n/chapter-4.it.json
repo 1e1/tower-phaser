@@ -1,0 +1,49 @@
+{
+  "title": "Capitolo 4 — Distruggere il paesaggio",
+
+  "hero.badge": "Lotto 4 · Vulcano",
+  "hero.kicker": "Capitolo 4",
+  "hero.title": "Distruggere il paesaggio",
+  "hero.lead": "Come in <em>Worms</em>: ogni colpo scava un vero buco nella scenografia. Scopriremo il trucco magico per “bucare” un'immagine — e potrai scavare anche tu!",
+
+  "s1.h2": "Una scenografia che conserva le sue cicatrici",
+  "s1.lead": "Finora il paesaggio era un bel fondale fisso. Adesso, ogni palla che cade <b>strappa via</b> un pezzo di terreno. I buchi restano: alla fine del round, il campo di battaglia è tutto crivellato.",
+
+  "s2.h2": "La magia: la “gomma” del canvas",
+  "s2.p1": "Il canvas sa disegnare… ma sa anche <b>cancellare secondo una forma</b>! Passiamo alla modalità <code class=\"inline\">destination-out</code>: tutto ciò che “disegniamo” diventa una <b>gomma</b>. Disegna un cerchio → un buco perfettamente rotondo nel terreno.",
+  "s2.code.cap": "src/objects/Terrain.js (scavare un cratere)",
+  "s2.code.c1": "// modalità gomma",
+  "s2.code.c2": "// un cerchio…",
+  "s2.code.c3": "// …che cancella!",
+  "s2.callout.try": "<b>Provalo!</b> Fai clic (o trascina il dito) sulla collina per scavare. Guarda: puoi creare grotte, ponti, sporgenze… esattamente come in Worms.",
+  "s2.sim.title": "Scava il terreno!",
+  "s2.sim.reset": "↺ Ricostruisci la collina",
+  "s2.sim.hint": "Consiglio: mira sotto una gobba per scavare una grotta e lasciare un “ponte” sopra.",
+
+  "s3.h2": "Solido o no? La regola del gioco",
+  "s3.p1": "Come fa il gioco a sapere se una palla ha colpito il terreno? Non serve memorizzare un'immagine enorme. Conserviamo: l'<b>altezza del terreno</b> in ogni punto e la <b>lista dei crateri</b>. Un punto è <b>solido</b> se:",
+  "s3.callout.tip": "<b>La regola.</b> “Sono <b>sotto la superficie</b> del terreno <b>E</b> non sono <b>in nessun cratere</b>.” Altrimenti è spazio vuoto.",
+  "s3.p2": "Questa piccola regola basta per creare <b>grotte</b> e <b>sporgenze</b>: un cratere scavato sotto una gobba lascia la materia sopra di esso “sospesa”.",
+  "s3.fig.alt": "Solido o vuoto",
+  "s3.fig.empty": "vuoto (cratere)",
+  "s3.fig.solid": "solido",
+  "s3.fig.overhang": "↑ sporgenza che “galleggia”",
+  "s3.fig.cap": "Sotto la superficie ma dentro un cratere → vuoto. La gobba sopra continua a reggere.",
+  "s3.callout.nerd": "<b>Per i curiosi.</b> Verificare “sono in un cratere?” = confrontare la distanza dal centro di ogni cratere con il suo raggio. È il teorema di Pitagora! (<code class=\"inline\">dx² + dy² ≤ radius²</code>).",
+
+  "s4.h2": "I dettagli che lo rendono credibile",
+  "s4.li1": "🟫 <b>Bordo bruciacchiato.</b> Scuriamo il bordo del buco — ma <b>solo dove c'è terreno</b> (modalità <code class=\"inline\">source-atop</code>), altrimenti vedremmo un cerchio fluttuare nel cielo.",
+  "s4.li2": "🌫️ <b>Polvere dietro il terreno.</b> L'impatto solleva polvere disegnata <b>dietro</b> il terreno: il rilievo la nasconde, come se uscisse dal buco.",
+  "s4.li3": "🌱 <b>Scenografia portata via.</b> Erba e sassolini sono “cotti” nell'immagine del terreno: la gomma li rimuove insieme alla terra.",
+
+  "s5.h2": "Bravo, hai fatto tutto il giro!",
+  "s5.lead": "Adesso sai a grandi linee come prende vita un gioco web:",
+  "s5.p1": "un <b>ciclo</b> che ridisegna 60×/s, un po' di <b>matematica</b> per la fisica e la scenografia, un <b>arbitro</b> in rete per giocare insieme, e <b>trucchi di disegno</b> per fare tutto a pezzi. E soprattutto: andiamo avanti <b>passo dopo passo</b>, ognuno testato prima del successivo.",
+  "s5.callout.tip": "<b>Il segreto dei professionisti.</b> Nessuno scrive un grande gioco tutto d'un fiato. Crei una versione <b>piccola</b> che funziona, la migliori, ancora e ancora. Esattamente i 4 lotti di questo quaderno.",
+  "s5.back": "↩ Torna alla home",
+
+  "footer.suffix": "capitolo {n}/{total} · grazie per aver letto!",
+
+  "pager.prev": "← Capitolo 3",
+  "pager.next": "Fine 🎉"
+}

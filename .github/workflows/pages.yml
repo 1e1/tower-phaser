@@ -1,13 +1,17 @@
 name: Deploy tutorial to GitHub Pages
 
-# Publishes the static tutorial in docs/ to GitHub Pages.
+# Publishes the static tutorial to GitHub Pages on every commit to main that
+# touches the tutorial source. The site is GENERATED from docs-src/ by
+# scripts/build-docs.mjs (docs/ is a build artifact, not committed). Tutorial
+# deploys per-commit on main — game versioning uses tags, the docs do not.
 # One-time setup: repo Settings → Pages → Source = "GitHub Actions".
 
 on:
   push:
     branches: [main]
     paths:
-      - 'docs/**'
+      - 'docs-src/**'
+      - 'scripts/build-docs.mjs'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -28,6 +32,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm run build:docs -- --strict   # generates docs/; fails on any coverage gap
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

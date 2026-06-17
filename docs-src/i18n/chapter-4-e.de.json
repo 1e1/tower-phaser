@@ -1,0 +1,62 @@
+{
+  "title": "Kapitel 4 (Profi) — Zerstörbares Terrain &amp; schnelle Mathematik",
+  "meta.desc": "Profi-Niveau: die Heightfield-Erzeugung aus einer Summe von Sinus mit Edge-Blend und Plattformen, Krater als geometrische Subtraktion per quadrierter Distanz, Höhlen und Überhänge, Determinismus und der kontinuierliche Turbo-Wind.",
+
+  "hero.badge": "Profi · Lot 4 · Vulkan",
+  "hero.kicker": "Kapitel 4 · Profi-Niveau",
+  "hero.title": "Zerstörbares Terrain &amp; schnelle Mathematik",
+  "hero.lead": "Tief im Gelände: ein <strong>Heightfield</strong> aus einer Summe von Sinus mit Edge-Blend und Plattformen, Krater als <strong>geometrische Subtraktion</strong> per quadrierter Distanz, Höhlen und Überhänge — und ein <strong>kontinuierlicher Turbo-Wind</strong>.",
+
+  "s1.h2": "Das Heightfield erzeugen: Summe von Sinus",
+  "s1.lead": "Die Oberfläche an jeder Stelle ist eine <b>Summe von Sinuskurven</b> unterschiedlicher Amplitude und Frequenz — große Hügel, mittlere Buckel, feine Details. Amplituden und Phasen ziehen wir aus dem geseedeten Generator.",
+  "s1.code.cap": "src/sim/terrain.js — generateHeights, der Kern",
+  "s1.p1": "Zwei Verfeinerungen machen das Gelände spielbar: flache <b>Plattformen</b> an beiden Rändern (worauf die Türme stehen) und ein <b>Edge-Blend</b>, der die Wellen sanft in die Plattform überführt, statt mit einer Kante anzustoßen.",
+  "s1.code2.cap": "src/sim/terrain.js — Plattformen &amp; Edge-Blend",
+  "s1.code2.c1": "// flache Turm-Plattform",
+  "s1.callout.nerd": "<b>Warum kein <code class=\"inline\">Math.sqrt</code>?</b> Weil <code class=\"inline\">d &lt; r</code> äquivalent zu <code class=\"inline\">d² &lt; r²</code> ist (beide positiv), und die Wurzel teuer. Dieser Trick, plus die AABB-Tests der Türme, halten die ganze maßgebliche Simulation wurzelfrei — ausführlich im <a href=\"annex-math.html\">Mathe-Anhang</a>.",
+
+  "s2.h2": "Höhlen &amp; Überhänge: pointSolid",
+  "s2.p1": "Festigkeit ist die Kombination zweier Bedingungen: unter der Oberfläche <b>und</b> in keinem Krater. Genau das ermöglicht Worms-artige <b>Höhlen</b> und <b>Überhänge</b> — ein Krater tief unter einem Buckel löst die Materie darunter, lässt die darüber aber stehen.",
+  "s2.code.cap": "src/sim/terrain.js — pointSolid",
+  "s2.code.c1": "// über dem Boden = Luft",
+  "s2.code.c2": "// fest, außer im Krater",
+  "s2.p2": "Subtil: Das Heightfield bleibt unverändert, wenn ein Krater darunter liegt — der Buckel „schwebt“ also korrekt. Würde man den Krater in die Höhen einrechnen, wären Überhänge unmöglich.",
+
+  "s2.xsec.title": "Fest minus Krater",
+  "s2.xsec.solid": "fest",
+  "s2.xsec.crater": "leer (Krater)",
+  "s2.xsec.overhang": "↑ Überhang, der „schwebt“",
+  "s2.xsec.cap": "Ein Krater unter dem Kamm lässt einen Überhang darüber stehen: derselbe einfache Test erzeugt eine reiche Topologie.",
+
+  "s3.h2": "Krater als geometrische Subtraktion",
+  "s3.p1": "Ein Einschlag fügt nur ein Tripel <code class=\"inline\">{ x, y, r }</code> hinzu. Die „Materie minus Krater“-Rechnung passiert beim Abfragen: Ein Punkt im Kreis ist subtrahiert. Der Test nutzt die <b>quadrierte Distanz</b> — keine Quadratwurzel.",
+  "s3.code.cap": "src/sim/terrain.js — inCrater per quadrierter Distanz",
+  "s3.p2": "Weil <code class=\"inline\">d &lt; r</code> äquivalent zu <code class=\"inline\">d² &lt; r²</code> ist, liefert der Vergleich von <code class=\"inline\">dx² + dy²</code> mit <code class=\"inline\">r²</code> dasselbe Urteil wie der Vergleich der Distanz mit <code class=\"inline\">r</code>, nur mit Multiplikationen. Das ist Pythagoras, von seiner Wurzel befreit.",
+  "s3.callout.nerd": "<b>Subtil.</b> Kein Mesh, keine booleschen Polygon-Operationen. Ein Höhen-Array plus eine Liste von Kreisen, abgefragt durch eine einzige boolesche Funktion, genügt, um Worms-artige Höhlen zu modellieren.",
+
+  "s4.h2": "Determinismus &amp; kompakter Zustand",
+  "s4.p1": "Heightfield und versteckter Jitter stammen aus dem <b>geseedeten RNG</b>, nie aus <code class=\"inline\">Math.random()</code>. Dadurch ist das Gelände eine reine Funktion des Seeds — der Snapshot trägt nur Seed plus Kraterliste, und jeder Bildschirm rekonstruiert exakt dieselbe Welt.",
+  "s4.code.cap": "src/sim/Simulation.js — das Gelände hängt nur am Seed",
+  "s4.code.c1": "// jeder Client baut identisch aus demselben Seed neu auf",
+  "s4.p2": "Die Krater folgen derselben Disziplin: Sie entstehen aus deterministischen Ereignissen (serverseitig aufgelöste Einschläge) und reisen als Liste im Snapshot. Gleicher Seed + gleiche Kraterliste ⇒ gleiches Gelände, Bit für Bit, überall.",
+  "s4.callout.tip": "<b>Gleiche Zahl, gleiche Welt.</b> Der RNG (<code class=\"inline\">mulberry32</code>) ist seedbar und deterministisch. <code class=\"inline\">Math.random()</code> aus der geteilten Erzeugung zu verbannen, garantiert, dass das Heightfield rekonstruiert statt übertragen werden kann.",
+
+  "s5.h2": "Kontinuierlicher Turbo-Wind",
+  "s5.p1": "Im Turbo-Modus „atmet“ der Wind. Alle <code class=\"inline\">WIND_KEY_SECONDS</code> (10 s) erzeugt der Server einen neuen Ziel-<b>Keypoint</b>; dazwischen gleitet der Basiswert per <b>smoothstep</b>. Eine leichte <b>Böenwelle</b>, deren Stärke aus der Match-eigenen <code class=\"inline\">gustiness</code> kommt, legt sich obendrauf.",
+  "s5.code.cap": "src/sim/Simulation.js — updateTurboWind",
+  "s5.code.c1": "// trägt den Überschuss, kein Sprung",
+  "s5.code.c2": "// neuer signierter Keypoint",
+  "s5.code.c3": "// smoothstep zwischen Keypoints",
+  "s5.p2": "Beim Überschreiten eines Keypoints wird der Überschuss <b>mitgenommen</b> (<code class=\"inline\">windClock -= WIND_KEY_SECONDS</code>), statt zurückzuspringen — der Wind macht keinen Sprung. Zwei überlagerte Sinus geben der Böe einen unregelmäßigen, lebendigen Rhythmus.",
+  "s5.callout.nerd": "<b>Merke dir.</b> Schnelle Mathematik heißt: das billigste Werkzeug wählen, das den Effekt liefert. Quadrate statt Wurzeln, ein Polynom statt teurer Kurven, ein Seed statt eines ganzen Terrains — alles deterministisch, alles geteilt. Mehr Zahlenmagie im <a href=\"annex-math.html\">Mathe-Anhang</a>.",
+
+  "s6.h2": "Ende des Profi-Wegs",
+  "s6.lead": "Du hast Tower Duel bis aufs Metall durchlaufen:",
+  "s6.p1": "eine <b>deterministische Schleife</b>, ein <b>Rendering ohne Assets</b>, ein <b>maßgebliches Protokoll</b> und ein <b>zerstörbares Gelände</b>, getragen von einer Handvoll gut gewählter Formeln. Überall dieselbe Disziplin: trennen, was sich ändert, von dem, was rechnet, und reproduzierbare Einfachheit bevorzugen.",
+  "s6.link": "Zum Mathe-Anhang →",
+
+  "footer.suffix": "Kapitel {n}/{total} · Profi-Niveau",
+
+  "pager.prev": "← Kapitel 3 · Netzwerkprotokoll",
+  "pager.next": "Das Ende 🎉"
+}

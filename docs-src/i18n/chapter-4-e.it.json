@@ -1,0 +1,62 @@
+{
+  "title": "Capitolo 4 (esperto) — Terreno distruttibile &amp; matematica veloce",
+  "meta.desc": "Livello esperto: la generazione dell'heightfield (somma di seni, edge blend, piattaforme), i crateri come sottrazione geometrica, grotte e sporgenze, il determinismo, il vento continuo turbo (smoothstep + raffiche) e un rimando alla matematica veloce.",
+
+  "hero.badge": "Esperto · Lotto 4 · Vulcano",
+  "hero.kicker": "Capitolo 4 · livello esperto",
+  "hero.title": "Terreno distruttibile &amp; matematica veloce",
+  "hero.lead": "Fin nel dettaglio: la generazione dell'<strong>heightfield</strong> (somma di seni, fusione dei bordi, piattaforme), i crateri come <strong>sottrazione geometrica</strong>, grotte e sporgenze, il determinismo, e il <strong>vento continuo</strong> del turbo — con un rimando alla matematica veloce.",
+
+  "s1.h2": "Generare l'heightfield: una somma di seni",
+  "s1.lead": "La superficie è una <code class=\"inline\">Float32Array</code> di una altezza per colonna. La si costruisce sommando alcune <b>onde sinusoidali</b> di ampiezza, frequenza e fase casuali (un Perlin del povero), poi modellandone i bordi.",
+  "s1.code.cap": "src/sim/terrain.js — somma di onde, bordi piatti, edge blend",
+  "s1.p1": "Le <b>piattaforme</b> alle due estremità (dove poggiano le torri) sono forzate piatte, e l'<code class=\"inline\">edgeBlend</code> raccorda dolcemente le colline alle piattaforme, evitando gradini bruschi.",
+  "s1.code2.cap": "src/sim/terrain.js — piattaforme piatte + fusione dei bordi",
+  "s1.code2.c1": "// piattaforma piatta per la torre",
+  "s1.callout.nerd": "<b>Per i curiosi.</b> Tre frequenze stratificate danno colline larghe + dettaglio fine senza il costo di un vero rumore di Perlin. La <code class=\"inline\">roughness</code> per-bioma scala tutte le ampiezze: il vulcano (1.4) è più frastagliato della tundra (0.85).",
+
+  "s2.h2": "Grotte e sporgenze: solido = sotto la superficie meno i crateri",
+  "s2.p1": "La solidità di un punto combina due test: è <b>sotto la superficie</b> dell'heightfield <em>e</em> <b>fuori da ogni cratere</b>. Poiché un cratere scavato sotto la superficie lascia intatto il materiale sopra di sé, nascono naturalmente <b>grotte</b> e <b>sporgenze</b>.",
+  "s2.code.cap": "src/sim/terrain.js — pointSolid: due condizioni",
+  "s2.code.c1": "// sopra il suolo = aria",
+  "s2.code.c2": "// solido, salvo crateri",
+  "s2.p2": "Poiché la condizione di superficie e quella di cratere sono <b>indipendenti</b>, un cratere interamente sotto la superficie lascia intatta la materia sopra: si ottengono gratuitamente grotte e sporgenze, esattamente il comportamento «Worms» senza alcuna logica dedicata.",
+
+  "s2.xsec.title": "Solido meno crateri",
+  "s2.xsec.solid": "solido",
+  "s2.xsec.crater": "vuoto (cratere)",
+  "s2.xsec.overhang": "↑ sporgenza che “galleggia”",
+  "s2.xsec.cap": "Un cratere sotto la cresta lascia una sporgenza sopra: lo stesso semplice test produce una topologia ricca.",
+
+  "s3.h2": "Il cratere: una sottrazione via distanza al quadrato",
+  "s3.p1": "Distruggere il terreno non cancella pixel: aggiunge un <b>disco</b> (centro + raggio) alla lista dei crateri. Verificare se un punto è scavato è un test di appartenenza al cerchio — e lo si fa <b>senza radice quadrata</b>, confrontando le distanze al quadrato.",
+  "s3.code.cap": "src/sim/terrain.js — inCrater: dx²+dy² ≤ r²",
+  "s3.p2": "Confrontare <code class=\"inline\">dx*dx + dy*dy</code> con <code class=\"inline\">c.r*c.r</code> evita la <code class=\"inline\">Math.sqrt</code> perché la radice è monotòna: se i quadrati ordinano correttamente le distanze, basta confrontare i quadrati. È l'astuzia centrale spiegata nell'<a href=\"annex-math.html\">appendice di Matematica veloce</a>.",
+  "s3.callout.nerd": "<b>Per i curiosi.</b> Niente mesh, niente operazioni booleane su poligoni. Un array di altezze più una lista di dischi, interrogati da un'unica funzione booleana, bastano a modellare grotte in stile Worms.",
+
+  "s4.h2": "Determinismo: lo stato è una ricetta",
+  "s4.p1": "Il terreno è una <b>pura funzione del seme</b>, e i crateri sono una lista compatta. Lo stato condiviso è dunque <em>seme + lista di crateri</em> — la <b>ricetta</b>, non il risultato. Stesso seme ⇒ stessa superficie su server e client, bit per bit.",
+  "s4.code.cap": "src/sim/Simulation.js — un cratere è solo qualche numero",
+  "s4.code.c1": "// ogni client rigenera identico dallo stesso seme",
+  "s4.p2": "I crateri seguono la stessa disciplina: nascono da eventi deterministici (impatti risolti lato server) e viaggiano nello snapshot come lista. Stesso seme + stessa lista di crateri ⇒ stesso terreno, bit per bit, ovunque.",
+  "s4.callout.tip": "<b>Da ricordare.</b> Trasmettere la ricetta deterministica costa pochissimo e garantisce che tutti vedano lo stesso mondo — la stessa idea della rete del capitolo 3, applicata al terreno.",
+
+  "s5.h2": "Vento continuo turbo: smoothstep + onda di raffiche",
+  "s5.p1": "In turbo il vento non «scatta» a ogni turno: scorre con continuità. Ogni 10 secondi si genera un nuovo <b>keypoint</b> casuale, e il vento ci scivola dolcemente con uno <b>smoothstep</b>. Sopra, un'<b>onda di raffiche</b> fatta di seni — modulata da una <code class=\"inline\">gustiness</code> sorteggiata a inizio partita — fa «respirare» la brezza.",
+  "s5.code.cap": "src/sim/Simulation.js — updateTurboWind",
+  "s5.code.c1": "// trascina l'eccedenza, niente scatto",
+  "s5.code.c2": "// nuovo keypoint",
+  "s5.code.c3": "// smoothstep fra due keypoint",
+  "s5.p2": "Lo smoothstep <code class=\"inline\">t·t·(3 − 2t)</code> dà un'accelerazione/decelerazione naturale con tre moltiplicazioni e una sottrazione — nessun seno per la curva a S di base. Due seni a frequenze diverse, sommati, evitano una raffica troppo periodica. Il <code class=\"inline\">clamp</code> finale tiene il valore entro <code class=\"inline\">±MAX_WIND</code> (per questo il keypoint resta sotto l'80%, lasciando margine alle raffiche).",
+  "s5.callout.nerd": "<b>Per i curiosi.</b> Questa è la filosofia di tutto il gioco: il calcolo più semplice che dia l'effetto voluto. Smoothstep invece della trigonometria, distanze al quadrato invece della radice, AABB invece di un cerchio. L'<a href=\"annex-math.html\">appendice di Matematica veloce</a> raccoglie tutte queste astuzie in un posto solo — con un piccolo gioco interattivo.",
+
+  "s6.h2": "La morale del Lotto 4",
+  "s6.lead": "Hai percorso Tower Duel fino al metallo:",
+  "s6.p1": "Un terreno distruttibile, deterministico e leggerissimo da trasmettere nasce da rappresentazioni ben scelte e da matematica volutamente <b>economica</b>: distanze al quadrato invece della radice, un polinomio invece di curve costose, un seme invece di un intero terreno.",
+  "s6.link": "Apri l'appendice di Matematica veloce →",
+
+  "footer.suffix": "capitolo {n}/{total} · livello esperto",
+
+  "pager.prev": "← Capitolo 3 · Protocollo di rete &amp; coerenza",
+  "pager.next": "Appendice · Matematica veloce →"
+}

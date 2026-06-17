@@ -1,0 +1,57 @@
+{
+  "title": "Chapter 3 (intermediate) — Real-time client/server",
+  "meta.desc": "Intermediate level: the authoritative server and rooms, the protocol of intents vs snapshots, the shared Phaser-free simulation, hidden information, spectator queue and seat takeover, and return-to-lobby.",
+
+  "hero.badge": "Intermediate · Batch 3 · Tundra",
+  "hero.kicker": "Chapter 3 · intermediate level",
+  "hero.title": "Real-time client/server",
+  "hero.lead": "One screen becomes many: a TV, two phones, a referee. We look at the <strong>authoritative server</strong>, the <strong>intents/snapshots</strong> protocol, the <strong>shared simulation</strong>, and the small choreography of seats, spectators and disconnects.",
+
+  "s1.h2": "One authority, many rooms",
+  "s1.lead": "The match is computed in exactly one place: the <b>server</b>. Each game lives in a <code class=\"inline\">Room</code> — two player slots, a waiting queue, any number of TV spectators, and one authoritative simulation.",
+  "s1.code.cap": "server/Room.js — the room's state",
+  "s1.code.c1": "// ~30 Hz: both the sim step AND the broadcast rate",
+  "s1.code.c2": "// the two seats",
+  "s1.code.c3": "// queue: spectate until a seat frees",
+  "s1.code.c4": "// passive viewers",
+  "s1.code.c5": "// the authoritative simulation",
+  "s1.p1": "The server (<code class=\"inline\">server/index.js</code>) only <b>routes</b> WebSocket messages to the right room: <code class=\"inline\">host</code> creates a room, <code class=\"inline\">join</code> places a participant in it, and everything else (<code class=\"inline\">aim</code>, <code class=\"inline\">ready</code>, <code class=\"inline\">shell</code>…) is routed to the room's methods. No game logic lives in the network layer.",
+  "s1.callout": "<b>One source of truth.</b> If each device ran its own match, they'd drift apart (a ball here, not there). The room is the single referee — the screens can only <em>display</em> what it decides.",
+
+  "s2.h2": "The protocol: intents up, snapshots down",
+  "s2.p1": "The two directions of the WebSocket carry very different things. Phones send small <b>intents</b>; the server broadcasts a full game <b>snapshot</b> about 30 times per second.",
+  "s2.fig.alt": "Intents up, snapshots down",
+  "s2.fig.ctrl1": "📱 Controller",
+  "s2.fig.ctrl2": "📱 Controller",
+  "s2.fig.server": "🧑‍⚖️ Server",
+  "s2.fig.viewers": "📺 TV",
+  "s2.fig.intents": "aim / ready (intents)",
+  "s2.fig.snapshots": "snapshot ~30 Hz",
+  "s2.fig.cap": "Phones send tiny orders; the server sends the whole state back to every screen.",
+  "s2.p2": "Each tick, the room advances the simulation by a fixed step, collects the events that occurred, then broadcasts the snapshot to every subscriber of the room:",
+  "s2.code.cap": "server/Room.js — one loop turn",
+
+  "s3.h2": "The same simulation on every machine",
+  "s3.p1": "The server runs under Node, with no browser or canvas. It can still compute the physics because all the logic lives in <code class=\"inline\">src/sim/</code>, in pure JavaScript. The server <b>imports the same file</b> as the clients:",
+  "s3.code.cap": "server/Room.js — the server runs src/sim/",
+  "s3.p2": "That's the payoff of chapter 1's architecture decision: the same physics runs on the server (the judge) and stays testable under Node. Nobody rewrites the trajectories “for the network”.",
+  "s3.snapomit.cap": "src/sim/Simulation.js — what a snapshot ships",
+  "s3.snapomit.c1": "// the spectator TV never gets the players' chosen aim values shown;",
+  "s3.snapomit.c2": "// only ready flags, and — once fired — the resulting projectiles.",
+  "s3.callout.nerd": "<b>Hidden information.</b> The snapshot <b>does not contain</b> the players' angle or power while aiming — those numbers are never shown on the TV. Only the “ready” flags and, once a shot is fired, the projectiles are broadcast. The information asymmetry is <em>in the protocol</em>.",
+
+  "s4.h2": "Seats, queue and leaving",
+  "s4.p1": "A room is alive: people arrive, leave, take over. The room handles these transitions without breaking the match. An arriving participant takes a free seat, otherwise they join the <b>queue</b> as a spectator.",
+  "s4.code1.cap": "server/Room.js — free seat or waiting queue",
+  "s4.code1.c1": "/* player */",
+  "s4.code1.c2": "/* spectator in queue */",
+  "s4.p2": "When a player frees their seat (voluntary leave or disconnect), the front of the queue <b>takes over</b> (<code class=\"inline\">promoteInto</code>). And if no one fills both seats mid-match, the room <b>returns to the lobby</b>: the TV shows the code and QR again.",
+  "s4.code2.cap": "server/Room.js — back to the lobby if a seat stays empty",
+  "s4.code2.c1": "// a waiting spectator takes the seat",
+  "s4.callout": "<b>Remember.</b> The network is also all the “unhappy” cases: leaves, reconnects, seats freeing up. Centralising this state in a single <code class=\"inline\">Room</code> object makes these transitions readable and testable.",
+
+  "footer.suffix": "chapter {n}/{total} · intermediate level",
+
+  "pager.prev": "← Chapter 2 · Data &amp; rendering",
+  "pager.next": "Chapter 4 · Destructible terrain &amp; shared state →"
+}

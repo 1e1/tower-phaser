@@ -1,0 +1,50 @@
+{
+  "title": "Chapitre 2 (intermédiaire) — Données, rendu &amp; synthèse",
+  "meta.desc": "Niveau intermédiaire : des biomes pilotés par les données, un module de rendu partagé entre la TV et la manette, des textures et des sons générés au runtime, la profondeur par depth/scrollFactor et les paliers de qualité.",
+
+  "hero.badge": "Intermédiaire · Lot 2 · Désert",
+  "hero.kicker": "Chapitre 2 · niveau intermédiaire",
+  "hero.title": "Données, rendu &amp; synthèse",
+  "hero.lead": "Le Lot 2 habille le jeu. Vu côté architecture, c'est surtout une leçon de <strong>séparation</strong> : des biomes <strong>pilotés par les données</strong>, un rendu <strong>partagé</strong> entre la TV et la manette, et des assets <strong>fabriqués au runtime</strong> plutôt que livrés en fichiers.",
+
+  "s1.h2": "Le biome est une donnée, pas du code",
+  "s1.lead": "Quatre ambiances, mais un seul moteur de rendu. Le secret : chaque biome est une <b>fiche déclarative</b> dans <code class=\"inline\">src/config/biomes.js</code>. Le code lit la fiche ; il ne contient aucun « si désert, peindre en jaune ».",
+  "s1.code.cap": "src/config/biomes.js — un biome décrit ce qu'il est, pas comment le dessiner",
+  "s1.code.c1": "// dégradé du ciel",
+  "s1.code.c2": "// deux crêtes de parallaxe",
+  "s1.code.c3": "// particules de fond",
+  "s1.code.c4": "// influence le relief du terrain",
+  "s1.p1": "Ajouter un cinquième biome ne demande pas de toucher au rendu : on écrit une nouvelle fiche. C'est le principe du <b>data-driven</b> — déplacer la variété <em>hors</em> du code, dans des données que l'on peut relire, comparer, et même générer.",
+  "s1.callout.tip": "<b>À retenir.</b> Quand une décision « change tout le temps » (couleurs, réglages, thèmes), on la sort du code. Le code devient un <b>interpréteur</b> stable ; les données portent la diversité.",
+
+  "s2.h2": "Un rendu agnostique, partagé par deux mondes",
+  "s2.p1": "Le canon doit s'afficher <b>à l'identique</b> sur la TV (rendue par Phaser) et dans le mini-aperçu du téléphone (un simple <code class=\"inline\">canvas</code>). Plutôt que de coder deux fois la même chose, on isole les calculs visuels dans un module <b>sans dépendance graphique</b> : <code class=\"inline\">src/render/visuals.js</code>.",
+  "s2.code.cap": "src/render/visuals.js — des fonctions pures, réutilisables partout",
+  "s2.code.c1": "// la couleur du canon : acier froid à faible puissance, rouge incandescent à fond",
+  "s2.code.c2": "// interpolation linéaire (lerp) entre les deux teintes…",
+  "s2.p2": "Ce module ne connaît ni Phaser, ni le DOM : il rend des <b>nombres</b> (couleurs, points de géométrie). Chaque vue les dessine avec sa propre technologie. C'est exactement la même philosophie que « simulation ≠ rendu » du chapitre 1, appliquée cette fois <em>à l'intérieur</em> du rendu.",
+  "s2.callout.nerd": "<b>Pour les curieux.</b> <code class=\"inline\">computeWindsock()</code> calcule la géométrie animée de la manche à air — segments rayés qui s'allongent, s'orientent sous le vent et ondulent dans le temps. Elle renvoie une liste de quadrilatères ; libre à chaque vue de les peindre.",
+
+  "s3.h2": "Zéro asset : textures et sons fabriqués au runtime",
+  "s3.p1": "Le projet ne livre <b>aucune image ni aucun fichier son</b>. Tout est synthétisé au démarrage ou à la volée. Les textures de particules sont dessinées une fois au boot, puis réutilisées teintées.",
+  "s3.code.cap": "src/systems/textures.js — une étincelle dessinée une seule fois",
+  "s3.code.c1": "// réutilisée pour neige, braises, débris",
+  "s3.code2.cap": "src/systems/Sfx.js — le « boum » du canon, 100 % code",
+  "s3.code2.c1": "// descend",
+  "s3.p2": "Côté audio, <code class=\"inline\">src/systems/Sfx.js</code> fabrique chaque effet avec Web Audio : un peu de bruit filtré et un volume qui s'éteint donnent une explosion ; un oscillateur descendant donne le « boum » du canon. Aucun téléchargement, aucun cache à gérer.",
+  "s3.callout.audiogate": "<b>Le verrou du navigateur.</b> Les navigateurs démarrent le contexte audio <em>suspendu</em> ; il ne peut reprendre qu'après un geste de l'utilisateur. C'est pourquoi <code class=\"inline\">Sfx.unlock()</code> s'exécute au premier appui/clic — sans lui, les premiers sons ne joueraient jamais, sans le moindre message.",
+  "s3.callout.tip": "<b>À retenir.</b> Un bundle « sans assets » est minuscule, se met en cache trivialement, et ne souffre d'aucun chargement bloquant. Le coût se déplace vers le <b>CPU au runtime</b> — un compromis qu'on assume (voir la section suivante).",
+
+  "s4.h2": "Profondeur et paliers de qualité",
+  "s4.p1": "La parallaxe n'est pas un effet « à part » : elle tombe naturellement de deux propriétés que chaque couche déclare — sa <b>profondeur</b> (<code class=\"inline\">depth</code>, l'ordre d'empilement) et son <b>facteur de défilement</b> (<code class=\"inline\">scrollFactor</code> &lt; 1, pour glisser plus lentement que le premier plan).",
+  "s4.code.cap": "src/objects/Background.js — les crêtes lointaines défilent moins vite",
+  "s4.p2": "Mais une TV bas de gamme peut peiner sous la charge de particules. Au démarrage, un court <b>benchmark</b> mesure le débit d'images et range l'appareil dans un palier (<code class=\"inline\">'lite'</code> ou <code class=\"inline\">'full'</code>). Le rendu s'adapte ensuite : moins de nuages, et la couche de particules — la plus coûteuse — est purement supprimée.",
+  "s4.code2.cap": "src/systems/benchmark.js — un palier décidé au boot",
+  "s4.code2.c1": "// le renderer lira ce palier",
+  "s4.callout.nerd": "<b>Pour les curieux.</b> Le benchmark cible le <b>rendu</b>, pas la simulation (triviale ici). Il échantillonne <code class=\"inline\">postupdate</code> pendant ~900 ms, puis se désabonne — on ne paie la mesure qu'une fois.",
+
+  "footer.suffix": "chapitre {n}/{total} · niveau intermédiaire",
+
+  "pager.prev": "← Chapitre 1 · L'architecture d'un jeu",
+  "pager.next": "Chapitre 3 · Client/serveur temps réel →"
+}

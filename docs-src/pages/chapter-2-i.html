@@ -1,0 +1,92 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#d9a441"/>
+        <path d="M0,95 C260,60 520,115 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#9c6f25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre>{
+  id: <span class="s">'desert'</span>,
+  sky: [<span class="s">0xf6b66b</span>, <span class="s">0xfde9c8</span>],        <span class="c">{{s1.code.c1}}</span>
+  terrain: { fill: <span class="s">0xd9a441</span>, edge: <span class="s">0xf0cd7a</span>, dark: <span class="s">0x9c6f25</span> },
+  mountains: [<span class="s">0xd8a566</span>, <span class="s">0xc28a4a</span>], <span class="c">{{s1.code.c2}}</span>
+  ambient: <span class="s">'sand'</span>, ambientColor: <span class="s">0xe9cf9a</span>, <span class="c">{{s1.code.c3}}</span>
+  roughness: <span class="s">1.25</span>,                  <span class="c">{{s1.code.c4}}</span>
+}</pre>
+        </figure>
+        <p>{{s1.p1}}</p>
+        <div class="callout tip">{{s1.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s2.code.cap}}</figcaption>
+<pre><span class="c">{{s2.code.c1}}</span>
+<span class="k">export function</span> <span class="f">barrelColor</span>(power) {
+  <span class="k">const</span> t = <span class="f">powerRatio</span>(power);
+  <span class="k">const</span> base = { r: <span class="s">0xd7</span>, g: <span class="s">0xdd</span>, b: <span class="s">0xe8</span> };
+  <span class="k">const</span> hot  = { r: <span class="s">0xff</span>, g: <span class="s">0x3b</span>, b: <span class="s">0x2f</span> };
+  <span class="c">{{s2.code.c2}}</span>
+}</pre>
+        </figure>
+        <p>{{s2.p2}}</p>
+        <div class="callout nerd">{{s2.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code.cap}}</figcaption>
+<pre><span class="k">let</span> g = <span class="f">make</span>();
+g.<span class="f">fillStyle</span>(<span class="s">0xffffff</span>, <span class="s">1</span>);
+g.<span class="f">fillCircle</span>(<span class="s">5</span>, <span class="s">5</span>, <span class="s">5</span>);
+g.<span class="f">generateTexture</span>(<span class="s">'spark'</span>, <span class="s">10</span>, <span class="s">10</span>); <span class="c">{{s3.code.c1}}</span></pre>
+        </figure>
+        <p>{{s3.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code2.cap}}</figcaption>
+<pre><span class="k">const</span> osc = ctx.<span class="f">createOscillator</span>();
+osc.type = <span class="s">'sine'</span>;
+osc.frequency.<span class="f">setValueAtTime</span>(<span class="s">160</span>, now);
+osc.frequency.<span class="f">exponentialRampToValueAtTime</span>(<span class="s">50</span>, now + <span class="s">0.25</span>); <span class="c">{{s3.code2.c1}}</span></pre>
+        </figure>
+        <div class="callout warn">{{s3.callout.audiogate}}</div>
+        <div class="callout tip">{{s3.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code.cap}}</figcaption>
+<pre>this.<span class="f">ridge</span>(far,  GAME_HEIGHT * <span class="s">0.62</span>, <span class="s">70</span>, DEPTH.mountainFar,  <span class="s">0.25</span>);
+this.<span class="f">ridge</span>(near, GAME_HEIGHT * <span class="s">0.72</span>, <span class="s">50</span>, DEPTH.mountainNear, <span class="s">0.45</span>);</pre>
+        </figure>
+        <p>{{s4.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code2.cap}}</figcaption>
+<pre><span class="k">const</span> fps = <span class="s">1000</span> / avg;
+<span class="k">const</span> tier = fps &lt; LITE_FPS_THRESHOLD ? <span class="s">'lite'</span> : <span class="s">'full'</span>;
+scene.registry.<span class="f">set</span>(<span class="s">'quality'</span>, tier); <span class="c">{{s4.code2.c1}}</span></pre>
+        </figure>
+        <div class="callout nerd">{{s4.callout.nerd}}</div>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-1-i.html">{{pager.prev}}</a>
+        <a href="chapter-3-i.html">{{pager.next}}</a>
+      </div>
+    </main>

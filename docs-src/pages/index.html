@@ -1,0 +1,139 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,20 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>
+        <path d="M0,95 C260,55 520,120 760,90 C1020,58 1240,120 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">?</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <p>{{s1.p1}}</p>
+        <ul class="clean">
+          <li>{{s1.li1}}</li>
+          <li>{{s1.li2}}</li>
+          <li>{{s1.li3}}</li>
+        </ul>
+        <p>{{s1.p2}}</p>
+
+        <figure class="diagram" aria-label="{{s1.fig.alt}}">
+          <svg viewBox="0 0 760 200" width="760" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <rect x="20" y="60" width="150" height="80" rx="12" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+            <text x="95" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">HTML + CSS</text>
+            <text x="95" y="118" text-anchor="middle" font-size="13" fill="#5b5470">{{s1.fig.page}}</text>
+
+            <rect x="220" y="60" width="150" height="80" rx="12" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+            <text x="295" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">JavaScript</text>
+            <text x="295" y="118" text-anchor="middle" font-size="13" fill="#5b5470">+ Phaser</text>
+
+            <rect x="430" y="40" width="150" height="120" rx="12" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+            <text x="505" y="32" text-anchor="middle" font-size="13" fill="#5b5470">&lt;canvas&gt;</text>
+            <circle cx="470" cy="100" r="12" fill="#4f8fff"/>
+            <circle cx="540" cy="115" r="12" fill="#ff6b5e"/>
+            <path d="M430,140 Q505,110 580,135 L580,160 L430,160 Z" fill="#4f8f2f"/>
+
+            <rect x="630" y="60" width="110" height="80" rx="12" fill="#fff3d6" stroke="#c07d22" stroke-width="2"/>
+            <text x="685" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">{{s1.fig.you}}</text>
+            <text x="685" y="118" text-anchor="middle" font-size="13" fill="#5b5470">{{s1.fig.youPlay}}</text>
+
+            <g stroke="#5b5470" stroke-width="2" fill="none" marker-end="url(#arrow)">
+              <path d="M170,100 L218,100"/>
+              <path d="M370,100 L428,100"/>
+              <path d="M580,100 L628,100"/>
+            </g>
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L7,3 L0,6 Z" fill="#5b5470"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption>{{s1.fig.cap}}</figcaption>
+        </figure>
+
+        <div class="callout tip">{{s1.callout}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">★</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <p>{{s2.p2}}</p>
+
+        <div class="chapters" id="chapters">
+          <a class="chap-card meadow" href="chapter-1.html">
+            <div class="lot">{{s2.c1.lot}}</div>
+            <h3>{{s2.c1.title}}</h3>
+            <p>{{s2.c1.desc}}</p>
+          </a>
+          <a class="chap-card desert" href="chapter-2.html">
+            <div class="lot">{{s2.c2.lot}}</div>
+            <h3>{{s2.c2.title}}</h3>
+            <p>{{s2.c2.desc}}</p>
+          </a>
+          <a class="chap-card tundra" href="chapter-3.html">
+            <div class="lot">{{s2.c3.lot}}</div>
+            <h3>{{s2.c3.title}}</h3>
+            <p>{{s2.c3.desc}}</p>
+          </a>
+          <a class="chap-card volcano" href="chapter-4.html">
+            <div class="lot">{{s2.c4.lot}}</div>
+            <h3>{{s2.c4.title}}</h3>
+            <p>{{s2.c4.desc}}</p>
+          </a>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">↑</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <div class="levelpick">
+          <a class="lvl-card" href="chapter-1.html">
+            <div class="tag">{{s3.l1.tag}}</div>
+            <h3>{{s3.l1.title}}</h3>
+            <p>{{s3.l1.desc}}</p>
+          </a>
+          <a class="lvl-card" href="chapter-1-i.html">
+            <div class="tag">{{s3.l2.tag}}</div>
+            <h3>{{s3.l2.title}}</h3>
+            <p>{{s3.l2.desc}}</p>
+          </a>
+          <a class="lvl-card" href="chapter-1-e.html">
+            <div class="tag">{{s3.l3.tag}}</div>
+            <h3>{{s3.l3.title}}</h3>
+            <p>{{s3.l3.desc}}</p>
+          </a>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">i</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <div class="callout tip">{{s4.callout.tip}}</div>
+        <div class="callout try">{{s4.callout.try}}</div>
+        <div class="callout nerd">{{s4.callout.nerd}}</div>
+        <p>{{s4.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code.cap}}</figcaption>
+<pre><span class="c">{{s4.code.c1}}</span>
+<span class="k">if</span> (tower1.<span class="f">ready</span> &amp;&amp; tower2.<span class="f">ready</span>) {
+  <span class="f">fire</span>();
+}</pre>
+        </figure>
+        <p style="text-align:center; margin-top:26px;"><a class="pill" href="chapter-1.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">{{s4.cta}}</a></p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">📎</span>{{s5.h2}}</h2>
+        <p>{{s5.p1}}</p>
+        <ul class="clean">
+          <li>⚙️ <a href="annex-deploy.html"><b>{{s5.li1.label}}</b></a>{{s5.li1.desc}}</li>
+          <li>🧮 <a href="annex-math.html"><b>{{s5.li2.label}}</b></a>{{s5.li2.desc}}</li>
+          <li>📝 <a href="annex-brief.html"><b>{{s5.li3.label}}</b></a>{{s5.li3.desc}}</li>
+        </ul>
+        <p style="text-align:center; margin-top:20px;"><a class="pill" href="annex.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">{{s5.cta}}</a></p>
+      </section>
+    </main>

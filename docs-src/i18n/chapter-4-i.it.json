@@ -1,0 +1,51 @@
+{
+  "title": "Capitolo 4 (intermedio) — Terreno distruttibile &amp; stato condiviso",
+  "meta.desc": "Livello intermedio: heightfield e crateri, il determinismo tramite seme, la solidità di un punto via distanza al quadrato, lo snapshot compatto e l'anteprima del vento continuo della modalità turbo.",
+
+  "hero.badge": "Intermedio · Lotto 4 · Vulcano",
+  "hero.kicker": "Capitolo 4 · livello intermedio",
+  "hero.title": "Terreno distruttibile &amp; stato condiviso",
+  "hero.lead": "Ogni colpo scava il paesaggio. Vediamo come si modella un terreno <strong>distruttibile</strong> con un heightfield e dei crateri, perché resta <strong>deterministico</strong>, e come lo si trasmette in pochi byte — più un assaggio del <strong>vento continuo</strong> della modalità turbo.",
+
+  "s1.h2": "Il terreno è un campo di altezze",
+  "s1.lead": "Il suolo non è un'immagine: è un <b>heightfield</b>, ossia un'altezza memorizzata per ogni colonna di pixel. Una semplice tabella di numeri descrive l'intera superficie.",
+  "s1.code.cap": "src/sim/terrain.js — un'altezza per colonna",
+  "s1.code.c1": "// generatore con seme",
+  "s1.code.c2": "// …somma di onde + bordi piatti per le piattaforme",
+  "s1.p1": "Sapere se un punto è dentro la roccia è quindi banale: basta confrontare la sua altezza con quella memorizzata per quella colonna. Niente immagini da leggere pixel per pixel.",
+  "s1.callout.tip": "<b>Da ricordare.</b> Scegliere la <b>rappresentazione</b> giusta semplifica tutto il resto. Una tabella di altezze rende il terreno facile da generare, da testare e da trasmettere.",
+
+  "s2.h2": "Un cratere è una sottrazione",
+  "s2.p1": "Quando un colpo tocca il suolo, non «cancelliamo» dei pixel: aggiungiamo un <b>cratere</b> alla lista, un semplice disco (centro + raggio). Un punto è solido se è sotto la superficie <em>e</em> fuori da tutti i crateri.",
+  "s2.code.cap": "src/sim/terrain.js — un punto è dentro un cratere?",
+  "s2.p2": "Notare il confronto fra <b>distanze al quadrato</b> (<code class=\"inline\">dx*dx + dy*dy &lt;= c.r*c.r</code>): nessuna radice quadrata. Poiché un cratere può stare interamente <b>sotto</b> la superficie, il materiale sopra «galleggia» → grotte e sporgenze, in stile Worms.",
+  "s2.callout.nerd": "<b>Per i curiosi.</b> Perché confrontare i quadrati invece della distanza reale? Perché la radice quadrata è costosa e qui inutile — è un'astuzia che l'<a href=\"annex-math.html\">appendice di Matematica</a> approfondisce.",
+
+  "s2.xsec.title": "Solido meno crateri",
+  "s2.xsec.solid": "solido",
+  "s2.xsec.crater": "vuoto (cratere)",
+  "s2.xsec.overhang": "↑ sporgenza che “galleggia”",
+  "s2.xsec.cap": "Solido = sotto la superficie <em>meno</em> i crateri. Un cratere sotto la superficie può lasciare materiale sopra: ecco grotte e sporgenze.",
+
+  "s3.h2": "Stesso seme, stesso mondo",
+  "s3.p1": "Server e TV devono disegnare <b>esattamente</b> lo stesso terreno. La soluzione: il terreno è una <b>pura funzione del seme</b>. Stesso seme ⇒ stessa sequenza di numeri casuali ⇒ stesso rilievo, bit per bit.",
+  "s3.code.cap": "src/sim/Simulation.js — il terreno nello snapshot: seme + crateri",
+  "s3.code.c1": "// il seme basta per rigenerare il suolo",
+  "s3.code.c2": "// [{ x, y, r }, …] — non centinaia di altezze",
+  "s3.code.c3": "// …torri, proiettili vivi, punteggi",
+  "s3.p2": "Questo è il motivo per cui lo snapshot trasporta <b>solo il seme</b>, non le centinaia di altezze. Ogni client rigenera il terreno identico da sé.",
+  "s3.code2.cap": "src/sim/Simulation.js — il terreno nasce da un seme",
+  "s3.callout.tip": "<b>Da ricordare.</b> Trasmettere la <em>ricetta</em> (seme + modifiche) invece del <em>risultato</em> (tutti i pixel) è un'idea ricorrente: economica sulla banda e garante di coerenza.",
+
+  "s4.h2": "Assaggio: il vento continuo del turbo",
+  "s4.p1": "In modalità classica il vento si estrae a caso una volta per turno. In <b>turbo</b> il vento diventa <b>continuo</b>: scivola dolcemente da un valore casuale al successivo, generato ogni 10 secondi, con un'onda di raffiche sovrapposta.",
+  "s4.code.cap": "src/sim/Simulation.js — interpolazione morbida fra due keypoint",
+  "s4.code.c1": "// smoothstep: dolce all'inizio e alla fine",
+  "s4.p2": "Sopra il «vento di base» si aggiunge un'onda di raffiche fatta di seni, la cui ampiezza dipende da un tratto proprio della partita (<code class=\"inline\">gustiness</code>). Risultato: un vento che deriva dolcemente fra i keypoint ma che «respira» invece di scivolare meccanicamente. Il livello esperto dettaglia la formula completa.",
+  "s4.callout.nerd": "<b>Per i curiosi.</b> Sopra il «vento di base» si aggiunge un'onda di raffiche fatta di seni, modulata da una <code class=\"inline\">gustiness</code> sorteggiata a inizio partita: 0 = brezza costante, 1 = burrasca. Tre moltiplicazioni e una sottrazione, niente trigonometria costosa per la curva a S — la matematica veloce torna nel livello esperto.",
+
+  "footer.suffix": "capitolo {n}/{total} · livello intermedio",
+
+  "pager.prev": "← Capitolo 3 · Client/server in tempo reale",
+  "pager.next": "Appendice →"
+}

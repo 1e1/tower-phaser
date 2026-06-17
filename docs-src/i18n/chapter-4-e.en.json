@@ -1,0 +1,62 @@
+{
+  "title": "Chapter 4 (expert) — Destructible terrain &amp; fast maths",
+  "meta.desc": "Expert level: heightfield generation (sum of sines, edge blend, platforms), craters as geometric subtraction via squared distance, caverns and overhangs, determinism, and turbo continuous wind (smoothstep + gust wave).",
+
+  "hero.badge": "Expert · Batch 4 · Volcano",
+  "hero.kicker": "Chapter 4 · expert level",
+  "hero.title": "Destructible terrain &amp; fast maths",
+  "hero.lead": "The deep end: generating a heightfield from a <strong>sum of sines</strong>, carving craters as <strong>geometric subtraction</strong>, building caverns from a one-line solidity rule, and the continuous turbo wind — all with cheap, deterministic maths.",
+
+  "s1.h2": "Heightfield generation: a sum of sines",
+  "s1.lead": "The surface is one height per column, built by adding three sine waves of decreasing amplitude and increasing frequency — large hills, then bumps, then fine detail. A seeded RNG picks the amplitudes, frequencies and phases.",
+  "s1.code.cap": "src/sim/terrain.js — generateHeights",
+  "s1.p1": "Two refinements make it playable: the ends are forced to flat <b>tower platforms</b>, and an <code class=\"inline\">edgeBlend</code> factor ramps the relief in from those platforms so hills never start with a cliff at the towers.",
+  "s1.code2.cap": "src/sim/terrain.js — platforms &amp; edge blend",
+  "s1.code2.c1": "// flat ground under each tower",
+  "s1.callout.nerd": "<b>For the curious.</b> The whole authoritative simulation is square-root-free: trajectories in additive steps, tower hits via axis-aligned boxes, craters via squared distance. The one surviving <code class=\"inline\">Math.sqrt</code> serves <em>feel</em> (the proximity whizz), not logic — the full story is in the <a href=\"annex-math.html\">maths annex</a>.",
+
+  "s2.h2": "Caverns &amp; overhangs from one rule",
+  "s2.p1": "Solidity is a single predicate: below the surface <b>and</b> in no crater. Because a crater can sit fully <em>under</em> a bump, the matter above stays solid — so caverns and overhangs emerge for free, no special case.",
+  "s2.code.cap": "src/sim/terrain.js — pointSolid",
+  "s2.code.c1": "// above ground = air",
+  "s2.code.c2": "// solid, minus craters",
+  "s2.p2": "The shell collision uses exactly this: a projectile dies and carves a crater the instant it reaches a solid point — and the same rule lets a later shell fly <em>through</em> the hollow it left behind.",
+
+  "s2.xsec.title": "Solid minus craters",
+  "s2.xsec.solid": "solid",
+  "s2.xsec.crater": "empty (crater)",
+  "s2.xsec.overhang": "↑ overhang that “floats”",
+  "s2.xsec.cap": "A crater under the ridge leaves an overhang above it: the same simple test produces a rich topology.",
+
+  "s3.h2": "Craters as geometric subtraction",
+  "s3.p1": "A crater is not painted into a bitmap. It's a <b>circle subtracted from solid space</b>, stored as <code class=\"inline\">{ x, y, r }</code>. “Is this point in a crater?” is the squared-distance test — monotonic, so no square root is needed.",
+  "s3.code.cap": "src/sim/terrain.js — inCrater (squared distance)",
+  "s3.p2": "Because the square root is monotonic, comparing <code class=\"inline\">dx² + dy²</code> with <code class=\"inline\">r²</code> gives exactly the same verdict as comparing the distance with <code class=\"inline\">r</code>, using only multiplications. It's Pythagoras, stripped of its root.",
+  "s3.callout.nerd": "<b>Emergent geometry.</b> No mesh, no boolean polygon ops. A height array plus a list of circles, queried by one boolean function, is enough to model Worms-style caves.",
+
+  "s4.h2": "Determinism: the seed is the terrain",
+  "s4.p1": "Generation is a pure function of the seed and the biome's roughness. The server rolls the seed, builds the heights, and ships only the seed — every client rebuilds the identical surface, so collisions resolved on the server land exactly where the TV drew the ground.",
+  "s4.code.cap": "src/sim/Simulation.js — newTerrain",
+  "s4.code.c1": "// fresh battlefield; only the seed crosses the wire",
+  "s4.p2": "And the craters? They follow the same discipline: born from deterministic events (impacts resolved server-side) and travelling in the snapshot as a list. Same seed + same crater list ⇒ same terrain, bit for bit, everywhere.",
+  "s4.callout.tip": "<b>Same number, same world.</b> The RNG (<code class=\"inline\">mulberry32</code>) is seedable and deterministic. Banishing <code class=\"inline\">Math.random()</code> from shared generation is what guarantees the heightfield can be reconstructed instead of transmitted.",
+
+  "s5.h2": "Turbo continuous wind: smoothstep + gust",
+  "s5.p1": "Turbo wind never snaps. It eases between random <b>keypoints</b> every 10 seconds with a <b>smoothstep</b> polynomial, and a two-sine <b>gust wave</b> (scaled by the match's rolled-once <code class=\"inline\">gustiness</code>) rides on top so the breeze breathes instead of gliding mechanically.",
+  "s5.code.cap": "src/sim/Simulation.js — updateTurboWind",
+  "s5.code.c1": "// carry the overshoot, no snap",
+  "s5.code.c2": "// fresh signed keypoint",
+  "s5.code.c3": "// smoothstep",
+  "s5.p2": "Keypoints are kept under 80% of the maximum so the gust has headroom before hitting the clamp — and the whole thing is just multiplications, additions and two sines: cheap enough to run every tick.",
+  "s5.callout.nerd": "<b>Remember.</b> Batch 4 is fast, deterministic maths end to end: terrain as a sum of sines, craters as squared-distance subtraction, caves from one boolean, the seed as the wire format, and wind eased by a polynomial. For the deeper why, see the <a href=\"annex-math.html\">maths annex</a>.",
+
+  "s6.h2": "End of the expert path",
+  "s6.lead": "You've gone through Tower Duel all the way to the metal:",
+  "s6.p1": "a <b>deterministic loop</b>, <b>asset-free rendering</b>, an <b>authoritative protocol</b>, and a <b>destructible terrain</b> held together by a handful of well-chosen formulas. Everywhere the same discipline: separate what changes from what computes, and prefer reproducible simplicity.",
+  "s6.link": "Open the maths annex →",
+
+  "footer.suffix": "chapter {n}/{total} · expert level",
+
+  "pager.prev": "← Chapter 3 · Network protocol",
+  "pager.next": "The end 🎉"
+}

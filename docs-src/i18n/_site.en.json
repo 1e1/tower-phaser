@@ -1,0 +1,14 @@
+{
+  "nav.home": "Home",
+  "nav.annex": "Annexes",
+  "nav.math": "Maths",
+  "nav.chapters": "Chapters",
+  "level.legend": "Level",
+  "level.d.label": "Discovery",
+  "level.d.sub": "start here",
+  "level.i.label": "Intermediate",
+  "level.i.sub": "the architecture",
+  "level.e.label": "Expert",
+  "level.e.sub": "in depth",
+  "footer.prefix": "Maker's notebook for <b>Tower Duel</b> · "
+}

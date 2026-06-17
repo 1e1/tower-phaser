@@ -1,0 +1,61 @@
+{
+  "title": "Capítulo 3 — Jugar en varias pantallas",
+
+  "hero.badge": "Fase 3 · Tundra",
+  "hero.kicker": "Capítulo 3",
+  "hero.title": "Jugar en varias pantallas",
+  "hero.lead": "La TV muestra la partida; los móviles hacen de mandos. Para que todos vean lo mismo al mismo tiempo, necesitamos un <b>árbitro</b>: el servidor.",
+
+  "s1.h2": "El problema",
+  "s1.lead": "Hasta ahora, todo ocurría en un solo ordenador. Ahora: una TV, dos móviles… tres dispositivos distintos que deben vivir <b>la misma partida</b>, perfectamente sincronizados.",
+  "s1.p1": "Si cada dispositivo calculara la partida por su cuenta, acabarían no poniéndose de acuerdo (una bala aquí, no allá…). Necesitamos <b>una única fuente de verdad</b>.",
+
+  "s2.h2": "El servidor es el árbitro",
+  "s2.p1": "Añadimos un programa que funciona “en el medio”: el <b>servidor</b>. Los dispositivos son <b>clientes</b>. El servidor es el único que <b>calcula</b> la partida (la física, las puntuaciones); los clientes solo <b>muestran</b> lo que él decide y le <b>envían las órdenes de los jugadores</b>.",
+  "s2.li1": "📱 Los móviles envían: “mi ángulo = 60°, confirmo”.",
+  "s2.li2": "🧑‍⚖️ El servidor calcula la salva, a quién le dan, la puntuación.",
+  "s2.li3": "📺 Todos reciben el <b>estado</b> del juego y lo muestran igual.",
+  "s2.callout": "<b>Recuerda.</b> “El árbitro siempre tiene razón”: como el servidor decide todo, las pantallas no pueden contradecirse entre sí — y hacer trampa es más difícil.",
+
+  "s3.h2": "Una línea telefónica que sigue abierta: el WebSocket",
+  "s3.p1": "Una página web clásica <b>pide</b> un dato, recibe una respuesta y luego cuelga. ¡Demasiado lento para un juego! Usamos un <b>WebSocket</b>: una línea que <b>se queda abierta</b> en ambos sentidos. El servidor puede “hablar” cuando quiera, ~30 veces por segundo.",
+  "s3.callout.try": "<b>¡Pruébalo!</b> Haz clic para lanzar una salva y observa cómo viajan los mensajes: las órdenes suben al árbitro y luego el estado vuelve a bajar a cada pantalla.",
+  "s3.sim.title": "La danza de los mensajes",
+  "s3.sim.play": "▶️ Lanzar una salva",
+  "s3.sim.hint": "Azul/rojo: las órdenes de los jugadores. Verde: el estado del juego devuelto a todos.",
+
+  "s4.h2": "El mismo paisaje en todas partes, sin enviarlo entero",
+  "s4.p1": "El terreno puede tener miles de puntos: demasiado grande para enviarlo. El truco: el servidor solo envía una pequeña <b>semilla</b> aleatoria (un número). Cada pantalla <b>recalcula</b> el mismo paisaje a partir de esa semilla (¡recuerda el generador del capítulo 2!).",
+  "s4.code.cap": "la idea de compartir por semilla",
+  "s4.code.c1": "// el servidor solo envía:",
+  "s4.code.c2": "// cada pantalla hace:",
+  "s4.code.c3": "// → ¡idéntico en todas partes!",
+
+  "s5.h2": "Unirse a una partida: código de sala &amp; QR",
+  "s5.p1": "La TV crea una <b>sala</b> y muestra un <b>código de 4 letras</b> y un <b>código QR</b>. Los móviles escanean el QR: aterrizan directamente en la partida correcta. ¡Práctico!",
+  "s5.fig.alt": "Conectarse a través de una sala",
+  "s5.fig.tv": "📺 TV",
+  "s5.fig.scan1": "📱 escanea → Jugador 1",
+  "s5.fig.scan2": "📱 escanea → Jugador 2",
+  "s5.fig.cap": "La TV muestra el código &amp; el QR; dos móviles se unen como jugadores.",
+  "s5.callout.nerd": "<b>Para los curiosos.</b> El QR debe apuntar a la <b>dirección de red local</b> de la TV (algo como <code class=\"inline\">192.168.1.20</code>), no a “localhost” (que significa “yo mismo”). ¡Si no, el móvil se buscaría a sí mismo! El servidor encuentra la dirección correcta por su cuenta.",
+
+  "s6.h2": "¿Quién hace qué? La TV se gestiona sola",
+  "s6.li1": "📺 Una <b>TV</b> detectada arranca de inmediato en modo “anfitrión”: no hace falta mando.",
+  "s6.li2": "🟢 La partida <b>empieza sola</b> en cuanto se ha unido el 2.º jugador.",
+  "s6.li3": "🧑‍🤝‍🧑 ¿Jugadores de más? <b>Observan</b> mientras esperan a que se libere un puesto, y luego toman el relevo.",
+  "s6.callout": "<b>Recuerda.</b> Fase 3 = pasar de un juego “en una pantalla” a un juego “en red”, sin reescribirlo todo: solo movimos el cálculo al árbitro.",
+
+  "footer.suffix": "capítulo {n}/{total}",
+
+  "pager.prev": "← Capítulo 2",
+  "pager.next": "Capítulo 4 · Destruir el paisaje →",
+
+  "sim.node.p1": "📱 P1",
+  "sim.node.p2": "📱 P2",
+  "sim.node.sv": "🧑‍⚖️ Servidor",
+  "sim.node.tv": "📺 TV",
+  "sim.msg.aim": "ángulo/confirmar",
+  "sim.msg.state": "estado",
+  "sim.computing": "… calculando …"
+}

@@ -1,0 +1,97 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#d9a441"/>
+        <path d="M0,95 C260,60 520,115 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#9c6f25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre>g = <span class="f">make</span>();
+<span class="k">for</span> (<span class="k">let</span> r = <span class="s">16</span>; r &gt; <span class="s">0</span>; r -= <span class="s">2</span>) {
+  g.<span class="f">fillStyle</span>(<span class="s">0xffffff</span>, <span class="s">0.06</span>);   <span class="c">{{s1.code.c1}}</span>
+  g.<span class="f">fillCircle</span>(<span class="s">16</span>, <span class="s">16</span>, r);     <span class="c">{{s1.code.c2}}</span>
+}
+g.<span class="f">generateTexture</span>(<span class="s">'smoke'</span>, <span class="s">32</span>, <span class="s">32</span>);</pre>
+        </figure>
+        <p>{{s1.p1}}</p>
+        <div class="callout nerd">{{s1.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s2.code.cap}}</figcaption>
+<pre><span class="k">const</span> src = this.<span class="f">noise</span>(<span class="s">0.55</span>);            <span class="c">{{s2.code.c1}}</span>
+lp.frequency.<span class="f">setValueAtTime</span>(<span class="s">1200</span>, now);
+lp.frequency.<span class="f">exponentialRampToValueAtTime</span>(<span class="s">120</span>, now + <span class="s">0.5</span>); <span class="c">{{s2.code.c2}}</span>
+gain.gain.<span class="f">exponentialRampToValueAtTime</span>(<span class="s">0.001</span>, now + <span class="s">0.55</span>);  <span class="c">{{s2.code.c3}}</span></pre>
+        </figure>
+        <p>{{s2.p2}}</p>
+        <div class="callout warn">{{s2.callout.suspended}}</div>
+        <div class="callout tip">{{s2.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code.cap}}</figcaption>
+<pre><span class="k">export function</span> <span class="f">shade</span>(color, factor) {
+  <span class="k">const</span> r = <span class="f">clamp</span>(Math.<span class="f">round</span>(((color &gt;&gt; <span class="s">16</span>) &amp; <span class="s">0xff</span>) * factor), <span class="s">0</span>, <span class="s">255</span>);
+  <span class="k">const</span> g = <span class="f">clamp</span>(Math.<span class="f">round</span>(((color &gt;&gt; <span class="s">8</span>)  &amp; <span class="s">0xff</span>) * factor), <span class="s">0</span>, <span class="s">255</span>);
+  <span class="k">const</span> b = <span class="f">clamp</span>(Math.<span class="f">round</span>(( color        &amp; <span class="s">0xff</span>) * factor), <span class="s">0</span>, <span class="s">255</span>);
+  <span class="k">return</span> (r &lt;&lt; <span class="s">16</span>) | (g &lt;&lt; <span class="s">8</span>) | b; <span class="c">{{s3.code.c1}}</span>
+}</pre>
+        </figure>
+        <p>{{s3.p2}}</p>
+        <div class="callout nerd">{{s3.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code.cap}}</figcaption>
+<pre><span class="k">const</span> length = <span class="s">16</span> + <span class="s">50</span> * k;          <span class="c">{{s4.code.c1}}</span>
+<span class="k">const</span> droop  = <span class="f">lerp</span>(<span class="s">1.2</span>, <span class="s">0.14</span>, k);   <span class="c">{{s4.code.c2}}</span>
+<span class="k">const</span> flutter = Math.<span class="f">sin</span>(time * <span class="s">0.006</span> + f * <span class="s">6.2</span>) * <span class="s">7</span> * k * f; <span class="c">{{s4.code.c3}}</span></pre>
+        </figure>
+        <p>{{s4.p2}}</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">5</span>{{s5.h2}}</h2>
+        <p>{{s5.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s5.code.cap}}</figcaption>
+<pre>config = {
+  y: GAME_HEIGHT + <span class="s">10</span>,            <span class="c">{{s5.code.c1}}</span>
+  speedY: { min: <span class="s">-110</span>, max: <span class="s">-45</span> }, <span class="c">{{s5.code.c2}}</span>
+  scale: { start: <span class="s">0.7</span>, end: <span class="s">0</span> },   <span class="c">{{s5.code.c3}}</span>
+  blendMode: <span class="s">'ADD'</span>,             <span class="c">{{s5.code.c4}}</span>
+};</pre>
+        </figure>
+        <p>{{s5.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s5.code2.cap}}</figcaption>
+<pre><span class="c">{{s5.code2.c1}}</span>
+<span class="k">if</span> (quality !== <span class="s">'lite'</span>) this.<span class="f">spawnAmbient</span>();</pre>
+        </figure>
+        <div class="callout tip">{{s5.callout.tip}}</div>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-1-e.html">{{pager.prev}}</a>
+        <a href="chapter-3-e.html">{{pager.next}}</a>
+      </div>
+    </main>

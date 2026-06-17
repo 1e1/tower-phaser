@@ -1,0 +1,56 @@
+    <style>
+      /* Wrapper holds the stickers OUTSIDE the masked ticket (a CSS mask clips
+         its own children, which would chop the stickers). */
+      .ticket-wrap { position: relative; max-width: 640px; margin: 26px auto; }
+      /* The brief as a torn paper ticket with zig-zag edges. */
+      .ticket {
+        position: relative;
+        margin: 0;
+        padding: 30px 26px;
+        background: #fdf6e3;
+        color: #2b2535;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14.5px;
+        line-height: 1.6;
+        box-shadow: 0 10px 26px rgba(35, 25, 50, 0.18);
+        --s: 20px; /* zig-zag tooth width */
+        -webkit-mask:
+          conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--s) 51% repeat-x,
+          conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--s) 51% repeat-x;
+        mask:
+          conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--s) 51% repeat-x,
+          conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--s) 51% repeat-x;
+      }
+      .ticket .stamp { text-align: center; color: #8a7f63; letter-spacing: 2px; font-size: 12px; margin: 0 0 12px; text-transform: uppercase; }
+      .ticket p { margin: 10px 0; }
+      .ticket .lot { display: block; margin: 6px 0; }
+      .ticket .tag { color: #b8632b; font-weight: 600; }
+      .ticket .cut { text-align: center; color: #b3a584; margin: 14px 0 0; letter-spacing: 3px; }
+
+      /* Stickers slapped over the ticket. */
+      .sticker {
+        position: absolute; z-index: 3; font-family: 'Fredoka', sans-serif; font-weight: 600;
+        font-size: 12.5px; padding: 5px 11px; border-radius: 7px; color: #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.22); white-space: nowrap; line-height: 1;
+      }
+      .sticker.good { background: #2f8a3e; }
+      .sticker.warn { background: #d08a1e; }
+      .sticker.star { background: #3a6df0; }
+
+      /* Commentary slipped between the torn pieces. */
+      .note {
+        max-width: 600px; margin: 0 auto; padding: 4px 6px 4px 18px;
+        border-left: 4px solid var(--accent); color: var(--ink);
+      }
+      .note h4 { font-family: 'Fredoka', sans-serif; margin: 14px 0 4px; font-size: 17px; }
+      .note p { margin: 6px 0; }
+      table.dev { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 15px; }
+      table.dev th, table.dev td { text-align: left; padding: 7px 10px; border-bottom: 1px solid rgba(43,37,53,0.15); vertical-align: top; }
+      table.dev td:first-child { white-space: nowrap; font-weight: 800; }
+      /* Device table + glossary printed inside the ticket itself. */
+      .ticket table.dev { font-size: 13px; margin: 6px 0 2px; }
+      .ticket table.dev th, .ticket table.dev td { padding: 5px 8px; border-bottom: 1px dashed rgba(43,37,53,0.22); }
+      .ticket dl.gloss { margin: 6px 0 2px; }
+      .ticket dl.gloss dt { color: #b8632b; font-weight: 600; margin-top: 7px; }
+      .ticket dl.gloss dd { margin: 0 0 0 14px; }
+    </style>

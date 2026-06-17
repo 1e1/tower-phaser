@@ -1,0 +1,61 @@
+{
+  "title": "Kapitel 3 — Über mehrere Bildschirme spielen",
+
+  "hero.badge": "Etappe 3 · Tundra",
+  "hero.kicker": "Kapitel 3",
+  "hero.title": "Über mehrere Bildschirme spielen",
+  "hero.lead": "Der Fernseher zeigt das Match; die Handys dienen als Controller. Damit alle gleichzeitig dasselbe sehen, brauchen wir einen <b>Schiedsrichter</b>: den Server.",
+
+  "s1.h2": "Das Problem",
+  "s1.lead": "Bisher passierte alles auf einem einzigen Computer. Jetzt: ein Fernseher, zwei Handys… drei verschiedene Geräte, die <b>dasselbe Match</b> erleben müssen, perfekt synchron.",
+  "s1.p1": "Würde jedes Gerät das Match in seiner eigenen Ecke berechnen, kämen sie irgendwann durcheinander (eine Kugel hier, nicht dort…). Wir brauchen <b>eine einzige Quelle der Wahrheit</b>.",
+
+  "s2.h2": "Der Server ist der Schiedsrichter",
+  "s2.p1": "Wir fügen ein Programm hinzu, das „in der Mitte“ läuft: den <b>Server</b>. Die Geräte sind <b>Clients</b>. Der Server ist der Einzige, der das Match <b>berechnet</b> (die Physik, die Punkte); die Clients <b>zeigen</b> nur an, was er entscheidet, und <b>senden ihm die Befehle der Spieler</b>.",
+  "s2.li1": "📱 Die Handys senden: „mein Winkel = 60°, ich bestätige“.",
+  "s2.li2": "🧑‍⚖️ Der Server berechnet die Salve, wer getroffen wird, den Punktestand.",
+  "s2.li3": "📺 Alle empfangen den Spiel<b>zustand</b> und zeigen ihn auf dieselbe Weise an.",
+  "s2.callout": "<b>Merke dir.</b> „Der Schiedsrichter hat immer recht“: Da der Server alles entscheidet, können sich die Bildschirme nicht widersprechen – und Schummeln wird schwieriger.",
+
+  "s3.h2": "Eine Leitung, die offen bleibt: der WebSocket",
+  "s3.p1": "Eine klassische Webseite <b>fragt</b> nach einer Information, bekommt eine Antwort und legt dann auf. Zu langsam für ein Spiel! Wir benutzen einen <b>WebSocket</b>: eine Leitung, die in beide Richtungen <b>offen bleibt</b>. Der Server kann „sprechen“, wann immer er will, ~30-mal pro Sekunde.",
+  "s3.callout.try": "<b>Probier's aus!</b> Klicke, um eine Salve abzufeuern, und sieh den Nachrichten beim Reisen zu: Die Befehle gehen hinauf zum Schiedsrichter, dann kommt der Zustand zu jedem Bildschirm zurück.",
+  "s3.sim.title": "Der Tanz der Nachrichten",
+  "s3.sim.play": "▶️ Eine Salve abfeuern",
+  "s3.sim.hint": "Blau/rot: die Befehle der Spieler. Grün: der Spielzustand, der an alle zurückgeschickt wird.",
+
+  "s4.h2": "Dieselbe Landschaft überall, ohne alles zu senden",
+  "s4.p1": "Das Gelände kann aus tausenden Punkten bestehen: zu groß zum Senden. Der Trick: Der Server sendet nur einen kleinen zufälligen <b>seed</b> (eine Zahl). Jeder Bildschirm <b>berechnet</b> dieselbe Landschaft aus diesem seed neu (erinnerst du dich an den Generator aus Kapitel 2!).",
+  "s4.code.cap": "die Idee des Teilens per seed",
+  "s4.code.c1": "// der Server sendet einfach:",
+  "s4.code.c2": "// jeder Bildschirm macht:",
+  "s4.code.c3": "// → überall identisch!",
+
+  "s5.h2": "Einem Match beitreten: Raumcode &amp; QR",
+  "s5.p1": "Der Fernseher erstellt einen <b>Raum</b> und zeigt einen <b>4-Buchstaben-Code</b> und einen <b>QR-Code</b>. Die Handys scannen den QR: Sie landen direkt im richtigen Match. Praktisch!",
+  "s5.fig.alt": "Verbindung über einen Raum",
+  "s5.fig.tv": "📺 Fernseher",
+  "s5.fig.scan1": "📱 scan → Spieler 1",
+  "s5.fig.scan2": "📱 scan → Spieler 2",
+  "s5.fig.cap": "Der Fernseher zeigt den Code &amp; den QR; zwei Handys treten als Spieler bei.",
+  "s5.callout.nerd": "<b>Für Neugierige.</b> Der QR muss auf die <b>lokale Netzwerkadresse</b> des Fernsehers zeigen (so etwas wie <code class=\"inline\">192.168.1.20</code>), nicht auf „localhost“ (was „ich selbst“ bedeutet). Sonst würde das Handy sich selbst suchen! Der Server findet die richtige Adresse von allein.",
+
+  "s6.h2": "Wer macht was? Der Fernseher regelt das allein",
+  "s6.li1": "📺 Ein erkannter <b>Fernseher</b> startet sofort im „Host“-Modus: keine Fernbedienung nötig.",
+  "s6.li2": "🟢 Das Match <b>startet von allein</b>, sobald der 2. Spieler beigetreten ist.",
+  "s6.li3": "🧑‍🤝‍🧑 Weitere Spieler? Sie <b>schauen zu</b>, während sie auf einen frei werdenden Platz warten, und übernehmen dann.",
+  "s6.callout": "<b>Merke dir.</b> Etappe 3 = der Wechsel von einem Spiel „auf einem Bildschirm“ zu einem „vernetzten“ Spiel, ohne alles neu zu schreiben: Wir haben nur die Berechnung zum Schiedsrichter verschoben.",
+
+  "footer.suffix": "Kapitel {n}/{total}",
+
+  "pager.prev": "← Kapitel 2",
+  "pager.next": "Kapitel 4 · Die Landschaft zerstören →",
+
+  "sim.node.p1": "📱 P1",
+  "sim.node.p2": "📱 P2",
+  "sim.node.sv": "🧑‍⚖️ Server",
+  "sim.node.tv": "📺 Fernseher",
+  "sim.msg.aim": "Winkel/Bestätigung",
+  "sim.msg.state": "state",
+  "sim.computing": "… rechnet …"
+}

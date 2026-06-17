@@ -1,0 +1,274 @@
+/* Tower Duel — tutorial site
+   A playful, paper-textured course. Each chapter borrows the colours of one of
+   the game's biomes. Designed to be friendly for a curious kid and still tidy
+   for a grown-up. */
+
+:root {
+  --ink: #2b2535;
+  --ink-soft: #5b5470;
+  --paper: #f6efe2;
+  --paper-2: #efe6d4;
+  --accent: #3a6df0;
+  --accent-2: #6aa3ff;
+  --sky-1: #6fb7ff;
+  --sky-2: #cfeeff;
+  --band: #ffffff;
+  --code-bg: #1d2233;
+  --code-ink: #e7ecff;
+  --radius: 18px;
+  --maxw: 920px;
+  --shadow: 0 10px 30px rgba(35, 25, 50, 0.12);
+}
+
+/* Per-chapter biome palettes (mirror src/config/biomes.js). */
+body[data-biome='meadow'] { --accent: #3f8f2f; --accent-2: #7ed957; --sky-1: #6fb7ff; --sky-2: #cfeeff; }
+body[data-biome='desert'] { --accent: #c07d22; --accent-2: #f0cd7a; --sky-1: #f6b66b; --sky-2: #fde9c8; }
+body[data-biome='tundra'] { --accent: #5b7da6; --accent-2: #aecbe8; --sky-1: #9fb8d6; --sky-2: #eaf2fb; }
+body[data-biome='volcano'] { --accent: #d8552f; --accent-2: #ff8c42; --sky-1: #3a1f3a; --sky-2: #6e2535; }
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.65;
+  /* Paper: warm base + a faint fibrous noise + soft vignette. */
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.6), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+h1, h2, h3, .display {
+  font-family: 'Fredoka', 'Nunito', system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+a { color: var(--accent); }
+
+/* ---- Top navigation -------------------------------------------------- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  background: rgba(246, 239, 226, 0.92);
+  backdrop-filter: blur(6px);
+  border-bottom: 2px solid rgba(43, 37, 53, 0.1);
+}
+.nav .brand {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.nav .brand .dot { color: var(--accent); }
+.nav .spacer { flex: 1; }
+.nav a.crumb { text-decoration: none; color: var(--ink-soft); font-weight: 700; }
+.nav a.crumb:hover { color: var(--accent); }
+.nav a.gh {
+  display: inline-flex; align-items: center; gap: 6px;
+  text-decoration: none; color: var(--ink-soft); font-weight: 800; font-size: 13px;
+  padding: 4px 11px 4px 9px; border-radius: 999px;
+  border: 2px solid rgba(43, 37, 53, 0.12); background: var(--paper-2);
+}
+.nav a.gh::before {
+  content: ''; width: 16px; height: 16px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Cpath%20d='M8%200C3.58%200%200%203.58%200%208c0%203.54%202.29%206.53%205.47%207.59.4.07.55-.17.55-.38%200-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01%201.08.58%201.23.82.72%201.21%201.87.87%202.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95%200-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12%200%200%20.67-.21%202.2.82.64-.18%201.32-.27%202-.27.68%200%201.36.09%202%20.27%201.53-1.04%202.2-.82%202.2-.82.44%201.1.16%201.92.08%202.12.51.56.82%201.27.82%202.15%200%203.07-1.87%203.75-3.65%203.95.29.25.54.73.54%201.48%200%201.07-.01%201.93-.01%202.2%200%20.21.15.46.55.38A8.013%208.013%200%200016%208c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Cpath%20d='M8%200C3.58%200%200%203.58%200%208c0%203.54%202.29%206.53%205.47%207.59.4.07.55-.17.55-.38%200-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01%201.08.58%201.23.82.72%201.21%201.87.87%202.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95%200-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12%200%200%20.67-.21%202.2.82.64-.18%201.32-.27%202-.27.68%200%201.36.09%202%20.27%201.53-1.04%202.2-.82%202.2-.82.44%201.1.16%201.92.08%202.12.51.56.82%201.27.82%202.15%200%203.07-1.87%203.75-3.65%203.95.29.25.54.73.54%201.48%200%201.07-.01%201.93-.01%202.2%200%20.21.15.46.55.38A8.013%208.013%200%200016%208c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.nav a.gh:hover { color: var(--accent); border-color: var(--accent); }
+.nav .langs { display: flex; gap: 4px; margin-left: 10px; }
+.nav .langs a { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; color: var(--ink-soft); font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 8px; }
+.nav .langs a::before {
+  content: ''; width: 18px; height: 13px; flex: none;
+  background: center / cover no-repeat;
+  border-radius: 2px; box-shadow: 0 0 0 1px rgba(43, 37, 53, 0.18);
+}
+.nav .langs a.lang-en::before { background-image: url("flags/gb.svg"); }
+.nav .langs a.lang-fr::before { background-image: url("flags/fr.svg"); }
+.nav .langs a.lang-de::before { background-image: url("flags/de.svg"); }
+.nav .langs a.lang-es::before { background-image: url("flags/es.svg"); }
+.nav .langs a.lang-it::before { background-image: url("flags/it.svg"); }
+.nav .langs a:hover { color: var(--accent); }
+.nav .langs a.active { background: var(--accent); color: #fff; }
+@media (max-width: 600px) {
+  .nav .langs { gap: 2px; margin-left: 4px; }
+  /* Tight screens: the flag alone identifies the language — hide the 2-letter code. */
+  .nav .langs a { padding: 4px 5px; font-size: 0; gap: 0; }
+  .nav .langs a::before { width: 20px; height: 14px; }
+  .nav a.gh span { display: none; } .nav a.gh { padding: 4px 8px; }
+}
+
+/* ---- Level switcher (Discovery / Intermediate / Expert) -------------- */
+.levelbar {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+  padding: 9px 18px; background: var(--paper-2);
+  border-bottom: 2px solid rgba(43, 37, 53, 0.1);
+}
+.levelbar .ll { font-weight: 800; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.levelbar a {
+  text-decoration: none; font-weight: 800; font-size: 14px; padding: 6px 15px;
+  border-radius: 999px; color: var(--ink-soft); border: 2px solid transparent; line-height: 1;
+}
+.levelbar a small { display: block; font-size: 10px; font-weight: 700; opacity: 0.7; letter-spacing: 0; text-transform: none; }
+.levelbar a:hover { color: var(--accent); }
+.levelbar a.active { background: var(--accent); color: #fff; }
+.levelbar a.active small { opacity: 0.85; }
+@media (max-width: 600px) {
+  .levelbar { gap: 5px; padding: 8px 10px; }
+  .levelbar a { padding: 5px 10px; font-size: 13px; }
+  .levelbar .ll { width: 100%; text-align: center; margin-bottom: 2px; }
+}
+
+/* Level intro card on the home page (one per level). */
+.levelpick { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 22px 0; }
+.lvl-card {
+  display: block; text-decoration: none; color: var(--ink); background: var(--paper-2);
+  border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow);
+  border: 2px solid rgba(43, 37, 53, 0.08); transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.lvl-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+.lvl-card .tag { font-weight: 800; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); }
+.lvl-card h3 { margin: 6px 0 6px; font-size: 20px; }
+.lvl-card p { margin: 0; font-size: 15px; color: var(--ink-soft); }
+
+/* ---- Layout ---------------------------------------------------------- */
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
+
+/* ---- Chapter hero ---------------------------------------------------- */
+.hero {
+  position: relative;
+  color: #fff;
+  padding: 64px 20px 96px;
+  text-align: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--sky-1), var(--sky-2));
+}
+.hero h1 { color: #fff; font-size: clamp(34px, 6vw, 60px); margin: 0 0 8px; text-shadow: 0 3px 0 rgba(0,0,0,0.12); }
+.hero .kicker { font-weight: 800; letter-spacing: 2px; text-transform: uppercase; opacity: 0.92; }
+.hero p { max-width: 640px; margin: 10px auto 0; font-size: 19px; }
+.hero .hills { position: absolute; left: 0; right: 0; bottom: -1px; display: block; }
+.hero .badge {
+  display: inline-block; margin-bottom: 14px; padding: 6px 16px; border-radius: 999px;
+  background: rgba(255,255,255,0.25); font-weight: 800;
+}
+
+/* ---- Content cards (the "paper" course) ------------------------------ */
+.sheet {
+  background: var(--band);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px 30px;
+  margin: -56px auto 28px;
+  position: relative;
+  max-width: var(--maxw);
+}
+section.sheet h2 { font-size: 28px; margin: 6px 0 12px; }
+section.sheet h2 .num {
+  display: inline-grid; place-items: center; width: 36px; height: 36px; margin-right: 10px;
+  border-radius: 10px; background: var(--accent); color: #fff; font-size: 20px; transform: translateY(2px);
+}
+.sheet h3 { margin-top: 26px; font-size: 21px; }
+
+/* ---- Callout boxes --------------------------------------------------- */
+.callout {
+  border-radius: 14px; padding: 14px 16px 14px 52px; margin: 18px 0; position: relative;
+  border: 2px solid rgba(43,37,53,0.08); background: var(--paper-2);
+}
+.callout::before { position: absolute; left: 14px; top: 12px; font-size: 24px; }
+.callout.tip { background: #ebf8e6; border-color: #bfe6ad; }
+.callout.tip::before { content: '💡'; }
+.callout.try { background: #e9f1ff; border-color: #b9d3ff; }
+.callout.try::before { content: '🧪'; }
+.callout.nerd { background: #f3ecff; border-color: #d5c2ff; }
+.callout.nerd::before { content: '🤓'; }
+.callout.warn { background: #fff0e6; border-color: #ffc9a3; }
+.callout.warn::before { content: '⚠️'; }
+.callout b { color: var(--ink); }
+
+/* ---- Code ------------------------------------------------------------ */
+figure.code { margin: 18px 0; }
+figure.code figcaption { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; font-weight: 700; }
+pre {
+  margin: 0; padding: 16px 18px; border-radius: 14px; overflow: auto;
+  background: var(--code-bg); color: var(--code-ink); font-size: 14.5px; line-height: 1.55;
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.04);
+}
+pre .c { color: #8b95b8; font-style: italic; } /* comment */
+pre .k { color: #ff9d6b; }                      /* keyword */
+pre .s { color: #9be36b; }                      /* string */
+pre .f { color: #6ab7ff; }                      /* function/name */
+code.inline { background: var(--paper-2); padding: 2px 7px; border-radius: 7px; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
+
+/* ---- Figures & SVG diagrams ----------------------------------------- */
+figure.diagram { margin: 22px 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; border-radius: 14px; background: #fff; box-shadow: var(--shadow); }
+figure.diagram figcaption { font-size: 14px; color: var(--ink-soft); margin-top: 8px; }
+
+/* ---- Interactive simulators ----------------------------------------- */
+.sim {
+  border: 3px dashed var(--accent-2); border-radius: 16px; padding: 16px; margin: 22px 0;
+  background: repeating-linear-gradient(45deg, rgba(255,255,255,0.6), rgba(255,255,255,0.6) 10px, var(--paper-2) 10px, var(--paper-2) 20px);
+}
+.sim h4 { margin: 0 0 10px; font-family: 'Fredoka', sans-serif; font-size: 18px; }
+.sim h4::before { content: '🎮 '; }
+.sim canvas { width: 100%; height: auto; background: #bfe3ff; border-radius: 10px; display: block; touch-action: none; }
+.sim .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 12px; }
+.sim .controls label { font-weight: 800; font-size: 14px; display: flex; flex-direction: column; gap: 2px; min-width: 120px; }
+.sim .controls input[type=range] { accent-color: var(--accent); }
+.sim button {
+  border: none; border-radius: 10px; padding: 10px 18px; font-weight: 800; font-size: 15px;
+  background: var(--accent); color: #fff; cursor: pointer; font-family: 'Fredoka', sans-serif;
+}
+.sim button:hover { filter: brightness(1.08); }
+.sim .hint { font-size: 13px; color: var(--ink-soft); margin-top: 8px; }
+
+/* ---- Chapter cards on the home page --------------------------------- */
+.chapters { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin: 22px 0; }
+.chap-card {
+  display: block; text-decoration: none; color: #fff; border-radius: 16px; padding: 20px;
+  min-height: 150px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+  transition: transform 0.12s ease;
+}
+.chap-card:hover { transform: translateY(-4px); }
+.chap-card .lot { font-weight: 800; opacity: 0.9; letter-spacing: 1px; }
+.chap-card h3 { color: #fff; margin: 6px 0 4px; font-size: 22px; }
+.chap-card p { margin: 0; font-size: 15px; opacity: 0.95; }
+.chap-card.meadow { background: linear-gradient(140deg, #6fb7ff, #4f8f2f); }
+.chap-card.desert { background: linear-gradient(140deg, #f6b66b, #c07d22); }
+.chap-card.tundra { background: linear-gradient(140deg, #9fb8d6, #5b7da6); }
+.chap-card.volcano { background: linear-gradient(140deg, #6e2535, #d8552f); }
+
+/* ---- Prev / next ----------------------------------------------------- */
+.pager { display: flex; justify-content: space-between; gap: 12px; margin: 30px 0 60px; }
+.pager a {
+  text-decoration: none; background: #fff; border-radius: 12px; padding: 12px 18px; font-weight: 800;
+  box-shadow: var(--shadow); color: var(--ink); border: 2px solid rgba(43,37,53,0.08);
+}
+.pager a:hover { border-color: var(--accent); color: var(--accent); }
+.pager a.disabled { opacity: 0.4; pointer-events: none; }
+
+/* ---- Misc ------------------------------------------------------------ */
+.lead { font-size: 20px; color: var(--ink-soft); }
+ul.clean { padding-left: 22px; }
+ul.clean li { margin: 6px 0; }
+.kbd { background: #fff; border: 2px solid rgba(43,37,53,0.15); border-bottom-width: 3px; border-radius: 7px; padding: 1px 8px; font-weight: 800; font-size: 0.85em; }
+footer.foot { text-align: center; color: var(--ink-soft); padding: 30px 20px 50px; font-size: 14px; }
+.pill { display:inline-block; background: var(--accent); color:#fff; border-radius:999px; padding:2px 12px; font-weight:800; font-size:13px;}
+
+@media (max-width: 600px) {
+  body { font-size: 17px; }
+  .sheet { padding: 22px 18px; }
+}

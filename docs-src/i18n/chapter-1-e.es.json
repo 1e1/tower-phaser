@@ -1,0 +1,41 @@
+{
+  "title": "Capítulo 1 (experto) — Bucle determinista &amp; integración numérica",
+  "meta.desc": "Nivel experto: paso de tiempo fijo y servidor autoritativo, integración de Euler semi-implícita y su error, y determinismo mediante RNG con semilla para que servidor y clientes vean la misma partida.",
+
+  "hero.badge": "Experto · Fase 1 · Pradera",
+  "hero.kicker": "Capítulo 1 · nivel experto",
+  "hero.title": "Bucle determinista &amp; integración numérica",
+  "hero.lead": "En el fondo del motor: por qué un <strong>paso de tiempo fijo</strong> y un <strong>servidor autoritativo</strong>, lo que vale realmente la <strong>integración de Euler</strong>, y cómo garantizar que un único cálculo produce siempre la misma partida.",
+
+  "s1.h2": "Paso fijo, autoridad única",
+  "s1.lead": "La simulación no avanza al ritmo de la visualización. El servidor la hace progresar a <b>pasos fijos</b> de 33 ms (≈ 30 Hz), independientemente de los fps de cada pantalla.",
+  "s1.code.cap": "server/Room.js — el reloj autoritativo",
+  "s1.code.c1": "// ~30 Hz",
+  "s1.code.c2": "// paso constante, en segundos",
+  "s1.p1": "Un paso <b>constante</b> tiene dos virtudes. Primero la <b>estabilidad numérica</b>: el error de integración ya no depende de un <code class=\"inline\">dt</code> errático (un pico de lag ya no « teletransporta » una bala a través de una torre). Después el <b>determinismo</b>: las mismas entradas + los mismos pasos ⇒ el mismo resultado, bit a bit.",
+  "s1.callout": "<b>Autoridad.</b> Los clientes <em>nunca</em> integran la física. Envían <b>intenciones</b> (ángulo, potencia, « listo ») y solo muestran los <b>snapshots</b> devueltos. Esto elimina los desacuerdos entre máquinas — y la trampa con un cliente modificado.",
+
+  "s2.h2": "Integrar el movimiento: Euler semi-implícito",
+  "s2.p1": "La trayectoria obedece a una ecuación diferencial (aceleración constante por paso). La aproximamos con el método más simple, la <b>integración de Euler</b> — pero en su variante <b>semi-implícita</b> (simpléctica): actualizamos la <b>velocidad primero</b>, y luego la posición con esa velocidad nueva.",
+  "s2.code.cap": "src/sim/Simulation.js — stepProjectiles",
+  "s2.code.vx": "viento   * dt;   ",
+  "s2.code.c1": "// 1) velocidad actualizada primero",
+  "s2.code.vy": "gravedad * dt;",
+  "s2.code.px": "p.vx * dt;       ",
+  "s2.code.c2": "// 2) posición con la velocidad nueva",
+  "s2.p2": "El Euler « ingenuo » (posición antes que velocidad) deriva e infla la energía con el tiempo; la variante semi-implícita es mucho más estable por el mismo coste. El error local es de orden <code class=\"inline\">O(dt²)</code>: a 30 Hz y para vuelos de unos segundos, la desviación es invisible — y, sobre todo, es <b>la misma para todo el mundo</b>.",
+  "s2.callout": "<b>Subpasos.</b> ¿Necesitas más precisión sin acelerar el reloj? Dividimos cada tick en N subpasos de <code class=\"inline\">dt/N</code>. El simulador de disparo del capítulo de descubrimiento ya lo hace (2 subpasos por imagen) para suavizar la curva. Es el clásico compromiso precisión/coste.",
+
+  "s3.h2": "Reproducibilidad: la semilla manda",
+  "s3.p1": "Para que el servidor y cada cliente dibujen <b>exactamente</b> el mismo terreno, desterramos <code class=\"inline\">Math.random()</code> de todo lo que deba ser compartido. En su lugar, un <b>generador pseudoaleatorio con semilla</b>: la misma semilla ⇒ la misma sucesión de números ⇒ el mismo mundo.",
+  "s3.code.cap": "el terreno es una función pura de la semilla",
+  "s3.code.c1": "// el servidor solo envía la semilla; cada cliente regenera idéntico",
+  "s3.p2": "El snapshot transporta, pues, la <b>semilla</b>, no los cientos de alturas del terreno — ahorro de ancho de banda <em>y</em> garantía de coherencia. El mismo principio para el jitter oculto de los disparos: extraído del RNG del servidor, nunca transmitido, así que invisible y sin embargo reproducible del lado del servidor.",
+  "s3.rng.cap": "src/sim/rng.js — mulberry32, un PRNG con una semilla minúscula",
+  "s3.callout": "<b>Recuerda.</b> Bucle de paso fijo + autoridad del servidor + RNG con semilla = una partida <b>determinista y reproducible</b>. Es la osamenta invisible que hace posible todo lo demás: red, terreno destructible, viento continuo.",
+
+  "footer.suffix": "capítulo {n}/{total} · nivel experto",
+
+  "pager.prev": "← Inicio",
+  "pager.next": "Capítulo 2 · Renderizado sin assets →"
+}

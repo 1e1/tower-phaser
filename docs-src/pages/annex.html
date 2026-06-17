@@ -1,0 +1,37 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,30 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>
+        <path d="M0,95 C260,55 520,118 760,90 C1020,58 1240,118 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <div class="chapters">
+          <a class="chap-card tundra" href="annex-deploy.html">
+            <div class="lot">{{card.deploy.lot}}</div>
+            <h3>{{card.deploy.title}}</h3>
+            <p>{{card.deploy.desc}}</p>
+          </a>
+          <a class="chap-card volcano" href="annex-math.html">
+            <div class="lot">{{card.math.lot}}</div>
+            <h3>{{card.math.title}}</h3>
+            <p>{{card.math.desc}}</p>
+          </a>
+          <a class="chap-card desert" href="annex-brief.html">
+            <div class="lot">{{card.brief.lot}}</div>
+            <h3>{{card.brief.title}}</h3>
+            <p>{{card.brief.desc}}</p>
+          </a>
+        </div>
+      </section>
+
+      <div class="pager wrap">
+        <a href="index.html">{{pager.prev}}</a>
+        <a class="disabled">{{pager.next}}</a>
+      </div>
+    </main>

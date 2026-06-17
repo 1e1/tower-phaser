@@ -1,0 +1,61 @@
+{
+  "title": "Chapitre 3 — Jouer sur plusieurs écrans",
+
+  "hero.badge": "Lot 3 · Toundra",
+  "hero.kicker": "Chapitre 3",
+  "hero.title": "Jouer sur plusieurs écrans",
+  "hero.lead": "La TV montre le match ; les téléphones servent de manettes. Pour que tout le monde voie la même chose en même temps, il faut un <b>arbitre</b> : le serveur.",
+
+  "s1.h2": "Le problème",
+  "s1.lead": "Jusqu'ici, tout se passait sur un seul ordinateur. Maintenant : une TV, deux téléphones… trois appareils différents qui doivent vivre <b>le même match</b>, parfaitement synchronisés.",
+  "s1.p1": "Si chaque appareil calculait le match dans son coin, ils finiraient par ne plus être d'accord (un boulet ici, pas là…). Il nous faut <b>une seule source de vérité</b>.",
+
+  "s2.h2": "Le serveur, c'est l'arbitre",
+  "s2.p1": "On ajoute un programme qui tourne « au milieu » : le <b>serveur</b>. Les appareils sont les <b>clients</b>. Le serveur est le seul à <b>calculer</b> le match (la physique, les scores) ; les clients ne font qu'<b>afficher</b> ce qu'il décide et <b>lui envoyer les ordres des joueurs</b>.",
+  "s2.li1": "📱 Les téléphones envoient : « mon angle = 60°, je confirme ».",
+  "s2.li2": "🧑‍⚖️ Le serveur calcule la salve, qui est touché, le score.",
+  "s2.li3": "📺 Tout le monde reçoit l'<b>état</b> du jeu et l'affiche de la même façon.",
+  "s2.callout": "<b>À retenir.</b> « L'arbitre a toujours raison » : comme le serveur décide de tout, les écrans ne peuvent pas se contredire — et tricher est plus difficile.",
+
+  "s3.h2": "Une ligne téléphonique qui reste ouverte : le WebSocket",
+  "s3.p1": "Une page web classique <b>demande</b> une info, reçoit une réponse, puis raccroche. Trop lent pour un jeu ! On utilise un <b>WebSocket</b> : une ligne qui <b>reste ouverte</b> dans les deux sens. Le serveur peut « parler » quand il veut, ~30 fois par seconde.",
+  "s3.callout.try": "<b>À toi de jouer !</b> Clique pour lancer une salve et regarde les messages voyager : les ordres montent vers l'arbitre, puis l'état redescend vers chaque écran.",
+  "s3.sim.title": "La danse des messages",
+  "s3.sim.play": "▶️ Lancer une salve",
+  "s3.sim.hint": "Bleu/rouge : les ordres des joueurs. Vert : l'état du jeu renvoyé à tout le monde.",
+
+  "s4.h2": "Le même paysage partout, sans tout envoyer",
+  "s4.p1": "Le terrain peut faire des milliers de points : trop gros à envoyer. L'astuce : le serveur n'envoie qu'une petite <b>graine</b> aléatoire (un seul nombre). Chaque écran <b>recalcule</b> le même paysage à partir de cette graine (souviens-toi du générateur du chapitre 2 !).",
+  "s4.code.cap": "l'idée du partage par graine",
+  "s4.code.c1": "// le serveur envoie juste :",
+  "s4.code.c2": "// chaque écran fait :",
+  "s4.code.c3": "// → identique partout !",
+
+  "s5.h2": "Rejoindre un match : code de salon &amp; QR",
+  "s5.p1": "La TV crée un <b>salon</b> et affiche un <b>code à 4 lettres</b> et un <b>QR code</b>. Les téléphones scannent le QR : ils atterrissent direct dans le bon match. Pratique !",
+  "s5.fig.alt": "Se connecter via un salon",
+  "s5.fig.tv": "📺 TV",
+  "s5.fig.scan1": "📱 scan → Joueur 1",
+  "s5.fig.scan2": "📱 scan → Joueur 2",
+  "s5.fig.cap": "La TV affiche le code &amp; le QR ; deux téléphones rejoignent en tant que joueurs.",
+  "s5.callout.nerd": "<b>Pour les curieux.</b> Le QR doit pointer vers l'<b>adresse réseau locale</b> de la TV (quelque chose comme <code class=\"inline\">192.168.1.20</code>), pas vers « localhost » (qui veut dire « moi-même »). Sinon le téléphone se chercherait lui-même ! Le serveur trouve la bonne adresse tout seul.",
+
+  "s6.h2": "Qui fait quoi ? La TV se débrouille seule",
+  "s6.li1": "📺 Une <b>TV</b> détectée démarre tout de suite en mode « hôte » : pas besoin de télécommande.",
+  "s6.li2": "🟢 Le match <b>démarre tout seul</b> dès que le 2e joueur a rejoint.",
+  "s6.li3": "🧑‍🤝‍🧑 Des joueurs en plus ? Ils <b>regardent</b> en attendant qu'une place se libère, puis prennent le relais.",
+  "s6.callout": "<b>À retenir.</b> Lot 3 = passer d'un jeu « sur un écran » à un jeu « en réseau », sans tout réécrire : on a juste déplacé le calcul vers l'arbitre.",
+
+  "footer.suffix": "chapitre {n}/{total}",
+
+  "pager.prev": "← Chapitre 2",
+  "pager.next": "Chapitre 4 · Détruire le paysage →",
+
+  "sim.node.p1": "📱 J1",
+  "sim.node.p2": "📱 J2",
+  "sim.node.sv": "🧑‍⚖️ Serveur",
+  "sim.node.tv": "📺 TV",
+  "sim.msg.aim": "angle/confirme",
+  "sim.msg.state": "état",
+  "sim.computing": "… calcul en cours …"
+}

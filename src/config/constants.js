@@ -52,3 +52,14 @@ export const ROUND_OPTIONS = [1, 3, 5, 7];
 
 // Hit-point choices per tower (a tower falls when its HP reaches 0).
 export const HP_OPTIONS = [1, 2, 3];
+
+// Game modes chosen at setup. Classic = strict turn-by-turn volleys. Turbo =
+// a shot clock (once one player validates, the other has `cadence` seconds to
+// validate, else it auto-fires) and shells fly continuously, so the next shot
+// can be aimed and validated as soon as the previous one has left the barrel.
+export const GAME_MODES = [
+  { id: 'classic', label: 'Classic', turbo: false, cadence: 0 },
+  { id: 'turbo3', label: 'Turbo · 3s', turbo: true, cadence: 3 },
+  { id: 'turbo5', label: 'Turbo · 5s', turbo: true, cadence: 5 },
+  { id: 'turbo8', label: 'Turbo · 8s', turbo: true, cadence: 8 },
+];

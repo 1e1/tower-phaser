@@ -1,0 +1,50 @@
+{
+  "title": "Capitolo 2 (intermedio) — Dati, rendering &amp; sintesi",
+  "meta.desc": "Livello intermedio: biomi guidati dai dati, un modulo di rendering condiviso fra la TV e il controller, texture e suoni generati a runtime, la profondità con depth/scrollFactor e i livelli di qualità.",
+
+  "hero.badge": "Intermedio · Lotto 2 · Deserto",
+  "hero.kicker": "Capitolo 2 · livello intermedio",
+  "hero.title": "Dati, rendering &amp; sintesi",
+  "hero.lead": "Il Lotto 2 veste il gioco. Vista dal lato architettura, è soprattutto una lezione di <strong>separazione</strong>: biomi <strong>guidati dai dati</strong>, un rendering <strong>condiviso</strong> fra la TV e il controller, e asset <strong>fabbricati a runtime</strong> invece che consegnati come file.",
+
+  "s1.h2": "Il bioma è un dato, non codice",
+  "s1.lead": "Quattro atmosfere, ma un solo motore di rendering. Il segreto: ogni bioma è una <b>scheda dichiarativa</b> in <code class=\"inline\">src/config/biomes.js</code>. Il codice legge la scheda; non contiene alcun «se è deserto, dipingi di giallo».",
+  "s1.code.cap": "src/config/biomes.js — un bioma descrive cos'è, non come disegnarlo",
+  "s1.code.c1": "// gradiente del cielo",
+  "s1.code.c2": "// due creste di parallasse",
+  "s1.code.c3": "// particelle di sfondo",
+  "s1.code.c4": "// influenza il rilievo del terreno",
+  "s1.p1": "Aggiungere un quinto bioma non richiede di toccare il rendering: si scrive una nuova scheda. È il principio del <b>data-driven</b> — spostare la varietà <em>fuori</em> dal codice, in dati che si possono rileggere, confrontare e perfino generare.",
+  "s1.callout.tip": "<b>Da ricordare.</b> Quando una decisione «cambia di continuo» (colori, impostazioni, temi), la si tira fuori dal codice. Il codice diventa un <b>interprete</b> stabile; i dati portano la diversità.",
+
+  "s2.h2": "Un rendering agnostico, condiviso da due mondi",
+  "s2.p1": "Il cannone deve apparire <b>identico</b> sulla TV (resa da Phaser) e nella mini-anteprima del telefono (un semplice <code class=\"inline\">canvas</code>). Invece di scrivere due volte la stessa cosa, isoliamo i calcoli visivi in un modulo <b>senza dipendenze grafiche</b>: <code class=\"inline\">src/render/visuals.js</code>.",
+  "s2.code.cap": "src/render/visuals.js — funzioni pure, riutilizzabili ovunque",
+  "s2.code.c1": "// il colore del cannone: acciaio freddo a bassa potenza, rosso incandescente a fondo",
+  "s2.code.c2": "// interpolazione lineare (lerp) tra le due tinte…",
+  "s2.p2": "Questo modulo non conosce né Phaser né il DOM: restituisce <b>numeri</b> (colori, punti di geometria). Ogni vista li disegna con la propria tecnologia. È esattamente la stessa filosofia di «simulazione ≠ rendering» del capitolo 1, applicata stavolta <em>dentro</em> al rendering.",
+  "s2.callout.nerd": "<b>Per i curiosi.</b> <code class=\"inline\">computeWindsock()</code> calcola la geometria animata della manica a vento — segmenti a strisce che si allungano, si orientano sotto il vento e ondeggiano nel tempo. Restituisce una lista di quadrilateri; ogni vista è libera di dipingerli.",
+
+  "s3.h2": "Zero asset: texture e suoni fabbricati a runtime",
+  "s3.p1": "Il progetto non consegna <b>alcuna immagine né alcun file audio</b>. Tutto è sintetizzato all'avvio o al volo. Le texture delle particelle vengono disegnate una volta al boot, poi riutilizzate tinte.",
+  "s3.code.cap": "src/systems/textures.js — una scintilla disegnata una sola volta",
+  "s3.code.c1": "// riutilizzata per neve, braci, detriti",
+  "s3.code2.cap": "src/systems/Sfx.js — il «boom» del cannone, 100% codice",
+  "s3.code2.c1": "// scende",
+  "s3.p2": "Sul fronte audio, <code class=\"inline\">src/systems/Sfx.js</code> fabbrica ogni effetto con Web Audio: un po' di rumore filtrato e un volume che si spegne danno un'esplosione; un oscillatore discendente dà il «boom» del cannone. Nessun download, nessuna cache da gestire.",
+  "s3.callout.audiogate": "<b>Il lucchetto del browser.</b> I browser avviano il contesto audio <em>sospeso</em>; può riprendere solo dopo un gesto dell'utente. Per questo <code class=\"inline\">Sfx.unlock()</code> viene eseguito al primo tocco/clic — senza di esso, i primi suoni non verrebbero mai riprodotti, senza alcun avviso.",
+  "s3.callout.tip": "<b>Da ricordare.</b> Un bundle «senza asset» è minuscolo, si mette in cache in modo banale e non soffre di alcun caricamento bloccante. Il costo si sposta sulla <b>CPU a runtime</b> — un compromesso che ci assumiamo (vedi la sezione seguente).",
+
+  "s4.h2": "Profondità e livelli di qualità",
+  "s4.p1": "La parallasse non è un effetto «a parte»: cade naturalmente da due proprietà che ogni strato dichiara — la sua <b>profondità</b> (<code class=\"inline\">depth</code>, l'ordine di sovrapposizione) e il suo <b>fattore di scorrimento</b> (<code class=\"inline\">scrollFactor</code> &lt; 1, per scivolare più lentamente del primo piano).",
+  "s4.code.cap": "src/objects/Background.js — le creste lontane scorrono più lente",
+  "s4.p2": "Ma una TV di fascia bassa può arrancare sotto il carico delle particelle. All'avvio, un breve <b>benchmark</b> misura il numero di fotogrammi e colloca il dispositivo in un livello (<code class=\"inline\">'lite'</code> o <code class=\"inline\">'full'</code>). Il rendering si adatta poi di conseguenza: meno nuvole, e lo strato di particelle — il più costoso — viene semplicemente eliminato.",
+  "s4.code2.cap": "src/systems/benchmark.js — un livello deciso al boot",
+  "s4.code2.c1": "// il renderer leggerà questo livello",
+  "s4.callout.nerd": "<b>Per i curiosi.</b> Il benchmark mira al <b>rendering</b>, non alla simulazione (qui banale). Campiona <code class=\"inline\">postupdate</code> per ~900 ms, poi si disiscrive — la misura si paga una volta sola.",
+
+  "footer.suffix": "capitolo {n}/{total} · livello intermedio",
+
+  "pager.prev": "← Capitolo 1 · L'architettura di un gioco",
+  "pager.next": "Capitolo 3 · Client/server in tempo reale →"
+}

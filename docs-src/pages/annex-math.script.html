@@ -1,0 +1,46 @@
+    <script>
+      (function () {
+        const cv = document.getElementById('dist');
+        const ctx = cv.getContext('2d');
+        const W = cv.width, H = cv.height;
+        const cx = W / 2, cy = H / 2, R = 90;
+        let mx = W * 0.78, my = H * 0.32;
+        function draw() {
+          ctx.clearRect(0, 0, W, H);
+          ctx.fillStyle = '#fff4ec'; ctx.fillRect(0, 0, W, H);
+          const dx = mx - cx, dy = my - cy;
+          const d2 = dx * dx + dy * dy;
+          const inside = d2 <= R * R;
+          // disque
+          ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7);
+          ctx.fillStyle = inside ? 'rgba(63,143,47,0.22)' : 'rgba(216,85,47,0.14)';
+          ctx.fill();
+          ctx.lineWidth = 3; ctx.strokeStyle = inside ? '#3f8f2f' : '#d8552f'; ctx.stroke();
+          // ligne + points
+          ctx.strokeStyle = '#5b5470'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(mx, my); ctx.stroke(); ctx.setLineDash([]);
+          ctx.fillStyle = '#2b2535'; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
+          ctx.fillStyle = inside ? '#3f8f2f' : '#d8552f'; ctx.beginPath(); ctx.arc(mx, my, 7, 0, 7); ctx.fill();
+          // textes
+          ctx.fillStyle = '#2b2535'; ctx.font = "bold 18px 'JetBrains Mono', monospace"; ctx.textAlign = 'left';
+          ctx.fillText('{{sim.dxdy}}' + Math.round(d2), 16, 28);
+          ctx.fillText('{{sim.r2}}' + (R * R), 16, 52);
+          ctx.fillStyle = '#5b5470'; ctx.font = "14px 'JetBrains Mono', monospace";
+          ctx.fillText('{{sim.trueDist}}' + Math.round(Math.sqrt(d2)), 16, H - 18);
+          ctx.fillStyle = inside ? '#1f7d32' : '#b14a2f'; ctx.font = "bold 20px Fredoka, sans-serif"; ctx.textAlign = 'right';
+          ctx.fillText(inside ? '{{sim.inside}}' : '{{sim.outside}}', W - 16, 30);
+        }
+        function move(e) {
+          const r = cv.getBoundingClientRect();
+          const sx = cv.width / r.width, sy = cv.height / r.height;
+          mx = ((e.touches ? e.touches[0].clientX : e.clientX) - r.left) * sx;
+          my = ((e.touches ? e.touches[0].clientY : e.clientY) - r.top) * sy;
+          draw();
+          if (e.touches) e.preventDefault();
+        }
+        cv.addEventListener('mousemove', move);
+        cv.addEventListener('touchmove', move, { passive: false });
+        cv.addEventListener('touchstart', move, { passive: false });
+        draw();
+      })();
+    </script>

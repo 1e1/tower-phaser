@@ -1,0 +1,61 @@
+{
+  "title": "Chapter 3 — Play across several screens",
+
+  "hero.badge": "Batch 3 · Tundra",
+  "hero.kicker": "Chapter 3",
+  "hero.title": "Play across several screens",
+  "hero.lead": "The TV shows the match; the phones act as controllers. So everyone sees the same thing at the same time, we need a <b>referee</b>: the server.",
+
+  "s1.h2": "The problem",
+  "s1.lead": "Until now, everything happened on a single computer. Now: a TV, two phones… three different devices that must live <b>the same match</b>, perfectly in sync.",
+  "s1.p1": "If each device computed the match in its own corner, they'd end up disagreeing (a ball here, not there…). We need <b>a single source of truth</b>.",
+
+  "s2.h2": "The server is the referee",
+  "s2.p1": "We add a program running “in the middle”: the <b>server</b>. The devices are <b>clients</b>. The server is the only one to <b>compute</b> the match (the physics, the scores); the clients only <b>display</b> what it decides and <b>send it the players' orders</b>.",
+  "s2.li1": "📱 The phones send: “my angle = 60°, I confirm”.",
+  "s2.li2": "🧑‍⚖️ The server computes the volley, who gets hit, the score.",
+  "s2.li3": "📺 Everyone receives the game <b>state</b> and displays it the same way.",
+  "s2.callout": "<b>Remember.</b> “The referee is always right”: since the server decides everything, the screens can't contradict each other — and cheating is harder.",
+
+  "s3.h2": "A phone line that stays open: the WebSocket",
+  "s3.p1": "A classic web page <b>asks</b> for a piece of info, gets an answer, then hangs up. Too slow for a game! We use a <b>WebSocket</b>: a line that <b>stays open</b> both ways. The server can “speak” whenever it wants, ~30 times per second.",
+  "s3.callout.try": "<b>Try it!</b> Click to launch a volley and watch the messages travel: the orders go up to the referee, then the state comes back down to every screen.",
+  "s3.sim.title": "The dance of the messages",
+  "s3.sim.play": "▶️ Launch a volley",
+  "s3.sim.hint": "Blue/red: the players' orders. Green: the game state sent back to everyone.",
+
+  "s4.h2": "The same landscape everywhere, without sending it all",
+  "s4.p1": "The terrain can be thousands of points: too big to send. The trick: the server only sends a small random <b>seed</b> (one number). Each screen <b>recomputes</b> the same landscape from that seed (remember the generator from chapter 2!).",
+  "s4.code.cap": "the idea of sharing by seed",
+  "s4.code.c1": "// the server just sends:",
+  "s4.code.c2": "// each screen does:",
+  "s4.code.c3": "// → identical everywhere!",
+
+  "s5.h2": "Joining a match: room code &amp; QR",
+  "s5.p1": "The TV creates a <b>room</b> and shows a <b>4-letter code</b> and a <b>QR code</b>. The phones scan the QR: they land straight into the right match. Handy!",
+  "s5.fig.alt": "Connecting through a room",
+  "s5.fig.tv": "📺 TV",
+  "s5.fig.scan1": "📱 scan → Player 1",
+  "s5.fig.scan2": "📱 scan → Player 2",
+  "s5.fig.cap": "The TV shows the code &amp; the QR; two phones join as players.",
+  "s5.callout.nerd": "<b>For the curious.</b> The QR must point to the TV's <b>local network address</b> (something like <code class=\"inline\">192.168.1.20</code>), not to “localhost” (which means “myself”). Otherwise the phone would be looking for itself! The server finds the right address on its own.",
+
+  "s6.h2": "Who does what? The TV manages on its own",
+  "s6.li1": "📺 A detected <b>TV</b> starts straight away in “host” mode: no remote needed.",
+  "s6.li2": "🟢 The match <b>starts on its own</b> as soon as the 2nd player has joined.",
+  "s6.li3": "🧑‍🤝‍🧑 Extra players? They <b>watch</b> while waiting for a spot to free up, then take over.",
+  "s6.callout": "<b>Remember.</b> Batch 3 = going from a game “on one screen” to a “networked” game, without rewriting everything: we just moved the computation to the referee.",
+
+  "footer.suffix": "chapter {n}/{total}",
+
+  "pager.prev": "← Chapter 2",
+  "pager.next": "Chapter 4 · Destroy the landscape →",
+
+  "sim.node.p1": "📱 P1",
+  "sim.node.p2": "📱 P2",
+  "sim.node.sv": "🧑‍⚖️ Server",
+  "sim.node.tv": "📺 TV",
+  "sim.msg.aim": "angle/confirm",
+  "sim.msg.state": "state",
+  "sim.computing": "… computing …"
+}

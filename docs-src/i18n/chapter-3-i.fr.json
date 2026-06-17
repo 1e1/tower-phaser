@@ -1,0 +1,57 @@
+{
+  "title": "Chapitre 3 (intermédiaire) — Client/serveur temps réel",
+  "meta.desc": "Niveau intermédiaire : un serveur autoritatif et ses salons, le protocole intentions vs snapshots, une simulation sans Phaser partagée par le serveur et les clients, l'information cachée et la gestion des sièges et des spectateurs.",
+
+  "hero.badge": "Intermédiaire · Lot 3 · Toundra",
+  "hero.kicker": "Chapitre 3 · niveau intermédiaire",
+  "hero.title": "Client/serveur temps réel",
+  "hero.lead": "Trois appareils, une seule partie. L'architecture repose sur trois piliers : un <strong>serveur autoritatif</strong>, un protocole « <strong>intentions vs snapshots</strong> », et une <strong>simulation partagée</strong> qui ne connaît pas le navigateur.",
+
+  "s1.h2": "Le serveur fait foi, les salons isolent",
+  "s1.lead": "Une seule machine calcule la partie : le <b>serveur</b>. Chaque match vit dans un <b>salon</b> (<code class=\"inline\">server/Room.js</code>) qui contient deux sièges joueurs, une file d'attente de spectateurs, les TV connectées, et <b>la</b> simulation autoritative.",
+  "s1.code.cap": "server/Room.js — un salon, son état, son horloge",
+  "s1.code.c1": "// ~30 Hz : pas de simulation ET cadence de diffusion",
+  "s1.code.c2": "// deux sièges",
+  "s1.code.c3": "// file de spectateurs en attente",
+  "s1.code.c4": "// écrans qui regardent",
+  "s1.code.c5": "// la simulation, créée au démarrage du match",
+  "s1.p1": "Le serveur (<code class=\"inline\">server/index.js</code>) ne fait qu'<b>aiguiller</b> les messages WebSocket vers le bon salon : <code class=\"inline\">host</code> crée un salon, <code class=\"inline\">join</code> y place un participant, et tout le reste (<code class=\"inline\">aim</code>, <code class=\"inline\">ready</code>, <code class=\"inline\">shell</code>…) est routé vers les méthodes du salon. Aucune logique de jeu ne vit dans la couche réseau.",
+  "s1.callout": "<b>À retenir.</b> « L'arbitre a toujours raison ». Comme un seul programme calcule, les écrans <b>ne peuvent pas se contredire</b> — et un client modifié ne peut pas inventer un résultat.",
+
+  "s2.h2": "Le protocole : intentions vs snapshots",
+  "s2.p1": "Le trafic est <b>asymétrique</b>. Les manettes envoient de petites <b>intentions</b> (« mon angle, ma puissance, je suis prêt »). Le serveur, lui, diffuse ~30 fois par seconde un <b>snapshot</b> : l'état complet et officiel de la partie.",
+  "s2.fig.alt": "Intentions vers le serveur, snapshots vers tous",
+  "s2.fig.ctrl1": "📱 manette",
+  "s2.fig.ctrl2": "📱 manette",
+  "s2.fig.server": "🧑‍⚖️ serveur",
+  "s2.fig.viewers": "📺 + 📱",
+  "s2.fig.intents": "intentions →",
+  "s2.fig.snapshots": "snapshots ~30 Hz →",
+  "s2.fig.cap": "Peu d'octets montent (des intentions) ; un état compact redescend vers tout le monde.",
+  "s2.p2": "Chaque tick, le salon avance la simulation d'un pas fixe, récupère les événements survenus, puis diffuse le snapshot à tous les abonnés du salon :",
+  "s2.code.cap": "server/Room.js — un tour de boucle",
+
+  "s3.h2": "Une simulation sans Phaser, partagée des deux côtés",
+  "s3.p1": "Le serveur tourne sous Node, sans navigateur ni canvas. Il peut quand même calculer la physique parce que toute la logique vit dans <code class=\"inline\">src/sim/</code>, en JavaScript pur. Le serveur <b>importe le même fichier</b> que les clients :",
+  "s3.code.cap": "server/Room.js — le serveur réutilise la simulation des clients",
+  "s3.p2": "C'est le dividende de la décision d'architecture du chapitre 1 : la même physique tourne sur le serveur (le juge) et reste testable sous Node. Personne ne réécrit les trajectoires « pour le réseau ».",
+  "s3.snapomit.cap": "src/sim/Simulation.js — ce que le snapshot transporte vraiment",
+  "s3.snapomit.c1": "// la TV spectatrice ne reçoit jamais les valeurs de visée choisies ;",
+  "s3.snapomit.c2": "// seulement les drapeaux ready et, une fois le tir parti, les projectiles.",
+  "s3.callout.nerd": "<b>Information cachée.</b> Le snapshot <b>ne contient pas</b> l'angle ni la puissance des joueurs en phase de visée — ces nombres ne sont jamais affichés sur la TV. On ne diffuse que les drapeaux « prêt » et, une fois le tir parti, les projectiles. L'asymétrie d'information est <em>dans le protocole</em>.",
+
+  "s4.h2": "Sièges, file d'attente et départs",
+  "s4.p1": "Un salon est vivant : des gens arrivent, partent, prennent le relais. Le salon gère ces transitions sans casser la partie. Un participant qui arrive prend un siège libre, sinon il rejoint la <b>file</b> en tant que spectateur.",
+  "s4.code1.cap": "server/Room.js — siège libre ou file d'attente",
+  "s4.code1.c1": "/* joueur */",
+  "s4.code1.c2": "/* spectateur en file */",
+  "s4.p2": "Quand un joueur libère son siège (départ volontaire ou déconnexion), le premier de la file <b>prend le relais</b> (<code class=\"inline\">promoteInto</code>). Et si plus personne ne complète les deux sièges en pleine partie, le salon <b>retourne au lobby</b> : la TV réaffiche le code et le QR.",
+  "s4.code2.cap": "server/Room.js — retour au lobby si un siège reste vide",
+  "s4.code2.c1": "// un spectateur en attente prend le siège",
+  "s4.callout": "<b>À retenir.</b> Le réseau, c'est aussi tous les cas « pas heureux » : départs, reconnexions, places qui se libèrent. Centraliser cet état dans un seul objet <code class=\"inline\">Room</code> rend ces transitions lisibles et testables.",
+
+  "footer.suffix": "chapitre {n}/{total} · niveau intermédiaire",
+
+  "pager.prev": "← Chapitre 2 · Données, rendu &amp; synthèse",
+  "pager.next": "Chapitre 4 · Terrain destructible &amp; état partagé →"
+}

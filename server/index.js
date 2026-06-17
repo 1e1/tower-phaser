@@ -23,14 +23,48 @@ function lanIp() {
   return null;
 }
 const LAN_IP = lanIp();
+// Optional override for the host advertised in the QR code. Useful when the
+// auto-detected IP is unreachable from phones (e.g. a Docker bridge address
+// like 172.17.x.x) or to point at a fixed name/IP behind a reverse proxy.
+const PUBLIC_HOST = process.env.PUBLIC_HOST || null;
+// Explicit override always wins; otherwise fall back to the detected LAN IP.
+const ADVERTISED_HOST = PUBLIC_HOST || LAN_IP;
 
 const app = express();
 app.use(express.static(DIST));
+// Lightweight health/diagnostic endpoint, declared BEFORE the SPA fallback so it
+// is actually reached. If this returns JSON, the Node process is the one serving
+// requests (and you can read its pid); if it returns index.html or a platform
+// 404, requests are being served statically and the WebSocket has no backend.
+app.get('/healthz', (_req, res) => {
+  res.json({ ok: true, pid: process.pid, uptime: Math.round(process.uptime()) });
+});
 // SPA fallback for any non-asset route.
 app.get(/.*/, (_req, res) => res.sendFile(join(DIST, 'index.html')));
 
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
+
+// --- heartbeat -------------------------------------------------------------
+// Browsers answer protocol-level pings automatically. Pinging every 30s keeps
+// otherwise-idle lobby connections alive through reverse proxies that drop idle
+// sockets, and lets us terminate connections that have silently died (so a TV
+// whose socket is really gone disposes its room instead of lingering).
+const HEARTBEAT_MS = 30_000;
+const heartbeat = function () {
+  this.isAlive = true;
+};
+const pinger = setInterval(() => {
+  for (const socket of wss.clients) {
+    if (socket.isAlive === false) {
+      socket.terminate();
+      continue;
+    }
+    socket.isAlive = false;
+    socket.ping();
+  }
+}, HEARTBEAT_MS);
+wss.on('close', () => clearInterval(pinger));
 
 // --- room registry ---------------------------------------------------------
 const rooms = new Map();
@@ -53,6 +87,8 @@ function send(socket, msg) {
 
 wss.on('connection', (socket) => {
   socket.room = null;
+  socket.isAlive = true;
+  socket.on('pong', heartbeat);
 
   socket.on('message', (raw) => {
     let msg;
@@ -78,7 +114,7 @@ function handle(socket, msg) {
       socket.room = room;
       socket.role = 'tv';
       room.addTv(socket);
-      send(socket, { t: 'hosted', code, role: 'tv', lanIp: LAN_IP });
+      send(socket, { t: 'hosted', code, role: 'tv', lanIp: ADVERTISED_HOST, publicHost: PUBLIC_HOST });
       break;
     }
 
@@ -96,7 +132,7 @@ function handle(socket, msg) {
     }
 
     case 'config':
-      if (socket.room) socket.room.setConfig(socket, msg.rounds, msg.biomeId, msg.hp);
+      if (socket.room) socket.room.setConfig(socket, msg);
       break;
 
     case 'name':
@@ -135,8 +171,9 @@ function handle(socket, msg) {
 server.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Tower Duel server listening on http://localhost:${PORT}`);
-  if (LAN_IP) {
+  if (ADVERTISED_HOST) {
+    const tag = PUBLIC_HOST ? ' (PUBLIC_HOST override)' : '';
     // eslint-disable-next-line no-console
-    console.log(`Reachable on the local network at http://${LAN_IP}:${PORT}`);
+    console.log(`Reachable on the local network at http://${ADVERTISED_HOST}:${PORT}${tag}`);
   }
 });

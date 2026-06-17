@@ -1,0 +1,130 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,30 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#d8552f"/>
+        <path d="M0,95 C260,55 520,118 760,90 C1020,58 1240,118 1440,90 L1440,120 L0,120 Z" fill="#a83b22"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">?</span>{{s0.h2}}</h2>
+        <p class="lead">{{s0.lead}}</p>
+        <p>{{s0.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s0.code.cap}}</figcaption>
+<pre>{{s0.code.var}} = <span class="f">Math.sqrt</span>(dx*dx + dy*dy);   <span class="c">{{s0.code.c1}}</span></pre>
+        </figure>
+        <p>{{s0.p2}}</p>
+        <div class="callout nerd">{{s0.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p>{{s1.p1}}</p>
+        <p>{{s1.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre><span class="k">float</span> Q_rsqrt(<span class="k">float</span> number) {
+  <span class="k">long</span> i;
+  <span class="k">float</span> x2, y;
+  x2 = number * <span class="s">0.5F</span>;
+  y  = number;
+  i  = * ( <span class="k">long</span> * ) &amp;y;            <span class="c">{{s1.code.c1}}</span>
+  i  = <span class="s">0x5f3759df</span> - ( i &gt;&gt; <span class="s">1</span> );   <span class="c">{{s1.code.c2}}</span>
+  y  = * ( <span class="k">float</span> * ) &amp;i;
+  y  = y * ( <span class="s">1.5F</span> - ( x2 * y * y ) ); <span class="c">{{s1.code.c3}}</span>
+  <span class="k">return</span> y;
+}</pre>
+        </figure>
+        <p>{{s1.p3}}</p>
+        <div class="callout warn">{{s1.callout.warn}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <p>{{s2.p2}}</p>
+
+        <figure class="diagram" aria-label="{{s2.fig.alt}}">
+          <svg viewBox="0 0 720 200" width="720" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <rect x="20" y="30" width="320" height="140" rx="12" fill="#fff0e6" stroke="#d8552f" stroke-width="2"/>
+            <text x="180" y="58" text-anchor="middle" font-weight="800" fill="#2b2535">{{s2.fig.slowTitle}}</text>
+            <text x="180" y="92" text-anchor="middle" font-size="14" fill="#5b5470">d = √(dx²+dy²)</text>
+            <text x="180" y="116" text-anchor="middle" font-size="14" fill="#5b5470">{{s2.fig.slowIf}}</text>
+            <text x="180" y="146" text-anchor="middle" font-size="13" fill="#b14a2f">{{s2.fig.slowNote}}</text>
+
+            <rect x="380" y="30" width="320" height="140" rx="12" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+            <text x="540" y="58" text-anchor="middle" font-weight="800" fill="#2b2535">{{s2.fig.fastTitle}}</text>
+            <text x="540" y="92" text-anchor="middle" font-size="14" fill="#5b5470">d² = dx²+dy²</text>
+            <text x="540" y="116" text-anchor="middle" font-size="14" fill="#5b5470">{{s2.fig.fastIf}}</text>
+            <text x="540" y="146" text-anchor="middle" font-size="13" fill="#2f7a2f">{{s2.fig.fastNote}}</text>
+          </svg>
+          <figcaption>{{s2.fig.cap}}</figcaption>
+        </figure>
+
+        <p>{{s2.p3}}</p>
+        <figure class="code">
+          <figcaption>{{s2.code.cap}}</figcaption>
+<pre><span class="k">let</span> bestSq = <span class="s">Infinity</span>;
+<span class="k">for</span> (<span class="k">const</span> p <span class="k">of</span> s.projectiles) {
+  <span class="k">const</span> dx = p.x - ox, dy = p.y - oy;
+  <span class="k">const</span> d2 = dx*dx + dy*dy;       <span class="c">{{s2.code.c1}}</span>
+  <span class="k">if</span> (d2 &lt; bestSq) bestSq = d2;    <span class="c">{{s2.code.c2}}</span>
+}
+<span class="c">{{s2.code.c3}}</span>
+<span class="k">const</span> intensity = bestSq &lt; {{s2.code.thr}}*{{s2.code.thr}} ? <span class="s">1</span> - <span class="f">Math.sqrt</span>(bestSq)/{{s2.code.thr}} : <span class="s">0</span>;</pre>
+        </figure>
+        <div class="callout tip">{{s2.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code1.cap}}</figcaption>
+<pre><span class="k">export function</span> <span class="f">rectContains</span>(rect, x, y) {
+  <span class="k">return</span> x &gt;= rect.x &amp;&amp; x &lt;= rect.x + rect.w &amp;&amp;
+         y &gt;= rect.y &amp;&amp; y &lt;= rect.y + rect.h;   <span class="c">{{s3.code1.c1}}</span>
+}</pre>
+        </figure>
+        <p>{{s3.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code2.cap}}</figcaption>
+<pre><span class="k">for</span> (<span class="k">const</span> c <span class="k">of</span> craters) {
+  <span class="k">const</span> dx = x - c.x, dy = y - c.y;
+  <span class="k">if</span> (dx*dx + dy*dy &lt;= c.r*c.r) <span class="k">return</span> <span class="k">true</span>;  <span class="c">{{s3.code2.c1}}</span>
+}</pre>
+        </figure>
+        <div class="callout nerd">{{s3.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <div class="callout try">{{s4.callout.try}}</div>
+        <div class="sim">
+          <h4>{{s4.sim.title}}</h4>
+          <canvas id="dist" width="640" height="280"></canvas>
+          <div class="hint">{{s4.sim.hint}}</div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">5</span>{{s5.h2}}</h2>
+        <p>{{s5.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s5.code.cap}}</figcaption>
+<pre><span class="k">const</span> t = clock / WIND_KEY_SECONDS;     <span class="c">{{s5.code.c1}}</span>
+<span class="k">const</span> s = t * t * (<span class="s">3</span> - <span class="s">2</span>*t);          <span class="c">{{s5.code.c2}}</span>
+<span class="k">const</span> wind = from + (to - from) * s;     <span class="c">{{s5.code.c3}}</span></pre>
+        </figure>
+        <p>{{s5.p2}}</p>
+        <div class="callout tip">{{s5.callout.tip}}</div>
+        <p style="text-align:center; margin-top:24px;">
+          <a class="pill" href="index.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">{{s5.backHome}}</a>
+        </p>
+      </section>
+    </main>

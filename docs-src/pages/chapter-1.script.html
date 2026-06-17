@@ -1,0 +1,62 @@
+    <script>
+      (function () {
+        const cv = document.getElementById('ball');
+        const ctx = cv.getContext('2d');
+        const a = document.getElementById('a'), p = document.getElementById('p'), w = document.getElementById('w');
+        const aV = document.getElementById('aV'), pV = document.getElementById('pV'), wV = document.getElementById('wV');
+        const W = cv.width, H = cv.height, groundY = H - 30;
+        const cannon = { x: 60, y: groundY };
+        let target = { x: 540, y: groundY };
+        let shot = null, anim = null;
+
+        function bg() {
+          ctx.clearRect(0, 0, W, H);
+          ctx.fillStyle = '#bfe3ff'; ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = '#4f8f2f'; ctx.fillRect(0, groundY, W, H - groundY);
+          // canon
+          ctx.save(); ctx.translate(cannon.x, cannon.y);
+          ctx.fillStyle = '#4f8fff'; ctx.fillRect(-16, -34, 32, 34);
+          const rad = -a.value * Math.PI / 180;
+          ctx.rotate(rad); ctx.fillStyle = '#d7dde8'; ctx.fillRect(0, -6, 40, 12);
+          ctx.restore();
+          // cible
+          ctx.fillStyle = '#ff6b5e'; ctx.fillRect(target.x - 16, target.y - 46, 32, 46);
+          ctx.strokeStyle = '#b8352b'; ctx.lineWidth = 3; ctx.strokeRect(target.x - 16, target.y - 46, 32, 46);
+        }
+        function refresh() { aV.textContent = a.value; pV.textContent = p.value; wV.textContent = w.value; if (!shot) bg(); }
+        [a, p, w].forEach((el) => el.addEventListener('input', refresh));
+
+        function fire() {
+          if (anim) cancelAnimationFrame(anim);
+          const speed = p.value * 4.2;
+          const rad = a.value * Math.PI / 180;
+          shot = { x: cannon.x, y: cannon.y - 34, vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, trail: [] };
+          const wind = w.value * 1.6, grav = 520, dt = 1 / 60;
+          function step() {
+            for (let i = 0; i < 2; i++) { // 2 sous-pas pour la fluidité
+              shot.vx += wind * dt; shot.vy += grav * dt;
+              shot.x += shot.vx * dt; shot.y += shot.vy * dt;
+              shot.trail.push({ x: shot.x, y: shot.y });
+            }
+            bg();
+            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            shot.trail.forEach((t) => { ctx.beginPath(); ctx.arc(t.x, t.y, 2.5, 0, 7); ctx.fill(); });
+            ctx.fillStyle = '#1d2233'; ctx.beginPath(); ctx.arc(shot.x, shot.y, 6, 0, 7); ctx.fill();
+            ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(shot.x, shot.y, 3.5, 0, 7); ctx.fill();
+
+            const hit = Math.abs(shot.x - target.x) < 18 && shot.y > target.y - 46 && shot.y < target.y;
+            if (hit) { boom('{{sim.hit}}', '#1f7d32'); target.x = 360 + Math.random() * 230; shot = null; return; }
+            if (shot.y >= groundY) { boom('{{sim.miss}}', '#b8352b'); shot = null; return; }
+            if (shot.x < -40 || shot.x > W + 40) { shot = null; bg(); return; }
+            anim = requestAnimationFrame(step);
+          }
+          step();
+        }
+        function boom(txt, col) {
+          bg(); ctx.fillStyle = col; ctx.font = "bold 26px Fredoka, sans-serif"; ctx.textAlign = 'center';
+          ctx.fillText(txt, W / 2, 50);
+        }
+        document.getElementById('fire').addEventListener('click', fire);
+        refresh();
+      })();
+    </script>

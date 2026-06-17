@@ -1,0 +1,50 @@
+{
+  "title": "Capítulo 2 (intermedio) — Datos, renderizado &amp; síntesis",
+  "meta.desc": "Nivel intermedio: biomas guiados por datos, un módulo de render agnóstico compartido por la TV y el móvil, texturas y sonido generados en tiempo de ejecución, profundidad/parallax y niveles de calidad desde un benchmark de arranque.",
+
+  "hero.badge": "Intermedio · Fase 2 · Desierto",
+  "hero.kicker": "Capítulo 2 · nivel intermedio",
+  "hero.title": "Datos, renderizado &amp; síntesis",
+  "hero.lead": "Hacer que un juego sea bonito <em>sin un solo archivo de imagen ni de sonido</em>. La clave: <strong>biomas guiados por datos</strong>, un <strong>módulo de render compartido</strong>, y texturas y sonidos <strong>generados en tiempo de ejecución</strong>.",
+
+  "s1.h2": "Biomas guiados por datos",
+  "s1.lead": "Pradera, desierto, tundra, volcán: cuatro lugares muy distintos, <b>cero código específico</b> por cada uno. Un bioma es solo un objeto de <b>datos</b> que describe colores y ambiente.",
+  "s1.code.cap": "src/config/biomes.js — un bioma es pura data",
+  "s1.code.c1": "// degradado del cielo",
+  "s1.code.c2": "// dos crestas parallax",
+  "s1.code.c3": "// partículas de arena",
+  "s1.code.c4": "// terreno más accidentado",
+  "s1.p1": "El motor lee estos campos y los aplica: el degradado de cielo, la paleta del terreno, las montañas, las partículas. Para añadir un nuevo bioma, añades un objeto a la lista — ninguna rama <code class=\"inline\">if (bioma === …)</code> dispersa por el código.",
+  "s1.callout.tip": "<b>La idea.</b> Separar los <b>datos</b> del <b>código</b>. Lo que cambia a menudo (los temas) vive en <code class=\"inline\">src/config/</code>; el código que los interpreta no se toca. Es la misma filosofía que separa la simulación del renderizado.",
+
+  "s2.h2": "Un módulo de render agnóstico",
+  "s2.p1": "La TV dibuja con Phaser; el mini-mando del móvil dibuja en un <code class=\"inline\">&lt;canvas&gt;</code> normal. Para que el cañón, el tinte de carga y la manga de viento tengan el <b>mismo aspecto en ambos sitios</b>, la matemática de los visuales vive en un módulo compartido, <b>sin Phaser</b>.",
+  "s2.code.cap": "src/render/visuals.js — color del cañón según la carga",
+  "s2.code.c1": "// acero frío a baja potencia, rojo incandescente a tope",
+  "s2.code.c2": "// …igual para g y b",
+  "s2.p2": "Funciones puras: entran números, salen números, sin conocer el motor de dibujo. Por eso el mismo <code class=\"inline\">visuals.js</code> sirve a la pantalla de TV (Phaser) y al canvas del controlador, con una sola fuente de verdad para el aspecto.",
+  "s2.callout.nerd": "<b>Para los curiosos.</b> Funciones puras (entran números, salen números), sin conocer el motor de dibujo: por eso el mismo <code class=\"inline\">visuals.js</code> sirve a la pantalla de TV (Phaser) <em>y</em> al canvas del controlador. Una sola fuente de verdad para el aspecto.",
+
+  "s3.h2": "Texturas y sonidos generados en runtime",
+  "s3.p1": "El proyecto no embarca ningún archivo de imagen ni de audio. Las pequeñas texturas (chispa, humo, destello, nube) se <b>dibujan una vez al arrancar</b>, y los sonidos se <b>sintetizan</b> con la Web Audio API a partir de osciladores y ruido filtrado.",
+  "s3.code.cap": "src/systems/textures.js — una chispa dibujada al vuelo",
+  "s3.code.c1": "// reutilizada y tintada por las partículas",
+  "s3.code2.cap": "src/systems/Sfx.js — el disparo de cañón, sintetizado",
+  "s3.code2.c1": "// thump descendente",
+  "s3.p2": "Sin descarga, sin caché que gestionar: cada efecto nace del código en el arranque o sobre la marcha. El precio se paga en CPU en tiempo de ejecución, no en bytes por la red.",
+  "s3.callout.audiogate": "<b>El candado del navegador.</b> Los navegadores arrancan el contexto de audio <em>suspendido</em>; solo puede reanudarse tras un gesto del usuario. Por eso <code class=\"inline\">Sfx.unlock()</code> se ejecuta en el primer toque/clic — sin él, los primeros sonidos nunca sonarían, sin aviso alguno.",
+  "s3.callout.tip": "<b>Recuerda.</b> Cero assets = un bundle minúsculo y nada que cargar por la red. El precio: cada efecto es un poco de matemática. Lo desarrollamos en el nivel experto.",
+
+  "s4.h2": "Profundidad, parallax y calidad adaptativa",
+  "s4.p1": "El fondo se organiza en capas con una <b>profundidad</b> (<code class=\"inline\">depth</code>) y un <b>factor de desplazamiento</b> (<code class=\"inline\">scrollFactor</code>): las lejanas se mueven más despacio que el primer plano, lo que da la ilusión de distancia (parallax) durante la panorámica de cámara entre rondas.",
+  "s4.code.cap": "src/objects/Background.js — dos crestas a velocidades distintas",
+  "s4.p2": "Pero una smart TV o un navegador modesto pueden ahogarse con todas esas partículas. Al arrancar, un pequeño <b>benchmark</b> mide la tasa de fotogramas durante un instante y elige un <b>nivel de calidad</b>; el renderizador adapta los efectos en consecuencia.",
+  "s4.code2.cap": "src/systems/benchmark.js — elegir un nivel",
+  "s4.code2.c1": "// en 'lite', se sueltan las partículas ambientales",
+  "s4.callout.nerd": "<b>Para los curiosos.</b> El benchmark apunta al <b>renderizado</b> (el cuello de botella real), no a la simulación, que es trivial. En modo <code class=\"inline\">lite</code>, la capa de partículas ambientales — lo más barato de soltar — simplemente no se crea.",
+
+  "footer.suffix": "capítulo {n}/{total} · nivel intermedio",
+
+  "pager.prev": "← Capítulo 1 · La arquitectura",
+  "pager.next": "Capítulo 3 · Cliente/servidor en tiempo real →"
+}

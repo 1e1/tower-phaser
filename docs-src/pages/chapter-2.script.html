@@ -1,0 +1,74 @@
+    <script>
+      // ---- Générateur de terrain procédural ----
+      (function () {
+        const cv = document.getElementById('land'), ctx = cv.getContext('2d');
+        const W = cv.width, H = cv.height;
+        const r = document.getElementById('r'), rV = document.getElementById('rV');
+        let seed = 1234;
+        function rng(s) { return function () { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; }
+        function draw() {
+          const rough = r.value / 100; rV.textContent = rough.toFixed(1);
+          const rnd = rng(seed);
+          const waves = [
+            { a: (40 + rnd() * 50) * rough, f: 1.2 + rnd() * 1.2, p: rnd() * 6.28 },
+            { a: (15 + rnd() * 30) * rough, f: 3 + rnd() * 2.5, p: rnd() * 6.28 },
+            { a: (6 + rnd() * 14) * rough, f: 6 + rnd() * 3, p: rnd() * 6.28 },
+          ];
+          ctx.clearRect(0, 0, W, H);
+          ctx.fillStyle = '#cdeafe'; ctx.fillRect(0, 0, W, H);
+          ctx.beginPath(); ctx.moveTo(0, H);
+          for (let x = 0; x <= W; x += 3) {
+            const t = x / W; let y = H * 0.55;
+            for (const w of waves) y -= w.a * Math.sin(w.f * Math.PI * t + w.p);
+            ctx.lineTo(x, y);
+          }
+          ctx.lineTo(W, H); ctx.closePath();
+          ctx.fillStyle = '#d9a441'; ctx.fill();
+          ctx.lineWidth = 4; ctx.strokeStyle = '#f0cd7a';
+          ctx.beginPath();
+          for (let x = 0; x <= W; x += 3) {
+            const t = x / W; let y = H * 0.55;
+            for (const w of waves) y -= w.a * Math.sin(w.f * Math.PI * t + w.p);
+            x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        r.addEventListener('input', draw);
+        document.getElementById('gen').addEventListener('click', () => { seed = Math.floor(Math.random() * 1e7) + 1; draw(); });
+        draw();
+      })();
+
+      // ---- Effets sonores synthétisés ----
+      (function () {
+        let ac;
+        const ensure = () => { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); return ac; };
+        function noise(dur) {
+          const ctx = ensure(); const n = Math.floor(ctx.sampleRate * dur);
+          const buf = ctx.createBuffer(1, n, ctx.sampleRate); const d = buf.getChannelData(0);
+          for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+          const s = ctx.createBufferSource(); s.buffer = buf; return s;
+        }
+        function boom(big) {
+          const ctx = ensure(), now = ctx.currentTime, src = noise(big ? 0.55 : 0.35);
+          const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+          lp.frequency.setValueAtTime(big ? 1200 : 1800, now);
+          lp.frequency.exponentialRampToValueAtTime(120, now + (big ? 0.5 : 0.3));
+          const g = ctx.createGain(); g.gain.setValueAtTime(1, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + (big ? 0.55 : 0.34));
+          src.connect(lp).connect(g).connect(ctx.destination); src.start(now); src.stop(now + 0.6);
+          if (!big) { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(160, now);
+            o.frequency.exponentialRampToValueAtTime(50, now + 0.25); const og = ctx.createGain();
+            og.gain.setValueAtTime(0.8, now); og.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+            o.connect(og).connect(ctx.destination); o.start(now); o.stop(now + 0.3); }
+        }
+        function blip() {
+          const ctx = ensure(), now = ctx.currentTime, o = ctx.createOscillator(); o.type = 'square';
+          o.frequency.setValueAtTime(660, now); const g = ctx.createGain(); g.gain.setValueAtTime(0.18, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.12); o.connect(g).connect(ctx.destination);
+          o.start(now); o.stop(now + 0.13);
+        }
+        document.getElementById('boom').addEventListener('click', () => boom(false));
+        document.getElementById('expl').addEventListener('click', () => boom(true));
+        document.getElementById('blip').addEventListener('click', blip);
+      })();
+    </script>

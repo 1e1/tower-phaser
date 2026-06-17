@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Tower Duel">
+  <defs>
+    <linearGradient id="tdSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3f6e"/>
+      <stop offset="1" stop-color="#46679c"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#tdSky)"/>
+  <!-- celestial glow -->
+  <circle cx="50" cy="14" r="6.5" fill="#f6e7b0" opacity="0.9"/>
+  <!-- parallax hills -->
+  <path d="M0 46 C12 40 22 49 34 45 C44 42 54 49 64 44 L64 64 L0 64 Z" fill="#3c6f30"/>
+  <path d="M0 52 C14 47 26 55 40 51 C50 48 58 54 64 51 L64 64 L0 64 Z" fill="#2c5422"/>
+  <!-- left tower (player 1, blue) -->
+  <g fill="#4f8fff">
+    <rect x="8" y="36" width="12" height="17" rx="2"/>
+    <rect x="6.5" y="32.5" width="15" height="5" rx="1.5"/>
+  </g>
+  <rect x="18.5" y="31.5" width="12" height="4.2" rx="2.1" fill="#cdd7e6" transform="rotate(-34 18.5 33.6)"/>
+  <!-- right tower (player 2, red) -->
+  <g fill="#ff6b5e">
+    <rect x="44" y="36" width="12" height="17" rx="2"/>
+    <rect x="42.5" y="32.5" width="15" height="5" rx="1.5"/>
+  </g>
+  <rect x="33.5" y="31.5" width="12" height="4.2" rx="2.1" fill="#ffd0c0" transform="rotate(34 45.5 33.6)"/>
+  <!-- shell trajectory -->
+  <path d="M21 30 C30 9 35 9 44 29" fill="none" stroke="#eaf3ff" stroke-width="2" stroke-linecap="round" stroke-dasharray="1.6 4.2"/>
+  <circle cx="32.5" cy="12.4" r="3.4" fill="#ffe066" stroke="#e0a92a" stroke-width="1.3"/>
+</svg>

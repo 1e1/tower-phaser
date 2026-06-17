@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
 
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, ROUND_OPTIONS } from '../config/constants.js';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS, ROUND_OPTIONS, GAME_MODES } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { generateHeights } from '../sim/terrain.js';
 import { PHASE } from '../sim/Simulation.js';
@@ -24,6 +24,7 @@ export default class TvScene extends Phaser.Scene {
   init(data) {
     this.code = data.code;
     this.lanIp = data.lanIp || null;
+    this.publicHost = data.publicHost || null;
     this.spectator = !!data.spectator;
     this.queuePos = data.queue || 0;
     this.mode = this.spectator ? 'spectating' : 'lobby';
@@ -88,17 +89,20 @@ export default class TvScene extends Phaser.Scene {
       return o;
     };
 
-    add(this.text(cx, 64, 'TOWER DUEL', 60, COLORS.hud, true));
-    add(this.text(cx, 138, 'Join from your phone', 24, COLORS.hudDim));
-    add(this.add.text(cx, 220, this.code.split('').join(' '), {
-      fontFamily: 'Trebuchet MS, sans-serif', fontSize: '92px', color: COLORS.hud, fontStyle: 'bold',
+    if (this.textures.exists('logo')) {
+      add(this.add.image(cx, 58, 'logo').setOrigin(0.5).setDisplaySize(78, 78));
+    }
+    add(this.text(cx, 130, 'TOWER DUEL', 58, COLORS.hud, true));
+    add(this.text(cx, 182, 'Join from your phone', 24, COLORS.hudDim));
+    add(this.add.text(cx, 250, this.code.split('').join(' '), {
+      fontFamily: 'Trebuchet MS, sans-serif', fontSize: '88px', color: COLORS.hud, fontStyle: 'bold',
     }).setOrigin(0.5));
 
-    this.buildQr(cx, 400);
+    this.buildQr(cx, 420);
 
-    this.biomeInfo = add(this.text(cx, 556, '', 26, COLORS.hudDim));
-    this.rosterText = add(this.text(cx, 614, '', 24, COLORS.hudDim));
-    this.statusText = add(this.text(cx, 668, 'Waiting for players…', 26, COLORS.hudDim));
+    this.biomeInfo = add(this.text(cx, 566, '', 26, COLORS.hudDim));
+    this.rosterText = add(this.text(cx, 620, '', 24, COLORS.hudDim));
+    this.statusText = add(this.text(cx, 672, 'Waiting for players…', 26, COLORS.hudDim));
 
     this.refreshLobby();
   }
@@ -118,7 +122,11 @@ export default class TvScene extends Phaser.Scene {
   joinUrl() {
     const loc = window.location;
     let hostname = loc.hostname;
-    if ((hostname === 'localhost' || hostname === '127.0.0.1') && this.lanIp) {
+    // An explicit PUBLIC_HOST override always wins; otherwise only swap a
+    // loopback host for the detected LAN IP (the URL the TV used works as-is).
+    if (this.publicHost) {
+      hostname = this.publicHost;
+    } else if ((hostname === 'localhost' || hostname === '127.0.0.1') && this.lanIp) {
       hostname = this.lanIp;
     }
     const port = loc.port ? `:${loc.port}` : '';
@@ -141,8 +149,9 @@ export default class TvScene extends Phaser.Scene {
     const biome = BIOMES[this.biomeIndex] || BIOMES[0];
     const rounds = ROUND_OPTIONS[this.roundsIndex];
     const hp = this.cfgHp || 1;
+    const mode = this.cfgMode || 'Classic';
     const chooser = this.roster[this.biomeChooser]?.name || `Player ${this.biomeChooser + 1}`;
-    this.biomeInfo.setText(`${biome.name} · ${rounds} rounds · ${hp} HP  (set by ${chooser})`);
+    this.biomeInfo.setText(`${biome.name} · ${rounds} rounds · ${hp} HP · ${mode}  (set by ${chooser})`);
 
     const slot = (p, i) => (p.connected ? `P${i + 1}: ${p.name}` : `P${i + 1}: waiting…`);
     this.rosterText.setText(`${slot(this.roster[0], 0)}     ${slot(this.roster[1], 1)}`);
@@ -156,7 +165,12 @@ export default class TvScene extends Phaser.Scene {
   // --- spectator intro -----------------------------------------------------
 
   buildSpectatorIntro() {
-    this.lobby = [this.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Spectating — waiting for the match…', 30, COLORS.hudDim)];
+    const cx = GAME_WIDTH / 2;
+    this.lobby = [];
+    if (this.textures.exists('logo')) {
+      this.lobby.push(this.add.image(cx, GAME_HEIGHT / 2 - 70, 'logo').setOrigin(0.5).setDisplaySize(96, 96));
+    }
+    this.lobby.push(this.text(cx, GAME_HEIGHT / 2 + 16, 'Spectating — waiting for the match…', 30, COLORS.hudDim));
     this.buildBadge();
   }
 
@@ -194,12 +208,14 @@ export default class TvScene extends Phaser.Scene {
       this.biomeIndex = Math.max(0, BIOMES.findIndex((b) => b.id === m.config.biomeId));
       this.roundsIndex = Math.max(0, ROUND_OPTIONS.indexOf(m.config.rounds));
       this.cfgHp = m.config.hp || 1;
+      const mode = GAME_MODES.find((g) => g.turbo === m.config.turbo && (!g.turbo || g.cadence === m.config.cadence));
+      this.cfgMode = mode ? mode.label : 'Classic';
     }
     if (this.mode === 'lobby') this.refreshLobby();
     // A player went missing mid-match: the room reset to the invitation lobby,
     // so rebuild this scene back to the code + QR screen.
     else if ((this.mode === 'match' || this.mode === 'end') && !m.inMatch) {
-      this.scene.restart({ code: this.code, lanIp: this.lanIp, spectator: this.spectator, queue: this.queuePos });
+      this.scene.restart({ code: this.code, lanIp: this.lanIp, publicHost: this.publicHost, spectator: this.spectator, queue: this.queuePos });
     }
   }
 
@@ -210,6 +226,7 @@ export default class TvScene extends Phaser.Scene {
       this.scene.restart({
         code: this.code,
         lanIp: this.lanIp,
+        publicHost: this.publicHost,
         spectator: this.spectator,
         queue: this.queuePos,
       });

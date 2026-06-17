@@ -21,6 +21,7 @@ export default class LobbyScene extends Phaser.Scene {
     overlay.className = 'tp-overlay';
     overlay.innerHTML = `
       <div class="tp-card">
+        <img class="tp-logo" src="icon.svg" alt="" />
         <h1>TOWER DUEL</h1>
         <div id="choice">
           <button class="big" id="host">Host on this screen<span>TV / spectator</span></button>
@@ -87,7 +88,7 @@ export default class LobbyScene extends Phaser.Scene {
 
     this.track(
       this.client.on('hosted', (m) =>
-        this.scene.start('Tv', { code: m.code, lanIp: m.lanIp }),
+        this.scene.start('Tv', { code: m.code, lanIp: m.lanIp, publicHost: m.publicHost }),
       ),
     );
     this.track(
@@ -132,6 +133,8 @@ export function injectStyles() {
       font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;color:#fff;
       background:radial-gradient(circle at 50% 0%,#1b2a4a,#0b1020);box-sizing:border-box;}
     .tp-card{width:100%;max-width:440px;text-align:center;}
+    .tp-logo{width:clamp(72px,18vw,108px);height:auto;display:block;margin:0 auto 14px;
+      filter:drop-shadow(0 10px 26px rgba(0,0,0,.45));}
     .tp-card h1{font-size:clamp(36px,9vw,64px);margin:0 0 6vh;letter-spacing:2px;}
     .tp-overlay .big{display:flex;flex-direction:column;align-items:center;width:100%;
       margin:14px 0;padding:clamp(18px,3.4vh,26px);font-size:clamp(20px,5.4vw,28px);

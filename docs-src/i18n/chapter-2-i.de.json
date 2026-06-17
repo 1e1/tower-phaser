@@ -1,0 +1,50 @@
+{
+  "title": "Kapitel 2 (Mittel) — Daten, Rendering &amp; Synthese",
+  "meta.desc": "Mittleres Niveau: datengetriebene Biome, ein renderer-unabhängiges Visual-Modul für TV und Controller, zur Laufzeit erzeugte Texturen, per Web Audio synthetisierter Klang, Tiefe per Parallaxe und Qualitätsstufen aus einem Start-Benchmark.",
+
+  "hero.badge": "Mittel · Lot 2 · Wüste",
+  "hero.kicker": "Kapitel 2 · mittleres Niveau",
+  "hero.title": "Daten, Rendering &amp; Synthese",
+  "hero.lead": "Wie aus einem nüchternen Spiel ein Ort wird: <strong>datengetriebene</strong> Biome, ein Modul, das den <strong>Renderer nicht kennt</strong>, zur Laufzeit <strong>erzeugte</strong> Texturen und Klänge, und Qualitätsstufen, die aus einem <strong>Benchmark</strong> entstehen.",
+
+  "s1.h2": "Datengetriebene Biome",
+  "s1.lead": "Ein Biom wird nicht programmiert, es wird <b>beschrieben</b>. Jedes ist ein reines Datenobjekt: Himmelsverlauf, Geländepalette, Gestirn, Parallaxe-Berge und der Umgebungseffekt. Der Code liest dieses Blatt und baut die Szene daraus.",
+  "s1.code.cap": "src/config/biomes.js — ein Biom als reine Daten",
+  "s1.code.c1": "// Himmelsverlauf",
+  "s1.code.c2": "// zwei Parallaxe-Kämme",
+  "s1.code.c3": "// vom Wind getriebener Umgebungseffekt",
+  "s1.code.c4": "// schroffere Hügel",
+  "s1.p1": "Vier Biome teilen sich denselben Code, mit völlig anderer Stimmung. Ein neues Biom bedeutet ein neues Objekt im Array — keine einzige Zeile Render-Code muss angefasst werden. Das ist die Macht datengetriebener Gestaltung: Inhalt von Logik getrennt.",
+  "s1.callout.tip": "<b>Merke dir.</b> Sogar <code class=\"inline\">roughness</code> ist ein Datum: Es geht direkt in den Geländegenerator (gleicher Code, schroffere Wüste, weichere Tundra).",
+
+  "s2.h2": "Ein Modul, das den Renderer nicht kennt",
+  "s2.p1": "Die TV läuft mit <b>Phaser</b>, der Controller auf dem Handy zeichnet in ein schlichtes <b>Canvas</b>. Damit die Kanone, die Ladefärbung und der Windsack <b>überall identisch</b> aussehen, leben die geteilten Berechnungen in einem renderer-unabhängigen Modul.",
+  "s2.code.cap": "src/render/visuals.js — von TV und Controller geteilt",
+  "s2.code.c1": "// Rohrfarbe: kühles Stahl bei wenig, glühendes Rot bei voller Ladung",
+  "s2.code.c2": "// derselbe Farbverlauf, egal welcher Renderer",
+  "s2.p2": "Dieses Modul kennt weder Phaser noch das DOM: Es liefert <b>Zahlen</b> (Farben, Geometriepunkte). Jede Ansicht zeichnet sie mit ihrer eigenen Technik — eine einzige Quelle für das Aussehen.",
+  "s2.callout.nerd": "<b>Für Neugierige.</b> Das Modul exportiert auch <code class=\"inline\">intToCss</code> (vom Canvas gebraucht) und Phaser-freundliche Integer-Farben. Eine einzige Quelle für die Logik, zwei Renderer, die sie auf ihre Weise nutzen.",
+
+  "s3.h2": "Texturen &amp; Klänge: zur Laufzeit erzeugt",
+  "s3.p1": "Das Spiel liefert <b>keine Bild- und keine Audiodateien</b> aus. Die kleinen Texturen (Funken, Rauch, Blitz, Wolke) werden beim Start <b>einmal gezeichnet</b> und dann zur Laufzeit getönt und geblendet wiederverwendet.",
+  "s3.code.cap": "src/systems/textures.js — einen Funken einmal zeichnen",
+  "s3.code.c1": "// wiederverwendet für Schnee, Glut, Trümmer",
+  "s3.code2.cap": "src/systems/Sfx.js — der „Boom“ der Kanone, 100 % Code",
+  "s3.code2.c1": "// geht abwärts",
+  "s3.p2": "Der Klang folgt derselben Idee, per <b>Web Audio</b>: kein Download, jeder Effekt entsteht aus Oszillatoren und gefiltertem Rauschen. Eine Explosion? Rauschen + ein Filter + eine sinkende Lautstärke; ein absteigender Oszillator ergibt den „Boom“ der Kanone.",
+  "s3.callout.audiogate": "<b>Die Browser-Sperre.</b> Browser starten den Audio-Kontext <em>suspendiert</em>; er kann erst nach einer Nutzergeste fortgesetzt werden. Darum läuft <code class=\"inline\">Sfx.unlock()</code> beim ersten Tippen/Klick — ohne ihn würden die ersten Klänge stillschweigend nie abgespielt.",
+  "s3.callout.tip": "<b>Merke dir.</b> Keine Assets bedeutet ein winziges Bundle und keine Ladezeit — aber auch: Jeder Effekt ist Code, also einstellbar und mit dem Biom variierbar.",
+
+  "s4.h2": "Tiefe per Parallaxe &amp; Qualitätsstufen",
+  "s4.p1": "Der Eindruck von Tiefe entsteht aus zwei Zahlen pro Ebene: <code class=\"inline\">depth</code> (Zeichenreihenfolge) und <code class=\"inline\">scrollFactor</code> (wie stark eine Ebene der Kamera folgt). Ferne Berge folgen kaum, der Vordergrund fast vollständig.",
+  "s4.code.cap": "src/objects/Background.js — die fernen Kämme scrollen langsamer",
+  "s4.p2": "Smart-TVs und schwache Browser kommen mit der vollen Partikel- und Parallaxe-Last ins Schwitzen. Statt zu raten, <b>misst</b> der Host beim Start kurz seine Bildrate und legt eine <b>Qualitätsstufe</b> fest. Der Renderer skaliert die Effekte danach.",
+  "s4.code2.cap": "src/systems/benchmark.js — die FPS abtasten, dann die Stufe wählen",
+  "s4.code2.c1": "// der Renderer skaliert danach",
+  "s4.callout.nerd": "<b>Merke dir.</b> Lot 2 trennt das „Was“ (Daten, geteilte Logik) sauber vom „Wie viel“ (Qualitätsstufe). So sieht es überall gut aus — vom alten Fernseher bis zum Gaming-PC.",
+
+  "footer.suffix": "Kapitel {n}/{total} · mittleres Niveau",
+
+  "pager.prev": "← Kapitel 1 · Die Architektur",
+  "pager.next": "Kapitel 3 · Echtzeit Client/Server →"
+}

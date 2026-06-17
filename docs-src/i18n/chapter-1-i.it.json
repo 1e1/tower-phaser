@@ -1,0 +1,46 @@
+{
+  "title": "Capitolo 1 (intermedio) — L'architettura di un gioco",
+  "meta.desc": "Livello intermedio: il ciclo di gioco e il passo temporale, le scene come macchina a stati, la separazione fra simulazione e rendering e la suddivisione in moduli di Tower Duel.",
+
+  "hero.badge": "Intermedio · Lotto 1 · Prato",
+  "hero.kicker": "Capitolo 1 · livello intermedio",
+  "hero.title": "L'architettura di un gioco",
+  "hero.lead": "Riprendiamo il Lotto 1 con l'occhio di chi sviluppa: il ciclo e il <strong>passo temporale</strong>, le scene come <strong>macchina a stati</strong>, e la grande idea che dà struttura a tutto il progetto — <strong>separare la simulazione dal rendering</strong>.",
+
+  "s1.h2": "Il ciclo, e la trappola del tempo",
+  "s1.lead": "Ogni gioco in tempo reale è un ciclo: <b>leggi gli input → aggiorna lo stato → disegna</b>, e ancora, e ancora. La sottigliezza sta nell'«aggiorna».",
+  "s1.p1": "Se sposti un oggetto di un numero fisso di pixel a ogni fotogramma, la sua velocità dipende dal <b>numero di fotogrammi al secondo</b>: il doppio più veloce su uno schermo a 120 Hz rispetto a uno a 60 Hz. Il rimedio è il <b>passo temporale</b> (<code class=\"inline\">dt</code>): moltiplichiamo ogni movimento per il tempo realmente trascorso, espresso in secondi.",
+  "s1.code.cap": "il passo temporale rende il gioco indipendente dalla macchina",
+  "s1.code.c1": "// ms → s",
+  "s1.code.var": "velocita * dt;            ",
+  "s1.code.c2": "// stessa velocità reale ovunque",
+  "s1.callout": "<b>Due orologi.</b> Il client <b>disegna</b> alla massima velocità consentita dallo schermo (spesso 60 fps). Ma la <b>partita</b> avanza a un ritmo fisso lato server — ci torniamo al capitolo 3. Tenere distinti questi due orologi è una decisione di architettura, non un dettaglio.",
+
+  "s2.h2": "Le scene: una macchina a stati",
+  "s2.p1": "Phaser organizza il gioco in <b>scene</b>. Vista più dall'alto, è una <b>macchina a stati finiti</b>: in ogni istante una scena è attiva, e transizioni esplicite portano dall'una all'altra.",
+  "s2.fig.alt": "Macchina a stati delle scene",
+  "s2.fig.tv": "Tv (schermo)",
+  "s2.fig.match": "partita…",
+  "s2.fig.cap": "Il <b>tipo di dispositivo</b> decide il ramo: un grande schermo ospita (TV), un telefono si unisce (Controller).",
+  "s2.p2": "Ogni scena ha un ciclo di vita chiaro: <code class=\"inline\">init</code> (ricevere dei dati), <code class=\"inline\">create</code> (costruire la visualizzazione), <code class=\"inline\">update</code> (a ogni fotogramma) e uno <code class=\"inline\">SHUTDOWN</code> in cui si fa <b>pulizia</b> (rimuovere gli ascoltatori, gli elementi DOM). Dimenticare questa pulizia significa garantirsi una perdita di memoria ogni volta che si passa da una scena all'altra.",
+
+  "s3.h2": "La grande idea: simulazione ≠ rendering",
+  "s3.p1": "La decisione più importante del progetto: il <b>cuore del gioco non conosce Phaser</b>. Tutta la logica — traiettorie, collisioni, vento, punteggio — vive in <code class=\"inline\">src/sim/</code>, in JavaScript puro, <b>senza alcuna dipendenza grafica</b>.",
+  "s3.li1": "🧠 <code class=\"inline\">src/sim/</code> — la <b>simulazione</b>: che cosa succede? (può girare sotto Node, senza browser)",
+  "s3.li2": "🎨 <code class=\"inline\">src/scenes/</code>, <code class=\"inline\">src/objects/</code> — il <b>rendering</b>: che aspetto ha?",
+  "s3.li3": "⚙️ <code class=\"inline\">src/config/</code> — i <b>dati</b>: impostazioni e temi, separati dal codice.",
+  "s3.callout": "<b>Perché darsi tutta questa pena?</b> Perché la stessa simulazione girerà <b>sul server</b> (l'unico giudice della partita) restando comunque testabile e ripetibile. Disaccoppiare il «cosa» dal «come» è ciò che renderà possibile la modalità multi-schermo del Lotto 3, senza riscrivere la fisica.",
+
+  "s4.h2": "Docker, visto come un confine riproducibile",
+  "s4.p1": "Il <code class=\"inline\">Dockerfile</code> è <b>multi-stadio</b> per una ragione di architettura: separare il <b>tempo di costruzione</b> dal <b>tempo di esecuzione</b>. Il primo stadio installa tutto il toolchain e compila; il secondo mantiene solo lo stretto necessario per <em>girare</em>.",
+  "s4.code.cap": "Dockerfile — due stadi, due responsabilità",
+  "s4.code.c1": "# stadio 1: costruire (serve tutto il toolchain)",
+  "s4.code.c2": "# stadio 2: eseguire (leggero, solo dipendenze di produzione)",
+  "s4.p2": "Risultato: un'immagine più piccola, senza compilatori né dipendenze di sviluppo in produzione. La stessa logica ispira il <b>bundle del server</b> (zip / tar.gz): portare a bordo solo <code class=\"inline\">dist/</code>, <code class=\"inline\">server/</code> e la simulazione condivisa.",
+  "s4.callout": "<b>Da ricordare.</b> L'architettura del Lotto 1 sta in una frase: un ciclo guidato dal tempo, scene a macchina a stati e una <b>simulazione disaccoppiata dal rendering</b> — la fondazione su cui si costruisce tutto il resto.",
+
+  "footer.suffix": "capitolo {n}/{total} · livello intermedio",
+
+  "pager.prev": "← Home",
+  "pager.next": "Capitolo 2 · Dati, rendering &amp; sintesi →"
+}

@@ -1,0 +1,49 @@
+{
+  "title": "Kapitel 4 — Die Landschaft zerstören",
+
+  "hero.badge": "Etappe 4 · Vulkan",
+  "hero.kicker": "Kapitel 4",
+  "hero.title": "Die Landschaft zerstören",
+  "hero.lead": "Wie bei <em>Worms</em>: Jeder Schuss gräbt ein echtes Loch in die Kulisse. Wir entdecken den Zaubertrick, mit dem man ein „Loch“ in ein Bild stanzt – und du darfst selbst graben!",
+
+  "s1.h2": "Eine Kulisse, die ihre Narben behält",
+  "s1.lead": "Bisher war die Landschaft ein hübscher fester Hintergrund. Jetzt <b>reißt</b> jede Kugel, die einschlägt, ein Stück Gelände ab. Die Löcher bleiben: Am Ende der Runde ist das Schlachtfeld ganz zerlöchert.",
+
+  "s2.h2": "Der Zauber: der „Radierer“ des canvas",
+  "s2.p1": "Das canvas kann zeichnen… aber auch <b>in einer Form radieren</b>! Wir wechseln in den Modus <code class=\"inline\">destination-out</code>: Alles, was wir dann „zeichnen“, wird zum <b>Radierer</b>. Zeichne einen Kreis → ein perfekt rundes Loch im Gelände.",
+  "s2.code.cap": "src/objects/Terrain.js (einen Krater graben)",
+  "s2.code.c1": "// Radierer-Modus",
+  "s2.code.c2": "// ein Kreis…",
+  "s2.code.c3": "// …der radiert!",
+  "s2.callout.try": "<b>Probier's aus!</b> Klicke (oder zieh deinen Finger) über den Hügel, um zu graben. Schau: Du kannst Höhlen, Brücken, Überhänge machen… genau wie bei Worms.",
+  "s2.sim.title": "Grab das Gelände aus!",
+  "s2.sim.reset": "↺ Den Hügel neu aufbauen",
+  "s2.sim.hint": "Tipp: Ziele unter einen Buckel, um eine Höhle zu graben und oben eine „Brücke“ stehen zu lassen.",
+
+  "s3.h2": "Fest oder nicht? Die Regel des Spiels",
+  "s3.p1": "Woher weiß das Spiel, ob eine Kugel den Boden getroffen hat? Man muss kein riesiges Bild im Speicher behalten. Wir behalten: die <b>Bodenhöhe</b> an jeder Stelle und die <b>Liste der Krater</b>. Ein Punkt ist <b>fest</b>, wenn:",
+  "s3.callout.tip": "<b>Die Regel.</b> „Ich bin <b>unter der Oberfläche</b> des Bodens <b>UND</b> ich bin <b>in keinem Krater</b>.“ Sonst ist es leerer Raum.",
+  "s3.p2": "Diese kleine Regel reicht, um <b>Höhlen</b> und <b>Überhänge</b> zu schaffen: Ein unter einem Buckel gegrabener Krater lässt die Materie darüber „schweben“.",
+  "s3.fig.alt": "Fest oder leer",
+  "s3.fig.empty": "leer (Krater)",
+  "s3.fig.solid": "fest",
+  "s3.fig.overhang": "↑ Überhang, der „schwebt“",
+  "s3.fig.cap": "Unter der Oberfläche, aber in einem Krater → leer. Der Buckel darüber hält trotzdem.",
+  "s3.callout.nerd": "<b>Für Neugierige.</b> Zu testen „bin ich in einem Krater?“ = die Distanz zum Mittelpunkt jedes Kraters mit seinem Radius vergleichen. Das ist der Satz des Pythagoras! (<code class=\"inline\">dx² + dy² ≤ radius²</code>).",
+
+  "s4.h2": "Die Details, die es echt wirken lassen",
+  "s4.li1": "🟫 <b>Versengter Rand.</b> Wir dunkeln den Rand des Lochs ab — aber <b>nur dort, wo Gelände ist</b> (<code class=\"inline\">source-atop</code>-Modus), sonst sähen wir einen Kreis im Himmel schweben.",
+  "s4.li2": "🌫️ <b>Staub hinter dem Gelände.</b> Der Einschlag wirbelt Staub auf, der <b>hinter</b> dem Gelände gezeichnet wird: Das Relief verdeckt ihn, als käme er aus dem Loch.",
+  "s4.li3": "🌱 <b>Mitgerissene Kulisse.</b> Gras und Kieselsteine sind in das Geländebild „eingebacken“: Der Radierer entfernt sie zusammen mit der Erde.",
+
+  "s5.h2": "Gut gemacht, du hast die ganze Runde geschafft!",
+  "s5.lead": "Du weißt jetzt ungefähr, wie ein Web-Spiel zum Leben erwacht:",
+  "s5.p1": "eine <b>Schleife</b>, die 60×/s neu zeichnet, ein bisschen <b>Mathematik</b> für die Physik und die Kulisse, ein vernetzter <b>Schiedsrichter</b>, um zusammen zu spielen, und <b>Zeichentricks</b>, um alles zu zertrümmern. Und vor allem: Wir gehen <b>Schritt für Schritt</b> vor, jeder davon getestet, bevor der nächste kommt.",
+  "s5.callout.tip": "<b>Das Geheimnis der Profis.</b> Niemand schreibt ein großes Spiel auf einen Schlag. Du machst eine <b>kleine</b> Version, die funktioniert, verbesserst sie, immer wieder. Genau die 4 Etappen dieses Notizbuchs.",
+  "s5.back": "↩ Zurück zur Startseite",
+
+  "footer.suffix": "Kapitel {n}/{total} · danke fürs Lesen!",
+
+  "pager.prev": "← Kapitel 3",
+  "pager.next": "Das Ende 🎉"
+}

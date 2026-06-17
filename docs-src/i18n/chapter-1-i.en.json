@@ -1,0 +1,46 @@
+{
+  "title": "Chapter 1 (intermediate) — The architecture of a game",
+  "meta.desc": "Intermediate level: the game loop and the timestep, scenes as a state machine, the simulation/rendering split, and the module layout of Tower Duel.",
+
+  "hero.badge": "Intermediate · Batch 1 · Meadow",
+  "hero.kicker": "Chapter 1 · intermediate level",
+  "hero.title": "The architecture of a game",
+  "hero.lead": "We revisit Batch 1 with a developer's eye: the loop and the <strong>timestep</strong>, scenes as a <strong>state machine</strong>, and the big idea that shapes the whole project — <strong>separating simulation from rendering</strong>.",
+
+  "s1.h2": "The loop, and the trap of time",
+  "s1.lead": "Every real-time game is a loop: <b>read the inputs → update the state → draw</b>, again and again. The subtlety lives in “update”.",
+  "s1.p1": "If you move an object by a fixed number of pixels each frame, its speed depends on the <b>frame rate</b>: twice as fast on a 120 Hz screen as on a 60 Hz one. The fix is the <b>timestep</b> (<code class=\"inline\">dt</code>): we multiply each movement by the time that actually elapsed, in seconds.",
+  "s1.code.cap": "the timestep makes the game independent of the machine",
+  "s1.code.c1": "// ms → s",
+  "s1.code.var": "speed * dt;               ",
+  "s1.code.c2": "// the same real speed everywhere",
+  "s1.callout": "<b>Two clocks.</b> The client <b>draws</b> as fast as the screen allows (often 60 fps). But the <b>match</b> advances at a fixed pace on the server — more on that in chapter 3. Keeping these two clocks distinct is an architectural decision, not a detail.",
+
+  "s2.h2": "Scenes: a state machine",
+  "s2.p1": "Phaser organises the game into <b>scenes</b>. Seen from higher up, it's a <b>finite state machine</b>: at any moment one scene is active, and explicit transitions lead from one to another.",
+  "s2.fig.alt": "Scene state machine",
+  "s2.fig.tv": "Tv (screen)",
+  "s2.fig.match": "match…",
+  "s2.fig.cap": "The <b>device type</b> picks the branch: a big screen hosts (TV), a phone joins (Controller).",
+  "s2.p2": "Each scene has a clear life cycle: <code class=\"inline\">init</code> (receive data), <code class=\"inline\">create</code> (build the display), <code class=\"inline\">update</code> (every frame), and a <code class=\"inline\">SHUTDOWN</code> where we <b>clean up</b> (remove listeners, DOM elements). Forgetting that cleanup is a guaranteed memory leak whenever you move from one scene to another.",
+
+  "s3.h2": "The big idea: simulation ≠ rendering",
+  "s3.p1": "The project's most important decision: the <b>core of the game does not know about Phaser</b>. All the logic — trajectories, collisions, wind, score — lives in <code class=\"inline\">src/sim/</code>, in plain JavaScript, with <b>no graphics dependency whatsoever</b>.",
+  "s3.li1": "🧠 <code class=\"inline\">src/sim/</code> — the <b>simulation</b>: what is happening? (can run under Node, with no browser)",
+  "s3.li2": "🎨 <code class=\"inline\">src/scenes/</code>, <code class=\"inline\">src/objects/</code> — the <b>rendering</b>: what does it look like?",
+  "s3.li3": "⚙️ <code class=\"inline\">src/config/</code> — the <b>data</b>: settings and themes, kept apart from the code.",
+  "s3.callout": "<b>Why bother?</b> Because the same simulation will run <b>on the server</b> (the sole judge of the match) while staying testable and replayable. Decoupling the “what” from the “how” is what makes the multi-screen mode of Batch 3 possible, without rewriting the physics.",
+
+  "s4.h2": "Docker, seen as a reproducible boundary",
+  "s4.p1": "The <code class=\"inline\">Dockerfile</code> is <b>multi-stage</b> for an architectural reason: to separate <b>build time</b> from <b>run time</b>. The first stage installs all the tooling and compiles; the second keeps only the bare minimum needed to <em>run</em>.",
+  "s4.code.cap": "Dockerfile — two stages, two responsibilities",
+  "s4.code.c1": "# stage 1: build (needs the whole toolchain)",
+  "s4.code.c2": "# stage 2: run (slim, prod deps only)",
+  "s4.p2": "The result: a smaller image, with no compilers or development dependencies in production. The same logic drives the <b>server bundle</b> (zip / tar.gz) added in v1.1.0: ship only <code class=\"inline\">dist/</code>, <code class=\"inline\">server/</code> and the shared simulation.",
+  "s4.callout": "<b>Remember.</b> The architecture of Batch 1 fits in one sentence: a time-driven loop, scenes as a state machine, and a <b>simulation decoupled from rendering</b> — the foundation everything else is built on.",
+
+  "footer.suffix": "chapter {n}/{total} · intermediate level",
+
+  "pager.prev": "← Home",
+  "pager.next": "Chapter 2 · Data, rendering &amp; synthesis →"
+}

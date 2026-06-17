@@ -16,7 +16,7 @@ export default class Room {
     this.tvs = new Set();
     this.players = [null, null]; // each: { socket, name, playAgain }
     this.waiting = []; // each: { socket, name }
-    this.config = { rounds: 3, biomeId: BIOMES[0].id, hp: 1 };
+    this.config = { rounds: 3, biomeId: BIOMES[0].id, hp: 1, turbo: false, cadence: 5 };
     this.biomeChooser = 0; // slot that picks the biome (first player, then loser)
     this.postmatch = false;
     this.sim = null;
@@ -82,6 +82,8 @@ export default class Room {
       totalRounds: this.config.rounds,
       biome: this.biome(),
       maxHp: this.config.hp,
+      turbo: this.config.turbo,
+      cadence: this.config.cadence,
     });
     this.sim.start();
     this.startLoop();
@@ -124,11 +126,13 @@ export default class Room {
 
   // Only the current chooser (first player, then the loser) sets the match
   // options — both the biome and the round count. The TV has no say.
-  setConfig(socket, rounds, biomeId, hp) {
+  setConfig(socket, cfg = {}) {
     if (socket.role === 'player' && socket.slot === this.biomeChooser) {
-      if (Number.isFinite(rounds)) this.config.rounds = rounds;
-      if (BIOMES.some((b) => b.id === biomeId)) this.config.biomeId = biomeId;
-      if (hp === 1 || hp === 2 || hp === 3) this.config.hp = hp;
+      if (Number.isFinite(cfg.rounds)) this.config.rounds = cfg.rounds;
+      if (BIOMES.some((b) => b.id === cfg.biomeId)) this.config.biomeId = cfg.biomeId;
+      if (cfg.hp === 1 || cfg.hp === 2 || cfg.hp === 3) this.config.hp = cfg.hp;
+      if (typeof cfg.turbo === 'boolean') this.config.turbo = cfg.turbo;
+      if (Number.isFinite(cfg.cadence)) this.config.cadence = cfg.cadence;
     }
     this.sendRoster();
   }

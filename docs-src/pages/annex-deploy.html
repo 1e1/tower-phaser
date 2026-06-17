@@ -1,0 +1,207 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,30 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#5b7da6"/>
+        <path d="M0,95 C260,55 520,118 760,90 C1020,58 1240,118 1440,90 L1440,120 L0,120 Z" fill="#456486"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">?</span>{{s0.h2}}</h2>
+        <p class="lead">{{s0.lead}}</p>
+        <figure class="diagram" aria-label="{{s0.fig.alt}}">
+          <svg viewBox="0 0 760 240" width="760" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <rect x="20" y="30" width="340" height="180" rx="14" fill="#eaf2fb" stroke="#5b7da6" stroke-width="2"/>
+            <text x="190" y="58" text-anchor="middle" font-weight="800" fill="#2b2535">{{s0.fig.staticTitle}}</text>
+            <rect x="60" y="80" width="120" height="46" rx="10" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+            <text x="120" y="108" text-anchor="middle" font-size="13" fill="#2b2535">{{s0.fig.distFiles}}</text>
+            <rect x="200" y="80" width="120" height="46" rx="10" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+            <text x="260" y="100" text-anchor="middle" font-size="13" fill="#2b2535">{{s0.fig.anyHost1}}</text>
+            <text x="260" y="116" text-anchor="middle" font-size="13" fill="#2b2535">{{s0.fig.anyHost2}}</text>
+            <text x="190" y="160" text-anchor="middle" font-size="13" fill="#5b5470">{{s0.fig.staticSub}}</text>
+            <text x="190" y="184" text-anchor="middle" font-size="12" fill="#b14a2f">{{s0.fig.staticNo}}</text>
+
+            <rect x="400" y="30" width="340" height="180" rx="14" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+            <text x="570" y="58" text-anchor="middle" font-weight="800" fill="#2b2535">{{s0.fig.nodeTitle}}</text>
+            <rect x="430" y="80" width="100" height="46" rx="10" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+            <text x="480" y="100" text-anchor="middle" font-size="12" fill="#2b2535">{{s0.fig.tvPlus}}</text>
+            <text x="480" y="116" text-anchor="middle" font-size="12" fill="#2b2535">{{s0.fig.phones}}</text>
+            <rect x="610" y="80" width="100" height="46" rx="10" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+            <text x="660" y="100" text-anchor="middle" font-size="12" fill="#2b2535">{{s0.fig.nodePlus}}</text>
+            <text x="660" y="116" text-anchor="middle" font-size="12" fill="#2b2535">{{s0.fig.websocket}}</text>
+            <path d="M530,103 L608,103" stroke="#5b5470" stroke-width="2" marker-end="url(#a2)"/>
+            <text x="570" y="160" text-anchor="middle" font-size="13" fill="#5b5470">{{s0.fig.nodeSub}}</text>
+            <text x="570" y="184" text-anchor="middle" font-size="12" fill="#2f7a2f">{{s0.fig.nodeYes}}</text>
+            <defs><marker id="a2" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5b5470"/></marker></defs>
+          </svg>
+          <figcaption>{{s0.fig.cap}}</figcaption>
+        </figure>
+        <ul class="clean">
+          <li>{{s0.li1}}</li>
+          <li>{{s0.li2}}</li>
+        </ul>
+        <div class="callout warn">{{s0.callout.warn}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p>{{s1.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code1.cap}}</figcaption>
+<pre><span class="c">{{s1.code1.c1}}</span>
+npm ci
+<span class="c">{{s1.code1.c2}}</span>
+npm run build</pre>
+        </figure>
+        <p>{{s1.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s1.code2.cap}}</figcaption>
+<pre><span class="c">{{s1.code2.c1}}</span>
+npm run preview
+<span class="c">{{s1.code2.c2}}</span>
+npm start</pre>
+        </figure>
+        <div class="callout tip">{{s1.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s2.code1.cap}}</figcaption>
+<pre><span class="c">{{s2.code1.c1}}</span>
+<span class="k">FROM</span> node:24-alpine <span class="k">AS</span> build
+<span class="k">WORKDIR</span> /app
+<span class="k">COPY</span> package*.json ./
+<span class="k">RUN</span> npm ci
+<span class="k">COPY</span> . .
+<span class="k">RUN</span> npm run build
+
+<span class="c">{{s2.code1.c2}}</span>
+<span class="k">FROM</span> node:24-alpine
+<span class="k">WORKDIR</span> /app
+<span class="k">ENV</span> NODE_ENV=production
+<span class="k">RUN</span> npm ci --omit=dev
+<span class="k">COPY</span> --from=build /app/dist ./dist
+<span class="k">EXPOSE</span> 3000
+<span class="k">CMD</span> [<span class="s">"node"</span>, <span class="s">"server/index.js"</span>]</pre>
+        </figure>
+        <p>{{s2.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s2.code2.cap}}</figcaption>
+<pre><span class="c">{{s2.code2.c1}}</span>
+docker build -t tower-duel .
+<span class="c">{{s2.code2.c2}}</span>
+docker run --rm -p 8088:3000 -e PUBLIC_HOST=192.168.1.20 tower-duel</pre>
+        </figure>
+        <p>{{s2.p3}}</p>
+        <div class="callout nerd">{{s2.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code1.cap}}</figcaption>
+<pre>server {
+  listen 80;
+  server_name towerduel.example.com;
+
+  location / {
+    proxy_pass http://127.0.0.1:8088;
+    proxy_http_version 1.1;
+    <span class="c">{{s3.code1.c1}}</span>
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+  }
+}</pre>
+        </figure>
+        <p>{{s3.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code2.cap}}</figcaption>
+<pre>sudo certbot --nginx -d towerduel.example.com</pre>
+        </figure>
+        <div class="callout warn">{{s3.callout.warn}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p class="lead">{{s4.lead}}</p>
+
+        <h3>{{s4.deploy.h}}</h3>
+        <p>{{s4.deploy.p}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code.cap}}</figcaption>
+<pre><span class="c">{{s4.code.c1}}</span>
+npm run package            <span class="c">{{s4.code.c2}}</span>
+<span class="c">{{s4.code.c3}}</span>
+<span class="c">{{s4.code.c4}}</span>
+cd ~/www/towerduel
+npm ci --omit=dev          <span class="c">{{s4.code.c5}}</span></pre>
+        </figure>
+        <div class="callout warn">{{s4.deploy.warn}}</div>
+
+        <h3>{{s4.site.h}}</h3>
+        <p>{{s4.site.p}}</p>
+        <ul class="clean">
+          <li>{{s4.site.li1}}</li>
+          <li>{{s4.site.li2}}</li>
+          <li>{{s4.site.li3}}</li>
+          <li>{{s4.site.li4}}</li>
+          <li>{{s4.site.li5}}</li>
+        </ul>
+        <p>{{s4.port.p}}</p>
+
+        <div class="callout nerd">{{s4.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">5</span>{{s5.h2}}</h2>
+        <p>{{s5.p1}}</p>
+        <ul class="clean">
+          <li>{{s5.li1}}</li>
+          <li>{{s5.li2}}</li>
+        </ul>
+        <div class="callout nerd">{{s5.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">6</span>{{s6.h2}}</h2>
+        <p>{{s6.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s6.code.cap}}</figcaption>
+<pre>npm run build
+<span class="c">{{s6.code.c1}}</span>
+<span class="c">{{s6.code.c2}}</span></pre>
+        </figure>
+        <div class="callout warn">{{s6.callout.warn}}</div>
+        <div class="callout tip">{{s6.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">✓</span>{{s7.h2}}</h2>
+        <ul class="clean">
+          <li>{{s7.li1}}</li>
+          <li>{{s7.li2}}</li>
+          <li>{{s7.li3}}</li>
+          <li>{{s7.li4}}</li>
+          <li>{{s7.li5}}</li>
+          <li>{{s7.li6}}</li>
+          <li>{{s7.li7}}</li>
+        </ul>
+        <p style="text-align:center; margin-top:24px;">
+          <a class="pill" href="index.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">{{s7.backHome}}</a>
+        </p>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-4.html">{{pager.prev}}</a>
+        <a class="disabled">{{pager.next}}</a>
+      </div>
+    </main>

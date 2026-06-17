@@ -1,5 +1,10 @@
 node_modules/
 dist/
+release/
 .DS_Store
 *.log
 .vite/
+.docs-preview/
+
+# Generated tutorial site — built from docs-src/ by scripts/build-docs.mjs
+docs/

@@ -1,0 +1,41 @@
+{
+  "title": "Chapter 1 (expert) — Deterministic loop &amp; numerical integration",
+  "meta.desc": "Expert level: fixed timestep and authoritative server, semi-implicit Euler integration and its error, and determinism through a seeded RNG so that server and clients see the same match.",
+
+  "hero.badge": "Expert · Batch 1 · Meadow",
+  "hero.kicker": "Chapter 1 · expert level",
+  "hero.title": "Deterministic loop &amp; numerical integration",
+  "hero.lead": "Deep in the engine: why a <strong>fixed timestep</strong> and an <strong>authoritative server</strong>, what <strong>Euler integration</strong> is really worth, and how to guarantee that one and the same calculation always produces the same match.",
+
+  "s1.h2": "Fixed step, single authority",
+  "s1.lead": "The simulation does not advance at the pace of the display. The server steps it in <b>fixed steps</b> of 33 ms (≈ 30 Hz), regardless of each screen's fps.",
+  "s1.code.cap": "server/Room.js — the authoritative clock",
+  "s1.code.c1": "// ~30 Hz",
+  "s1.code.c2": "// constant step, in seconds",
+  "s1.p1": "A <b>constant</b> step has two virtues. First, <b>numerical stability</b>: the integration error no longer depends on an erratic <code class=\"inline\">dt</code> (a lag spike no longer “teleports” a ball through a tower). Second, <b>determinism</b>: same inputs + same steps ⇒ same result, bit for bit.",
+  "s1.callout": "<b>Authority.</b> The clients <em>never</em> integrate the physics. They send <b>intents</b> (angle, power, “ready”) and only display the <b>snapshots</b> they get back. This eliminates disagreements between machines — and cheating via a modified client.",
+
+  "s2.h2": "Integrating the motion: semi-implicit Euler",
+  "s2.p1": "The trajectory obeys a differential equation (constant acceleration per step). We approximate it with the simplest method, <b>Euler integration</b> — but in its <b>semi-implicit</b> (symplectic) variant: we update the <b>velocity first</b>, then the position using that fresh velocity.",
+  "s2.code.cap": "src/sim/Simulation.js — stepProjectiles",
+  "s2.code.vx": "wind    * dt;   ",
+  "s2.code.c1": "// 1) velocity updated first",
+  "s2.code.vy": "gravity * dt;",
+  "s2.code.px": "p.vx * dt;      ",
+  "s2.code.c2": "// 2) position with the fresh velocity",
+  "s2.p2": "“Naive” Euler (position before velocity) drifts and inflates energy over time; the semi-implicit variant stays far more stable for the same cost. The local error is <code class=\"inline\">O(dt²)</code>: at 30 Hz, for flights of a few seconds, the gap is invisible — and, crucially, it is <b>the same for everyone</b>.",
+  "s2.callout": "<b>Sub-steps.</b> Need more precision without speeding up the clock? Split each tick into N sub-steps of <code class=\"inline\">dt/N</code>. The shot simulator in the discovery chapter already does this (2 sub-steps per frame) to smooth the curve. It's the classic precision/cost trade-off.",
+
+  "s3.h2": "Reproducibility: the seed is the truth",
+  "s3.p1": "For the server and every client to draw <b>exactly</b> the same terrain, we banish <code class=\"inline\">Math.random()</code> from everything that has to be shared. Instead, a <b>seeded pseudo-random generator</b>: same seed ⇒ same sequence of numbers ⇒ same world.",
+  "s3.code.cap": "the terrain is a pure function of the seed",
+  "s3.code.c1": "// the server sends only the seed; each client regenerates it identically",
+  "s3.p2": "The snapshot therefore carries the <b>seed</b>, not the hundreds of terrain heights — bandwidth saving <em>and</em> a consistency guarantee. Same principle for the hidden jitter of shots: drawn from the server's RNG, never transmitted, so invisible and yet reproducible on the server side.",
+  "s3.rng.cap": "src/sim/rng.js — mulberry32, a PRNG with a tiny seed",
+  "s3.callout": "<b>Remember.</b> Fixed-step loop + server authority + seeded RNG = a <b>deterministic, replayable</b> match. It's the invisible skeleton that makes everything else possible: networking, destructible terrain, continuous wind.",
+
+  "footer.suffix": "chapter {n}/{total} · expert level",
+
+  "pager.prev": "← Home",
+  "pager.next": "Chapter 2 · Asset-free rendering →"
+}

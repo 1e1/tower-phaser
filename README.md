@@ -10,6 +10,8 @@ Since lot 3 the match is **connected**: one screen acts as the TV/spectator and
 up to two phones or tablets act as the player controllers, coordinated by a Node
 server that runs the authoritative simulation.
 
+**▶ Play online:** https://git-tower-phaser.alwaysdata.net
+
 ## Gameplay
 
 - Pick player names, a round count and a biome on the setup screen.
@@ -38,6 +40,14 @@ server that runs the authoritative simulation.
 6. At the end, each player chooses **Play again** or **Disconnect**. When both
    choose to play again the match restarts; the **loser picks the next biome and
    round count**.
+
+The chooser also picks a **game mode**. *Classic* is strict turn-by-turn
+volleys. *Turbo* adds a shot clock — once one player validates, the other has a
+few seconds to commit, and shells fly continuously so the next shot can be aimed
+the instant the previous one leaves the barrel. In turbo the **wind is
+continuous too**: instead of snapping to a new value each turn, it eases between
+fresh keypoints every 10 s, with a lighter gust wave on top — each match rolls
+its own "gustiness", from a steady breeze to squally rafales.
 
 The terrain is **destructible**: every shell carves a crater out of the
 landscape (relief and surface decor alike), so holes, caverns and overhangs
@@ -80,10 +90,38 @@ npm run dev         # Vite dev server on :5173 (open this one)
 
 ```bash
 docker build -t tower-duel .
-docker run --rm -p 8088:3000 tower-duel
+docker run --rm -p 8088:3000 -e PUBLIC_HOST=192.168.1.20 tower-duel
 ```
 
 Then open http://localhost:8088 (or the host's LAN address for phone players).
+
+## Server bundle (zip / tar.gz)
+
+For a copy-paste deployment without Docker, build the lean server bundle:
+
+```bash
+npm run package     # builds, then writes release/tower-duel-<version>.{zip,tar.gz}
+```
+
+Each archive (~0.4 MB) contains only the runtime essentials — the pre-built
+`dist/`, the `server/`, the Phaser-free simulation it imports (`src/sim`,
+`src/config`) and the dependency manifest — with the docs, client source,
+`node_modules` and CI stripped out. Copy it to any Node 18+ host, then:
+
+```bash
+npm ci --omit=dev   # installs express + ws only
+npm start           # serves the game on :3000
+```
+
+The same archives are attached automatically to every tagged GitHub Release
+(see `.github/workflows/release-bundle.yml`). A `DEPLOY.md` inside the bundle
+covers the `PORT` / `PUBLIC_HOST` environment variables.
+
+Inside a container the auto-detected IP is the Docker bridge address
+(e.g. `172.17.0.x`), which phones can't reach. Set **`PUBLIC_HOST`** to the
+host's LAN address (or a hostname) so the QR code points somewhere reachable.
+When the mapped port differs from 3000, open the TV on that port — the QR code
+reuses whatever port the TV page was loaded with.
 
 ## Tutorial
 
@@ -104,6 +142,11 @@ across all five.
 - **Lot 2** — Selectable biome themes, modernized graphics and sound. *(done)*
 - **Lot 3** — TV spectator view plus phone/tablet controllers. *(done)*
 - **Lot 4** — Worms-style destructible terrain. *(done)*
+- **v1.1.0** — Turbo / shot-clock mode with continuous, gusty wind; QR host
+  override; copy-paste server bundle (zip / tar.gz); game emblem on the home
+  screens; cleaner phone end-screen; distance-math optimizations
+  (squared-distance comparisons); and a three-level tutorial
+  (Discovery / Intermediate / Expert) with a new *fast maths* annex. *(done)*
 
 ## Project layout
 

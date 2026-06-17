@@ -1,0 +1,14 @@
+{
+  "nav.home": "Inicio",
+  "nav.annex": "Anexos",
+  "nav.math": "Mates",
+  "nav.chapters": "Capítulos",
+  "level.legend": "Nivel",
+  "level.d.label": "Descubrimiento",
+  "level.d.sub": "para empezar",
+  "level.i.label": "Intermedio",
+  "level.i.sub": "la arquitectura",
+  "level.e.label": "Experto",
+  "level.e.sub": "en profundidad",
+  "footer.prefix": "Cuaderno del creador de <b>Tower Duel</b> · "
+}

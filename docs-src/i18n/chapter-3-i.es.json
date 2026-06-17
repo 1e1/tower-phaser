@@ -1,0 +1,57 @@
+{
+  "title": "Capítulo 3 (intermedio) — Cliente/servidor en tiempo real",
+  "meta.desc": "Nivel intermedio: servidor autoritativo y salas, el protocolo de intenciones del mando frente a snapshots difundidos, la simulación compartida, la información oculta, la cola de espectadores y el relevo de asiento.",
+
+  "hero.badge": "Intermedio · Fase 3 · Tundra",
+  "hero.kicker": "Capítulo 3 · nivel intermedio",
+  "hero.title": "Cliente/servidor en tiempo real",
+  "hero.lead": "La TV muestra, los móviles controlan. En el centro: un <strong>servidor autoritativo</strong> que arbitra la partida, un <strong>protocolo</strong> de intenciones contra snapshots, y la misma <strong>simulación</strong> compartida entre servidor y clientes.",
+
+  "s1.h2": "Un servidor autoritativo, organizado en salas",
+  "s1.lead": "El servidor es el <b>único juez</b>. Mantiene la partida en memoria dentro de una <b>sala</b> (<code class=\"inline\">Room</code>): hasta dos jugadores, una cola de espera, los espectadores TV y la simulación.",
+  "s1.code.cap": "server/Room.js — una sala, dos asientos, una cola",
+  "s1.code.c1": "// ~30 Hz: el paso de la simulación Y la cadencia de difusión",
+  "s1.code.c2": "// dos asientos de jugador",
+  "s1.code.c3": "// cola de espectadores",
+  "s1.code.c4": "// las pantallas que observan",
+  "s1.code.c5": "// la simulación autoritativa",
+  "s1.p1": "El servidor (<code class=\"inline\">server/index.js</code>) solo <b>enruta</b> los mensajes WebSocket a la sala correcta: <code class=\"inline\">host</code> crea una sala, <code class=\"inline\">join</code> coloca a un participante en ella, y todo lo demás (<code class=\"inline\">aim</code>, <code class=\"inline\">ready</code>, <code class=\"inline\">shell</code>…) se enruta a los métodos de la sala. Ninguna lógica de juego vive en la capa de red.",
+  "s1.callout": "<b>¿Por qué autoritativo?</b> Si cada teléfono calculara su propia partida, dos clientes acabarían en desacuerdo. Con un único árbitro, todos ven exactamente la misma cosa — y nadie puede hacer trampa modificando su cliente.",
+
+  "s2.h2": "El protocolo: intenciones contra snapshots",
+  "s2.p1": "El intercambio es <b>asimétrico</b>. El mando envía pequeñas <b>intenciones</b> (« apunto a tal ángulo », « listo »). El servidor responde con <b>snapshots</b>: el estado completo de la partida, unas 30 veces por segundo.",
+  "s2.fig.alt": "Intenciones suben, snapshots bajan",
+  "s2.fig.ctrl1": "📱 Mando",
+  "s2.fig.ctrl2": "📱 Mando",
+  "s2.fig.server": "🧠 Servidor",
+  "s2.fig.viewers": "📺 TV",
+  "s2.fig.intents": "intención ↑",
+  "s2.fig.snapshots": "snapshot ↓",
+  "s2.fig.cap": "Las intenciones suben; los snapshots bajan a todos los clientes ~30 veces por segundo.",
+  "s2.p2": "En cada tick, la sala avanza la simulación un paso fijo, recoge los eventos ocurridos, y luego difunde el snapshot a todos los suscriptores de la sala:",
+  "s2.code.cap": "server/Room.js — una vuelta del bucle",
+
+  "s3.h2": "La misma simulación, en el servidor y en los clientes",
+  "s3.p1": "El trabajo de arquitectura de la Fase 1 da sus frutos aquí: como la simulación de <code class=\"inline\">src/sim/</code> es <b>libre de Phaser</b>, el servidor Node la ejecuta tal cual. Importa exactamente el mismo módulo que el navegador:",
+  "s3.code.cap": "server/Room.js — el servidor instancia la sim del juego",
+  "s3.p2": "Es el dividendo de la decisión de arquitectura del capítulo 1: la misma física corre en el servidor (el juez) y sigue siendo testeable bajo Node. Nadie reescribe las trayectorias « para la red ».",
+  "s3.snapomit.cap": "src/sim/Simulation.js — lo que un snapshot transporta de verdad",
+  "s3.snapomit.c1": "// la TV espectadora nunca recibe los valores de puntería elegidos;",
+  "s3.snapomit.c2": "// solo los flags ready y, una vez disparado, los proyectiles resultantes.",
+  "s3.callout.nerd": "<b>Información oculta.</b> El snapshot <b>no contiene</b> el ángulo ni la potencia de los jugadores en fase de puntería — esos números nunca se muestran en la TV. Solo se difunden los flags « listo » y, una vez disparado el tiro, los proyectiles. La asimetría de información está <em>en el protocolo</em>.",
+
+  "s4.h2": "Asientos, cola de espera y salidas",
+  "s4.p1": "Una sala está viva: la gente llega, se va, toma el relevo. La sala gestiona estas transiciones sin romper la partida. Un participante que llega ocupa un asiento libre, si no se une a la <b>cola</b> como espectador.",
+  "s4.code1.cap": "server/Room.js — asiento libre o cola de espera",
+  "s4.code1.c1": "/* jugador */",
+  "s4.code1.c2": "/* espectador en cola */",
+  "s4.p2": "Cuando un jugador libera su asiento (salida voluntaria o desconexión), el primero de la cola <b>toma el relevo</b> (<code class=\"inline\">promoteInto</code>). Y si nadie completa los dos asientos a mitad de partida, la sala <b>vuelve al lobby</b>: la TV muestra de nuevo el código y el QR.",
+  "s4.code2.cap": "server/Room.js — vuelta al lobby si un asiento queda vacío",
+  "s4.code2.c1": "// un espectador en espera ocupa el asiento",
+  "s4.callout": "<b>Recuerda.</b> La red es también todos los casos « no felices »: salidas, reconexiones, asientos que se liberan. Centralizar este estado en un único objeto <code class=\"inline\">Room</code> hace estas transiciones legibles y testeables.",
+
+  "footer.suffix": "capítulo {n}/{total} · nivel intermedio",
+
+  "pager.prev": "← Capítulo 2 · Datos &amp; síntesis",
+  "pager.next": "Capítulo 4 · Terreno destructible →"
+}

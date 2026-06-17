@@ -1,0 +1,41 @@
+{
+  "title": "Capitolo 1 (esperto) — Loop deterministico &amp; integrazione numerica",
+  "meta.desc": "Livello esperto: passo temporale fisso e server autoritativo, integrazione di Eulero semi-implicita e il suo errore, e determinismo tramite RNG con seme perché server e client vedano la stessa partita.",
+
+  "hero.badge": "Esperto · Lotto 1 · Prato",
+  "hero.kicker": "Capitolo 1 · livello esperto",
+  "hero.title": "Loop deterministico &amp; integrazione numerica",
+  "hero.lead": "Nel profondo del motore: perché un <strong>passo temporale fisso</strong> e un <strong>server autoritativo</strong>, quanto vale davvero l'<strong>integrazione di Eulero</strong>, e come garantire che un unico calcolo produca sempre la stessa partita.",
+
+  "s1.h2": "Passo fisso, autorità unica",
+  "s1.lead": "La simulazione non avanza al ritmo dello schermo. Il server la fa progredire a <b>passi fissi</b> di 33 ms (≈ 30 Hz), indipendentemente dagli fps di ciascuno schermo.",
+  "s1.code.cap": "server/Room.js — l'orologio autoritativo",
+  "s1.code.c1": "// ~30 Hz",
+  "s1.code.c2": "// passo costante, in secondi",
+  "s1.p1": "Un passo <b>costante</b> ha due virtù. Anzitutto la <b>stabilità numerica</b>: l'errore di integrazione non dipende più da un <code class=\"inline\">dt</code> erratico (un picco di lag non «teletrasporta» più una palla attraverso una torre). Poi il <b>determinismo</b>: stessi input + stessi passi ⇒ stesso risultato, bit per bit.",
+  "s1.callout": "<b>Autorità.</b> I client non integrano <em>mai</em> la fisica. Inviano delle <b>intenzioni</b> (angolo, potenza, «pronto») e mostrano solo gli <b>snapshot</b> ricevuti. Questo elimina i disaccordi fra le macchine — e il cheat da un client modificato.",
+
+  "s2.h2": "Integrare il movimento: Eulero semi-implicito",
+  "s2.p1": "La traiettoria obbedisce a un'equazione differenziale (accelerazione costante per passo). La approssimiamo col metodo più semplice, l'<b>integrazione di Eulero</b> — ma nella sua variante <b>semi-implicita</b> (simplettica): si aggiorna prima la <b>velocità</b>, poi la posizione con questa nuova velocità.",
+  "s2.code.cap": "src/sim/Simulation.js — stepProjectiles",
+  "s2.code.vx": "vento    * dt;   ",
+  "s2.code.c1": "// 1) velocità aggiornata per prima",
+  "s2.code.vy": "gravita  * dt;",
+  "s2.code.px": "p.vx * dt;       ",
+  "s2.code.c2": "// 2) posizione con la velocità nuova",
+  "s2.p2": "L'Eulero «ingenuo» (posizione prima della velocità) deriva e gonfia l'energia col tempo; la variante semi-implicita resta molto più stabile a parità di costo. L'errore locale è in <code class=\"inline\">O(dt²)</code>: a 30 Hz e per voli di pochi secondi lo scarto è invisibile — e, soprattutto, è <b>lo stesso per tutti</b>.",
+  "s2.callout": "<b>Sotto-passi.</b> Serve più precisione senza accelerare l'orologio? Si divide ogni tick in N sotto-passi di <code class=\"inline\">dt/N</code>. Il simulatore di tiro del livello scoperta lo fa già (2 sotto-passi per fotogramma) per ammorbidire la curva. È il classico compromesso precisione/costo.",
+
+  "s3.h2": "Riproducibilità: il seme fa fede",
+  "s3.p1": "Perché server e client disegnino <b>esattamente</b> lo stesso terreno, bandiamo <code class=\"inline\">Math.random()</code> da tutto ciò che dev'essere condiviso. Al suo posto, un <b>generatore pseudo-casuale con seme</b>: stesso seme ⇒ stessa sequenza di numeri ⇒ stesso mondo.",
+  "s3.code.cap": "il terreno è una pura funzione del seme",
+  "s3.code.c1": "// il server invia solo il seme; ogni client rigenera identico",
+  "s3.p2": "Lo snapshot trasporta dunque il <b>seme</b>, non le centinaia di altezze del terreno — risparmio di banda <em>e</em> garanzia di coerenza. Stesso principio per il jitter nascosto dei tiri: estratto dall'RNG del server, mai trasmesso, quindi invisibile eppure riproducibile lato server.",
+  "s3.rng.cap": "src/sim/rng.js — mulberry32, un PRNG con seme minuscolo",
+  "s3.callout": "<b>Da ricordare.</b> Loop a passo fisso + autorità server + RNG con seme = una partita <b>deterministica e ripetibile</b>. È l'ossatura invisibile che rende possibile tutto il resto: rete, terreno distruttibile, vento continuo.",
+
+  "footer.suffix": "capitolo {n}/{total} · livello esperto",
+
+  "pager.prev": "← Home",
+  "pager.next": "Capitolo 2 · Rendering senza asset →"
+}

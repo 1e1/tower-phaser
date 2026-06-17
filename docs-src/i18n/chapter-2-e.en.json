@@ -1,0 +1,59 @@
+{
+  "title": "Chapter 2 (expert) — Asset-free rendering: procedural synthesis",
+  "meta.desc": "Expert level: runtime texture generation, Web Audio oscillators and envelopes, colour maths (lerp/shade/barrelColor), the animated windsock geometry, particle systems and blend modes, and quality tiers.",
+
+  "hero.badge": "Expert · Batch 2 · Desert",
+  "hero.kicker": "Chapter 2 · expert level",
+  "hero.title": "Asset-free rendering: procedural synthesis",
+  "hero.lead": "Not a single image or audio file ships. Everything is <strong>synthesized</strong>: textures baked at boot, sound built from oscillators and envelopes, colours computed by interpolation, geometry generated each frame — and effects scaled to the device.",
+
+  "s1.h2": "Textures generated at runtime",
+  "s1.lead": "There are no PNGs. Every particle sprite is drawn once into an off-screen texture at boot, then reused, tinted and blended for the rest of the session.",
+  "s1.code.cap": "src/systems/textures.js — a soft smoke puff from stacked circles",
+  "s1.code.c1": "// faint, additive translucent rings",
+  "s1.code.c2": "// → a soft gradient, no image",
+  "s1.p1": "Four sprites cover the whole game: a hard <code class=\"inline\">spark</code> dot, a soft <code class=\"inline\">smoke</code> puff, a bright additive <code class=\"inline\">flash</code>, and a blobby <code class=\"inline\">cloud</code>. White by default, recoloured per biome at runtime.",
+  "s1.callout.nerd": "<b>Why bake at boot.</b> Generating a texture costs a little CPU once; sampling it costs nothing afterward. We pay the synthesis price a single time, then enjoy GPU-cheap, tintable sprites — with zero download.",
+
+  "s2.h2": "Sound: oscillators &amp; envelopes",
+  "s2.p1": "Every sound effect is a tiny Web Audio graph: a source (an <b>oscillator</b> or a buffer of <b>noise</b>), a filter, and a <b>gain envelope</b> that shapes the volume over time. An explosion is filtered noise whose low-pass sweeps down while the gain decays.",
+  "s2.code.cap": "src/systems/Sfx.js — the explosion envelope",
+  "s2.code.c1": "// white noise (random buffer)",
+  "s2.code.c2": "// darkens",
+  "s2.code.c3": "// decays",
+  "s2.p2": "Richer effects just stack graphs: the tower <code class=\"inline\">rubble()</code> layers a low rumble, a deep sine thud, and a scatter of short high-passed “debris” bursts at random times. The continuous <code class=\"inline\">flyby()</code> whizz keeps one band-passed sawtooth alive and nudges its gain and pitch toward a target with <code class=\"inline\">setTargetAtTime</code> as a shell nears. On iOS, where the Vibration API is blocked, this audio whizz stands in for the haptics you'd otherwise feel.",
+  "s2.callout.suspended": "<b>The suspended context.</b> Browsers create the <code class=\"inline\">AudioContext</code> suspended and only resume it after a user gesture. A single shared <code class=\"inline\">Sfx</code> instance lives on the game registry and is <code class=\"inline\">unlock()</code>-ed on first interaction — otherwise the opening sounds vanish silently.",
+  "s2.callout.tip": "<b>Remember.</b> A synthesized sound = source + filters + envelope. We store no samples: we describe a <b>recipe</b> the browser runs. The bundle stays tiny.",
+
+  "s3.h2": "Colour maths: lerp, shade, barrelColor",
+  "s3.p1": "Colours are computed, not stored. Linear interpolation (<code class=\"inline\">lerp</code>) between two RGB triples drives the charging barrel (steel → glowing red), and a multiplicative <code class=\"inline\">shade</code> brightens or darkens any colour. All of it lives in the renderer-agnostic <code class=\"inline\">src/render/visuals.js</code>.",
+  "s3.code.cap": "src/render/visuals.js — shade &amp; the crater rim",
+  "s3.code.c1": "// repacks the integer",
+  "s3.p2": "<code class=\"inline\">barrelColor(power)</code> lerps from cool steel toward burning red on a power ratio clamped to [0, 1]; <code class=\"inline\">craterRimColor(edge)</code> pulls the biome's edge tint toward dark brown for a “scorched earth” rim rather than a black ring. The bit-shifts (<code class=\"inline\">&gt;&gt; 16</code>, <code class=\"inline\">&amp; 0xff</code>) extract each channel from a 0xRRGGBB integer.",
+  "s3.callout.nerd": "<b>For the curious.</b> Colours are packed integers (<code class=\"inline\">0xRRGGBB</code>). Bit-shifting splits the channels, the maths runs per channel, and the shift-OR repacks them — the same representation Phaser and a plain canvas both accept, which is why this code is shared.",
+
+  "s4.h2": "Animated geometry: the windsock",
+  "s4.p1": "The windsock isn't a sprite — it's <b>geometry generated every frame</b>. From the base point, the wind strength and the time, <code class=\"inline\">computeWindsock</code> returns a pole plus tapering striped quads that point downwind, lift with strength, and flutter with a time-driven sine.",
+  "s4.code.cap": "src/render/visuals.js — computeWindsock (the centreline)",
+  "s4.code.c1": "// 0..1 strength",
+  "s4.code.c2": "// flatter when windy",
+  "s4.code.c3": "// tip waves most",
+  "s4.p2": "Because it returns plain points and colours, the TV draws it with Phaser graphics and the controller draws the same shape on a 2D canvas — one definition, two renderers.",
+
+  "s5.h2": "Particle systems &amp; blend modes",
+  "s5.p1": "Ambient scenery is a single emitter configured by data. Each biome picks a behaviour — drifting <code class=\"inline\">leaves</code>, falling <code class=\"inline\">snow</code>, rising <code class=\"inline\">embers</code>, blowing <code class=\"inline\">sand</code> — and embers add an <b>ADD blend mode</b> so they glow. The live wind even bends the stream by setting the emitter's gravity.",
+  "s5.code.cap": "src/objects/Background.js — embers rise and glow",
+  "s5.code.c1": "// born at the bottom",
+  "s5.code.c2": "// upward",
+  "s5.code.c3": "// shrink as they die",
+  "s5.code.c4": "// additive: bright embers glow over the dark sky",
+  "s5.p2": "All this synthesis can overwhelm a smart TV. So at boot the host samples real frame deltas for a short window, computes the average fps, and records a <b>tier</b> the renderer respects (fewer clouds, no ambient layer on <code class=\"inline\">lite</code>).",
+  "s5.code2.cap": "src/objects/Background.js — quality decides what we draw",
+  "s5.code2.c1": "// the ambient layer is the easiest to sacrifice on a weak device",
+  "s5.callout.tip": "<b>Describe behaviour, not particles.</b> We never spawn each flake by hand. We hand the engine rules — speed, lifespan, start/end size and alpha — and it produces hundreds of particles that obey them, the wind shaping the whole stream at once.",
+
+  "footer.suffix": "chapter {n}/{total} · expert level",
+
+  "pager.prev": "← Chapter 1 · Deterministic loop",
+  "pager.next": "Chapter 3 · Network protocol &amp; consistency →"
+}

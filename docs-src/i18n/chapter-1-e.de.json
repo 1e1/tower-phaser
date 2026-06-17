@@ -1,0 +1,41 @@
+{
+  "title": "Kapitel 1 (Profi) — Deterministische Schleife &amp; numerische Integration",
+  "meta.desc": "Profi-Niveau: fester Zeitschritt und autoritativer Server, semi-implizite Euler-Integration und ihr Fehler sowie Determinismus durch geseedetes RNG, damit Server und Clients dieselbe Partie sehen.",
+
+  "hero.badge": "Profi · Lot 1 · Wiese",
+  "hero.kicker": "Kapitel 1 · Profi-Niveau",
+  "hero.title": "Deterministische Schleife &amp; numerische Integration",
+  "hero.lead": "Tief im Maschinenraum: warum ein <strong>fester Zeitschritt</strong> und ein <strong>autoritativer Server</strong>, was die <strong>Euler-Integration</strong> wirklich taugt, und wie wir garantieren, dass ein und dieselbe Berechnung stets dieselbe Partie erzeugt.",
+
+  "s1.h2": "Fester Schritt, einzige Autorität",
+  "s1.lead": "Die Simulation läuft nicht im Takt der Anzeige. Der Server treibt sie in <b>festen Schritten</b> von 33 ms (≈ 30 Hz) voran, unabhängig von den fps jedes Bildschirms.",
+  "s1.code.cap": "server/Room.js — die maßgebliche Uhr",
+  "s1.code.c1": "// ~30 Hz",
+  "s1.code.c2": "// konstanter Schritt, in Sekunden",
+  "s1.p1": "Ein <b>konstanter</b> Schritt hat zwei Vorzüge. Erstens die <b>numerische Stabilität</b>: Der Integrationsfehler hängt nicht mehr von einem erratischen <code class=\"inline\">dt</code> ab (ein Lag-Spitze lässt keine Kugel mehr durch einen Turm „teleportieren“). Zweitens den <b>Determinismus</b>: gleiche Eingaben + gleiche Schritte ⇒ gleiches Ergebnis, Bit für Bit.",
+  "s1.callout": "<b>Autorität.</b> Die Clients integrieren die Physik <em>nie</em>. Sie senden <b>Absichten</b> (Winkel, Stärke, „bereit“) und zeigen nur die zurückgesendeten <b>Snapshots</b> an. Das beseitigt Abweichungen zwischen Maschinen — und das Schummeln per manipuliertem Client.",
+
+  "s2.h2": "Bewegung integrieren: semi-impliziter Euler",
+  "s2.p1": "Die Flugbahn gehorcht einer Differentialgleichung (konstante Beschleunigung pro Schritt). Wir nähern sie mit der einfachsten Methode an, der <b>Euler-Integration</b> — aber in ihrer <b>semi-impliziten</b> (symplektischen) Variante: Wir aktualisieren <b>zuerst die Geschwindigkeit</b>, dann die Position mit dieser neuen Geschwindigkeit.",
+  "s2.code.cap": "src/sim/Simulation.js — stepProjectiles",
+  "s2.code.vx": "wind     * dt;   ",
+  "s2.code.c1": "// 1) Geschwindigkeit zuerst aktualisiert",
+  "s2.code.vy": "gravity  * dt;",
+  "s2.code.px": "p.vx * dt;       ",
+  "s2.code.c2": "// 2) Position mit der neuen Geschwindigkeit",
+  "s2.p2": "Der „naive“ Euler (Position vor Geschwindigkeit) driftet und bläht die Energie über die Zeit auf; die semi-implizite Variante bleibt bei gleichem Aufwand deutlich stabiler. Der lokale Fehler ist von der Ordnung <code class=\"inline\">O(dt²)</code>: bei 30 Hz und Flügen von wenigen Sekunden ist die Abweichung unsichtbar — und vor allem ist sie <b>für alle gleich</b>.",
+  "s2.callout": "<b>Teilschritte.</b> Mehr Genauigkeit, ohne die Uhr zu beschleunigen? Wir zerlegen jeden Tick in N Teilschritte von <code class=\"inline\">dt/N</code>. Der Schuss-Simulator aus dem Einstiegskapitel tut das bereits (2 Teilschritte pro Bild), um die Kurve zu glätten. Das ist der klassische Kompromiss Genauigkeit/Kosten.",
+
+  "s3.h2": "Reproduzierbarkeit: der Seed entscheidet",
+  "s3.p1": "Damit Server und jeder Client <b>exakt</b> dasselbe Gelände zeichnen, verbannen wir <code class=\"inline\">Math.random()</code> aus allem, was geteilt werden muss. Stattdessen ein <b>geseedeter Pseudozufallsgenerator</b>: gleicher Seed ⇒ gleiche Zahlenfolge ⇒ gleiche Welt.",
+  "s3.code.cap": "das Gelände ist eine reine Funktion des Seeds",
+  "s3.code.c1": "// der Server sendet nur den Seed; jeder Client erzeugt identisch nach",
+  "s3.p2": "Der Snapshot transportiert also den <b>Seed</b>, nicht die hunderten Geländehöhen — eine Bandbreiten-Ersparnis <em>und</em> eine Konsistenzgarantie. Dasselbe Prinzip beim verborgenen Jitter der Schüsse: aus dem RNG des Servers gezogen, nie übertragen, also unsichtbar und dennoch serverseitig reproduzierbar.",
+  "s3.rng.cap": "src/sim/rng.js — mulberry32, ein PRNG mit winzigem Seed",
+  "s3.callout": "<b>Merke dir.</b> Schleife mit festem Schritt + Server-Autorität + geseedetes RNG = eine <b>deterministische und wiederholbare</b> Partie. Das ist das unsichtbare Skelett, das alles Weitere möglich macht: Netzwerk, zerstörbares Gelände, kontinuierlicher Wind.",
+
+  "footer.suffix": "Kapitel {n}/{total} · Profi-Niveau",
+
+  "pager.prev": "← Startseite",
+  "pager.next": "Kapitel 2 · Rendering ohne Assets →"
+}

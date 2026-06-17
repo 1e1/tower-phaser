@@ -1,0 +1,62 @@
+{
+  "title": "Chapter 3 (expert) — Network protocol &amp; state consistency",
+  "meta.desc": "Expert level: the message schema, the authoritative model, compact snapshots, information asymmetry, edge cases (takeover, queue, disconnect, lobby reset), server-side intent validation, and bandwidth economy.",
+
+  "hero.badge": "Expert · Batch 3 · Tundra",
+  "hero.kicker": "Chapter 3 · expert level",
+  "hero.title": "Network protocol &amp; state consistency",
+  "hero.lead": "The wire-level contract: a tiny <strong>message schema</strong>, an <strong>authoritative model</strong>, compact snapshots, deliberate <strong>information asymmetry</strong>, server-side validation against cheating, and the gnarly <strong>edge cases</strong> of people joining and leaving.",
+
+  "s1.h2": "The message schema",
+  "s1.lead": "The protocol is JSON over a WebSocket, with a single discriminator field <code class=\"inline\">t</code> (type). The server <code class=\"inline\">server/index.js</code> is just a <b>router</b>: it decodes <code class=\"inline\">t</code> and delegates to the room.",
+  "s1.code.cap": "server/index.js — one dispatch per message type",
+  "s1.code.c1": "/* the TV creates a room, receives a code */",
+  "s1.code.c2": "/* a device joins by code */",
+  "s1.p1": "Two families: <b>upstream</b> messages (<code class=\"inline\">host</code>, <code class=\"inline\">join</code>, <code class=\"inline\">aim</code>, <code class=\"inline\">ready</code>, <code class=\"inline\">shell</code>, <code class=\"inline\">config</code>, <code class=\"inline\">leave</code>…) and the server's <b>downstream</b> messages (<code class=\"inline\">hosted</code>, <code class=\"inline\">joined</code>, <code class=\"inline\">roster</code>, <code class=\"inline\">snapshot</code>, <code class=\"inline\">promote</code>, <code class=\"inline\">queue</code>…). One type, one intent, one clear route.",
+  "s1.callout.events": "<b>For the curious.</b> A <code class=\"inline\">snapshot</code> carries the continuous state; an <code class=\"inline\">events</code> array piggybacks one-shot moments (<code class=\"inline\">fire</code>, <code class=\"inline\">hit</code>, <code class=\"inline\">impact</code>, <code class=\"inline\">destroyed</code>). Splitting <em>state</em> (where everything is) from <em>events</em> (what just happened) is a common netcode pattern: state can be re-sent or missed harmlessly, while events are the transient cues you fire exactly once.",
+
+  "s2.h2": "Authoritative model &amp; intent validation",
+  "s2.p1": "“Authoritative” doesn't mean “naive”. The server never takes a client at its word: it <b>validates</b> every intent before applying it. An intent only takes effect if the sender is allowed and the value is plausible.",
+  "s2.code1.cap": "server/Room.js — only a seated player acts, and only on its own simulation",
+  "s2.p2": "The match configuration is locked down even harder: only the player designated as <code class=\"inline\">biomeChooser</code> (the first player, then the loser) can change it, and each field is <b>filtered</b> by type and by range.",
+  "s2.code2.cap": "server/Room.js — strict validation of the settings",
+  "s2.p3": "Even checked-out intents are clamped where it matters: the simulation forces angle and power into their legal ranges and gates on the phase, so a hacked controller asking for a 999° shot simply can't get one.",
+  "s2.setaim.cap": "src/sim/Simulation.js — clamp &amp; gate every intent",
+  "s2.setaim.c1": "// only while aiming",
+  "s2.setaim.c2": "// not after you've committed",
+  "s2.setaim.c3": "// clamp into AIM.min/maxAngle",
+  "s2.callout": "<b>Anti-cheat.</b> A tampered client can <em>send</em> whatever it wants; it can't <em>make happen</em> whatever it wants. Since the physics runs on the server and intents are filtered, the worst a cheater gets is… their own message being ignored.",
+
+  "s3.h2": "Compact snapshot vs delta, and information asymmetry",
+  "s3.p1": "At 30 Hz, the snapshot's size matters. The choice here is the <b>full compact state</b> rather than deltas: the heavy fields are already absent (terrain = a seed), coordinates are <b>rounded</b>, and only live projectiles are included.",
+  "s3.code1.cap": "src/sim/Simulation.js — the full snapshot, kept tiny",
+  "s3.code1.c1": "// terrain is a function of the seed",
+  "s3.code1.c2": "// only the diffs, not every height",
+  "s3.code1.c3": "/* ready, groundY, angle, power, hp */",
+  "s3.p2": "The subtlest part is what is <b>not</b> in the snapshot. The angle and power chosen while aiming aren't there for the TV: the simulation exposes the “ready” flags and, once a shot is fired, the projectiles — never the secret settings.",
+  "s3.code2.cap": "src/sim/Simulation.js — hidden information is a protocol decision",
+  "s3.code2.c1": "// angle/power are deliberately omitted so the spectator TV never",
+  "s3.code2.c2": "// reveals what the players are setting; only the ready flags and,",
+  "s3.code2.c3": "// once fired, the projectiles are shared.",
+  "s3.callout.nerd": "<b>Compact rather than delta.</b> A delta saves bytes but forces the server to remember what each client already knows, and complicates reconnects. Here the state is already so lean (seed + crater list + a few objects) that a full snapshot stays small <em>and</em> trivially idempotent: a client joining mid-game is up to date from the very first message.",
+
+  "s4.h2": "Edge cases: where the real bugs live",
+  "s4.p1": "The happy path is “two players play then replay”. The rest are the transitions. The room covers them explicitly. <b>Mid-match takeover</b>: if a seat frees up, the front of the queue is promoted into it.",
+  "s4.code1.cap": "server/Room.js — promote the front of the queue",
+  "s4.p2": "<b>Disconnect</b>: <code class=\"inline\">removeSocket</code> removes the socket from everywhere (TV, queue, seat), attempts a promotion, and otherwise brings the room back to the lobby. <b>Voluntary leave</b>: the leaver drops to the back of the queue and receives a <code class=\"inline\">demoted</code> message. <b>Lobby reset</b>: as soon as a match loses one of its two players, the simulation is cancelled and the TV shows the code and QR again.",
+  "s4.code2.cap": "server/Room.js — an empty seat mid-match ⇒ back to the lobby",
+  "s4.callout": "<b>Invariant.</b> The room cleans itself up: as soon as it has no TV, no player and no queue, <code class=\"inline\">dispose()</code> stops the loop and removes it from the rooms table. No <code class=\"inline\">setInterval</code> leak, no zombie room.",
+
+  "s5.h2": "Bandwidth economy",
+  "s5.p1": "All these decisions converge on a single goal: <b>send as little as possible, as often as possible</b>. The terrain — potentially thousands of heights — boils down to one seed.",
+  "s5.code.cap": "src/sim/Simulation.js — the seed carries all the relief",
+  "s5.code.c1": "// one integer → thousands of regenerated heights",
+  "s5.code.c2": "// the list of holes (small circles)",
+  "s5.p2": "Sending the <b>seed</b> rather than the terrain trades bandwidth for a bit of client CPU (each one regenerates the same relief). Coupled with rounded positions, the filtering of dead projectiles and the absence of assets, the 30 Hz stream stays light even over a home Wi-Fi.",
+  "s5.callout": "<b>Remember.</b> A good real-time protocol isn't just about speed: it's a balance of <b>authority</b>, <b>message size</b>, <b>revealed information</b> and <b>robustness to transitions</b>. Tower Duel chooses simplicity wherever the state already allows it.",
+
+  "footer.suffix": "chapter {n}/{total} · expert level",
+
+  "pager.prev": "← Chapter 2 · Asset-free rendering",
+  "pager.next": "Chapter 4 · Destructible terrain &amp; fast maths →"
+}

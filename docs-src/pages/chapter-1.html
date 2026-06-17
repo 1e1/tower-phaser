@@ -1,0 +1,137 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,20 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>
+        <path d="M0,95 C260,55 520,120 760,90 C1020,58 1240,120 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p class="lead">{{s1.lead}}</p>
+        <p>{{s1.p1}}</p>
+
+        <figure class="diagram" aria-label="{{s1.fig.alt}}">
+          <svg viewBox="0 0 620 200" width="620" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <circle cx="310" cy="100" r="78" fill="none" stroke="#3f8f2f" stroke-width="3" stroke-dasharray="6 7"/>
+            <g text-anchor="middle">
+              <rect x="250" y="6" width="120" height="40" rx="10" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+              <text x="310" y="31" font-weight="800" fill="#2b2535">{{s1.fig.listen}}</text>
+              <rect x="468" y="80" width="130" height="40" rx="10" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+              <text x="533" y="105" font-weight="800" fill="#2b2535">{{s1.fig.calc}}</text>
+              <rect x="250" y="154" width="120" height="40" rx="10" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+              <text x="310" y="179" font-weight="800" fill="#2b2535">{{s1.fig.draw}}</text>
+              <rect x="22" y="80" width="130" height="40" rx="10" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+              <text x="87" y="105" font-size="13" fill="#5b5470">{{s1.fig.later}}</text>
+            </g>
+          </svg>
+          <figcaption>{{s1.fig.cap}}</figcaption>
+        </figure>
+
+        <figure class="code">
+          <figcaption>{{s1.code.cap}}</figcaption>
+<pre><span class="c">{{s1.code.c1}}</span>
+<span class="f">update</span>(time, delta) {
+  <span class="k">const</span> dt = delta / <span class="s">1000</span>;        <span class="c">{{s1.code.c2}}</span>
+  <span class="k">if</span> (this.state === <span class="s">'aiming'</span>)  this.<span class="f">handleAiming</span>(dt);
+  <span class="k">if</span> (this.state === <span class="s">'firing'</span>)  this.<span class="f">handleFiring</span>(dt);
+}</pre>
+        </figure>
+        <div class="callout tip">{{s1.callout}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <ul class="clean">
+          <li>{{s2.li1}}</li>
+          <li>{{s2.li2}}</li>
+          <li>{{s2.li3}}</li>
+          <li>{{s2.li4}}</li>
+        </ul>
+        <p>{{s2.p2}}</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <p>{{s3.p2}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code.cap}}</figcaption>
+<pre>ball.vx += wind   * dt;   <span class="c">{{s3.code.c1}}</span>
+ball.vy += <span class="s">520</span>    * dt;   <span class="c">{{s3.code.c2}}</span>
+ball.x  += ball.vx * dt;   <span class="c">{{s3.code.c3}}</span>
+ball.y  += ball.vy * dt;   <span class="c">{{s3.code.c4}}</span></pre>
+        </figure>
+        <div class="callout nerd">{{s3.callout.nerd}}</div>
+
+        <div class="callout try">{{s3.callout.try}}</div>
+
+        <div class="sim">
+          <h4>{{s3.sim.title}}</h4>
+          <canvas id="ball" width="640" height="300"></canvas>
+          <div class="controls">
+            <label>{{s3.sim.angle}}<span id="aV">45</span>°<input id="a" type="range" min="10" max="85" value="45" /></label>
+            <label>{{s3.sim.power}}<span id="pV">65</span><input id="p" type="range" min="20" max="100" value="65" /></label>
+            <label>{{s3.sim.wind}}<span id="wV">0</span><input id="w" type="range" min="-100" max="100" value="0" /></label>
+            <button id="fire">{{s3.sim.fire}}</button>
+          </div>
+          <div class="hint">{{s3.sim.hint}}</div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <p>{{s4.p2}}</p>
+
+        <figure class="diagram" aria-label="{{s4.fig.alt}}">
+          <svg viewBox="0 0 700 210" width="700" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <rect x="20" y="40" width="200" height="130" rx="12" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+            <text x="120" y="32" text-anchor="middle" font-size="13" fill="#5b5470">{{s4.fig.step1}}</text>
+            <text x="120" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">{{s4.fig.code}}</text>
+            <text x="120" y="120" text-anchor="middle" font-size="13" fill="#5b5470">{{s4.fig.codeSub}}</text>
+
+            <rect x="270" y="25" width="220" height="160" rx="12" fill="#fff7d6" stroke="#c07d22" stroke-width="3"/>
+            <text x="380" y="18" text-anchor="middle" font-size="13" fill="#5b5470">{{s4.fig.container}}</text>
+            <text x="380" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">{{s4.fig.containerMain}}</text>
+            <text x="380" y="120" text-anchor="middle" font-size="13" fill="#5b5470">{{s4.fig.containerSub}}</text>
+
+            <g text-anchor="middle">
+              <rect x="540" y="30" width="140" height="42" rx="10" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="610" y="56" font-weight="800" fill="#2b2535">{{s4.fig.pc}}</text>
+              <rect x="540" y="84" width="140" height="42" rx="10" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="610" y="110" font-weight="800" fill="#2b2535">{{s4.fig.server}}</text>
+              <rect x="540" y="138" width="140" height="42" rx="10" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="610" y="164" font-weight="800" fill="#2b2535">{{s4.fig.cloud}}</text>
+            </g>
+            <g stroke="#5b5470" stroke-width="2" fill="none">
+              <path d="M220,105 L268,105"/>
+              <path d="M492,95 L538,51"/><path d="M492,105 L538,105"/><path d="M492,115 L538,159"/>
+            </g>
+          </svg>
+          <figcaption>{{s4.fig.cap}}</figcaption>
+        </figure>
+
+        <figure class="code">
+          <figcaption>{{s4.code.cap}}</figcaption>
+<pre><span class="c">{{s4.code.c1}}</span>
+<span class="k">FROM</span> node:24 <span class="k">AS</span> build
+<span class="k">RUN</span> npm run build      <span class="c">{{s4.code.c2}}</span>
+
+<span class="c">{{s4.code.c3}}</span>
+<span class="k">FROM</span> nginx
+<span class="k">COPY</span> --from=build /app/dist /usr/share/nginx/html</pre>
+        </figure>
+        <div class="callout tip">{{s4.callout}}</div>
+      </section>
+
+      <div class="pager wrap">
+        <a class="disabled">{{pager.prev}}</a>
+        <a href="chapter-2.html">{{pager.next}}</a>
+      </div>
+    </main>

@@ -1,0 +1,51 @@
+{
+  "title": "Chapter 4 (intermediate) — Destructible terrain &amp; shared state",
+  "meta.desc": "Intermediate level: the heightfield and craters, seed-based determinism, point solidity by squared distance, the compact snapshot, and a preview of turbo's continuous wind.",
+
+  "hero.badge": "Intermediate · Batch 4 · Volcano",
+  "hero.kicker": "Chapter 4 · intermediate level",
+  "hero.title": "Destructible terrain &amp; shared state",
+  "hero.lead": "How a battlefield can be torn apart and still stay perfectly in sync across screens: a <strong>heightfield + craters</strong>, <strong>seed-based determinism</strong>, a <strong>compact snapshot</strong>, and a first look at turbo's continuous wind.",
+
+  "s1.h2": "The terrain is a heightfield, not an image",
+  "s1.lead": "The destructible ground isn't a big bitmap. It's a <b>heightfield</b>: one surface height per column, plus a growing <b>list of craters</b>. Cheap to store, cheap to send, and easy to keep identical everywhere.",
+  "s1.code.cap": "src/sim/terrain.js — the surface height per column",
+  "s1.code.c1": "// seeded generator",
+  "s1.code.c2": "// sum of sine waves → natural relief",
+  "s1.p1": "Destruction doesn't rewrite that array. Instead, we keep a <b>list of craters</b> alongside it. The terrain's final shape is “the heightfield <em>minus</em> the craters” — a subtraction computed on demand, never materialised.",
+  "s1.callout.tip": "<b>State = heights + craters.</b> The whole battlefield is two pieces of data. Everything the game needs to ask — “is this point solid?”, “did the ball land?” — derives from them.",
+
+  "s2.h2": "Solidity by squared distance",
+  "s2.p1": "A point is <b>solid</b> when it sits below the surface <b>and</b> inside no crater. Testing “inside a crater?” is a circle test — and we do it without a square root by comparing the <b>squared</b> distance to the squared radius.",
+  "s2.code.cap": "src/sim/terrain.js — inCrater &amp; pointSolid",
+  "s2.p2": "That tiny rule is enough to produce <b>caves</b> and <b>overhangs</b>: a crater dug under a bump leaves the matter above it floating, because that matter is still below the surface and inside no crater.",
+  "s2.callout.nerd": "<b>For the curious.</b> Comparing <code class=\"inline\">dx²+dy²</code> with <code class=\"inline\">c.r²</code> is the trick from the <a href=\"annex-math.html\">maths annex</a>: the square root is monotonic, so for a yes/no test the squares answer the same question — without the expensive root.",
+
+  "s2.xsec.title": "Solid minus craters",
+  "s2.xsec.solid": "solid",
+  "s2.xsec.crater": "empty (crater)",
+  "s2.xsec.overhang": "↑ overhang that “floats”",
+  "s2.xsec.cap": "Solid = below the surface <em>minus</em> the craters. A crater below the surface can leave material above it: that's how caves and overhangs appear.",
+
+  "s3.h2": "Determinism: send the seed, not the terrain",
+  "s3.p1": "The terrain is a <b>pure function of a seed</b>. The server rolls one number, generates the heights, and ships <em>only that seed</em> in the snapshot. Each client regenerates the identical surface — so the ground the server resolves collisions against is the very ground the TV draws.",
+  "s3.code.cap": "src/sim/Simulation.js — the compact snapshot",
+  "s3.code.c1": "// regenerate the heightfield from this",
+  "s3.code.c2": "// just the carved circles",
+  "s3.code.c3": "// …phase, wind, scores, towers, live projectiles",
+  "s3.p2": "And the craters? Just a short list of <code class=\"inline\">{ x, y, r }</code> circles. So the entire destructible state on the wire is <b>one seed + a handful of crater circles</b> — not a heightfield, never a bitmap.",
+  "s3.code2.cap": "src/sim/Simulation.js — terrain from a seed",
+  "s3.callout.tip": "<b>Shared state, kept small.</b> Sending the whole terrain ~30 times a second would be wasteful and could desync. Sending the recipe (seed) plus the diffs (craters) is both lighter and self-consistent.",
+
+  "s4.h2": "A taste of turbo: continuous wind",
+  "s4.p1": "Classic mode rolls a fresh wind each turn. <b>Turbo</b> mode keeps the wind <em>flowing</em>: it eases between random keypoints every 10 seconds with a <b>smoothstep</b> curve, and layers a light <b>gust wave</b> on top so the breeze breathes.",
+  "s4.code.cap": "src/sim/Simulation.js — updateTurboWind (the easing)",
+  "s4.code.c1": "// smoothstep easing",
+  "s4.p2": "On top, a light <b>gust wave</b> (two sines) rides over the base, its amplitude set by a per-match trait (<code class=\"inline\">gustiness</code>). The result: a wind that drifts gently between keypoints but breathes instead of gliding mechanically. The expert level details the full formula.",
+  "s4.callout.nerd": "<b>Remember.</b> Batch 4's architecture is about <b>shared state that stays small and deterministic</b>: terrain as heights + craters, solidity by squared distance, the seed as the recipe — and wind that flows continuously when the pace heats up. The full maths is in the <a href=\"annex-math.html\">maths annex</a>.",
+
+  "footer.suffix": "chapter {n}/{total} · intermediate level",
+
+  "pager.prev": "← Chapter 3 · Real-time client/server",
+  "pager.next": "The end 🎉"
+}

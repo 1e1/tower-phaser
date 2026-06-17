@@ -16,6 +16,12 @@ export default class BootScene extends Phaser.Scene {
     super('Boot');
   }
 
+  preload() {
+    // The game emblem, shown on the home/lobby screens. Rasterised large so it
+    // stays crisp on a TV; it is the only shipped image asset (text SVG).
+    this.load.svg('logo', 'icon.svg', { width: 320, height: 320 });
+  }
+
   create() {
     generateTextures(this);
     if (!this.registry.get('sfx')) this.registry.set('sfx', new Sfx());

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-import { COLORS, AIM, MAX_WIND, ROUND_OPTIONS, HP_OPTIONS } from '../config/constants.js';
+import { COLORS, AIM, MAX_WIND, ROUND_OPTIONS, HP_OPTIONS, GAME_MODES } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { SHELLS } from '../config/shells.js';
 import { PHASE } from '../sim/Simulation.js';
@@ -29,7 +29,10 @@ export default class ControllerScene extends Phaser.Scene {
     this.biomeIndex = 0;
     this.roundsIndex = 1;
     this.hpIndex = 0;
+    this.modeIndex = 0;
     this.shellIndex = 0;
+    this.shotClock = null;
+    this.serverReady = false;
     this.inMatch = false;
     this.postmatch = false;
     this.phase = null;
@@ -61,6 +64,7 @@ export default class ControllerScene extends Phaser.Scene {
     overlay.innerHTML = `
       <div class="tp-ctl-card">
         <header>
+          <img class="tp-logo-sm" src="icon.svg" alt="" />
           <input id="name" maxlength="12" value="${escapeHtml(this.name)}" />
           <span class="room">Room ${this.code}</span>
         </header>
@@ -70,7 +74,8 @@ export default class ControllerScene extends Phaser.Scene {
           <div class="row"><button id="biomeL">◀</button><span id="biomeName"></span><button id="biomeR">▶</button></div>
           <div class="row"><button id="roundsL">◀</button><span id="roundsName"></span><button id="roundsR">▶</button></div>
           <div class="row"><button id="hpL">◀</button><span id="hpName"></span><button id="hpR">▶</button></div>
-          <div class="hint">You set the biome, rounds and tower health</div>
+          <div class="row"><button id="modeL">◀</button><span id="modeName"></span><button id="modeR">▶</button></div>
+          <div class="hint">You set the biome, rounds, health and mode</div>
         </div>
 
         <canvas id="ttv"></canvas>
@@ -153,6 +158,8 @@ export default class ControllerScene extends Phaser.Scene {
     this.$('roundsR').addEventListener('click', () => this.cycleRounds(1));
     this.$('hpL').addEventListener('click', () => this.cycleHp(-1));
     this.$('hpR').addEventListener('click', () => this.cycleHp(1));
+    this.$('modeL').addEventListener('click', () => this.cycleMode(-1));
+    this.$('modeR').addEventListener('click', () => this.cycleMode(1));
     this.$('again').addEventListener('click', () => this.playAgain());
     this.$('leave').addEventListener('click', () => this.client.send('leave'));
   }
@@ -189,11 +196,7 @@ export default class ControllerScene extends Phaser.Scene {
     this.sendAim();
     this.client.send('ready', { value: true });
     this.sfx.blip(880);
-    this.sfx.whistle();
-    if (navigator.vibrate) navigator.vibrate(45);
-    const btn = this.$('fire');
-    btn.classList.add('waiting'); // stays clickable: tap again to cancel
-    btn.textContent = '✖ Cancel order';
+    this.renderFireButton();
   }
 
   // Withdraw a locked order while the opponent has not validated yet.
@@ -207,8 +210,25 @@ export default class ControllerScene extends Phaser.Scene {
 
   unlock() {
     this.locked = false;
+    this.renderFireButton();
+  }
+
+  // The validate/cancel button, including the turbo shot-clock countdown.
+  renderFireButton() {
     const btn = this.$('fire');
-    btn.disabled = false; btn.classList.remove('ready', 'waiting'); btn.textContent = 'VALIDATE SHOT';
+    if (this.phase === PHASE.FIRING && !this.turbo) {
+      btn.disabled = true;
+      btn.classList.remove('ready', 'waiting', 'urgent');
+      btn.textContent = 'Firing…';
+      return;
+    }
+    btn.disabled = false;
+    const sc = this.shotClock;
+    const clock = sc != null ? ` ${sc.toFixed(1)}s` : '';
+    btn.classList.toggle('waiting', this.locked);
+    btn.classList.toggle('urgent', !this.locked && sc != null && sc <= 2);
+    if (this.locked) btn.textContent = `✖ Cancel${sc != null ? ` ·${clock}` : ' order'}`;
+    else btn.textContent = sc != null ? `🔥 FIRE!${clock}` : 'VALIDATE SHOT';
   }
 
   // --- pickers -------------------------------------------------------------
@@ -259,6 +279,14 @@ export default class ControllerScene extends Phaser.Scene {
     this.$('hpName').textContent = hpLabel(HP_OPTIONS[this.hpIndex]);
   }
 
+  cycleMode(dir) {
+    this.modeIndex = (this.modeIndex + dir + GAME_MODES.length) % GAME_MODES.length;
+    const m = GAME_MODES[this.modeIndex];
+    this.sfx.blip(660);
+    this.client.send('config', { turbo: m.turbo, cadence: m.cadence });
+    this.$('modeName').textContent = m.label;
+  }
+
   playAgain() {
     this.client.send('playAgain');
     this.$('again').disabled = true; this.$('again').textContent = 'Waiting for opponent…';
@@ -284,13 +312,15 @@ export default class ControllerScene extends Phaser.Scene {
       if (ri !== -1) this.roundsIndex = ri;
       const hi = HP_OPTIONS.indexOf(m.config.hp);
       if (hi !== -1) this.hpIndex = hi;
+      const mi = GAME_MODES.findIndex((g) => g.turbo === m.config.turbo && (!g.turbo || g.cadence === m.config.cadence));
+      if (mi !== -1) this.modeIndex = mi;
     }
     // The match was aborted (opponent left) and the room is back to the lobby:
     // drop back to the pre-match waiting state.
     if (!m.inMatch && this.phase) {
       this.phase = null;
       this.prevPhase = null;
-      this.cracktro = null;
+      this.clearEndScreen();
       this.unlock();
     }
     this.refresh();
@@ -306,33 +336,44 @@ export default class ControllerScene extends Phaser.Scene {
     if (me.ammo) this.ammo = me.ammo;
     const si = SHELLS.findIndex((x) => x.id === me.shell);
     if (si !== -1) this.shellIndex = si;
+    this.turbo = !!s.turbo;
+    this.shotClock = s.shotClock;
 
     this.feedback(m.events || [], me);
     this.proximity(s, me);
 
+    // Re-arm once the server clears our ready flag (after a volley fires) — this
+    // is how turbo lets us aim the next shot immediately, with no phase change.
+    if (this.locked && this.serverReady && !me.ready) this.unlock();
+    this.serverReady = me.ready;
     if (s.phase === PHASE.AIMING && this.prevPhase && this.prevPhase !== PHASE.AIMING) this.unlock();
 
-    const dir = s.wind === 0 ? 'calm' : s.wind > 0 ? 'east →' : '← west';
-    const strength = Math.round((Math.abs(s.wind) / MAX_WIND) * 100);
-    this.$('info').textContent =
-      `Round ${s.round.current}/${s.round.total}  ·  ${s.scores[0]}–${s.scores[1]}  ·  Wind ${strength}% ${dir}`;
+    // The end-of-match cracktro owns the whole screen — keep the gameplay HUD
+    // line and status text out of it so no live-match text bleeds through.
+    if (s.phase !== PHASE.MATCH_END) {
+      const dir = s.wind === 0 ? 'calm' : s.wind > 0 ? 'east →' : '← west';
+      const strength = Math.round((Math.abs(s.wind) / MAX_WIND) * 100);
+      this.$('info').textContent =
+        `Round ${s.round.current}/${s.round.total}  ·  ${s.scores[0]}–${s.scores[1]}  ·  Wind ${strength}% ${dir}`;
 
-    const opponent = s.towers[this.player === 0 ? 1 : 0];
-    const fireBtn = this.$('fire');
-    if (s.phase === PHASE.AIMING) {
-      fireBtn.disabled = false;
-      this.$('status').textContent = this.locked ? 'Locked in — tap to cancel and re-aim'
-        : opponent.ready ? 'Opponent ready — your move!' : 'Drag the tower to aim, then validate.';
-    } else if (s.phase === PHASE.FIRING) {
-      fireBtn.disabled = true; // too late to cancel
-      this.$('status').textContent = 'Shots away!';
-    } else if (s.phase === PHASE.RESOLVING) this.$('status').textContent = s.banner || '…';
+      const opponent = s.towers[this.player === 0 ? 1 : 0];
+      if (s.phase === PHASE.RESOLVING) this.$('status').textContent = s.banner || '…';
+      else if (s.phase === PHASE.FIRING) this.$('status').textContent = 'Shots away!';
+      else if (this.shotClock != null) {
+        this.$('status').textContent = this.locked
+          ? 'Locked — opponent on the clock' : '⏱ Fire before the clock runs out!';
+      } else {
+        this.$('status').textContent = this.locked ? 'Locked in — tap to cancel and re-aim'
+          : opponent.ready ? 'Opponent ready — your move!' : 'Drag the tower to aim, then validate.';
+      }
+    }
+    this.renderFireButton();
 
     if (s.phase === PHASE.MATCH_END && this.prevPhase !== PHASE.MATCH_END) {
       this.$('again').disabled = false; this.$('again').textContent = 'Play again';
       this.startCracktro(s);
     }
-    if (s.phase !== PHASE.MATCH_END && this.cracktro) this.cracktro = null;
+    if (s.phase !== PHASE.MATCH_END && this.cracktro) this.clearEndScreen();
 
     this.prevPhase = s.phase;
     this.refresh();
@@ -348,9 +389,15 @@ export default class ControllerScene extends Phaser.Scene {
     const ox = this.ownTowerX;
     const oy = (me?.groundY ?? 600) - 48;
     const near = (x, y) => {
-      const d = Math.hypot(x - ox, y - oy);
+      // Pythagoras tells us the distance is sqrt(dx²+dy²), but the square root
+      // is the costly part — and we only need it when the impact is in range.
+      // So compare the *squared* distance first and reach for sqrt only inside.
       const thr = 560;
-      return d < thr ? 1 - d / thr : 0;
+      const dx = x - ox;
+      const dy = y - oy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= thr * thr) return 0;
+      return 1 - Math.sqrt(d2) / thr;
     };
     for (const e of events) {
       if (e.type === 'fire') {
@@ -378,10 +425,19 @@ export default class ControllerScene extends Phaser.Scene {
     if (s.phase !== PHASE.FIRING || !s.projectiles.length) { this.sfx.flyby(0); return; }
     const ox = this.ownTowerX;
     const oy = me.groundY - 48;
-    let best = Infinity;
-    for (const p of s.projectiles) best = Math.min(best, Math.hypot(p.x - ox, p.y - oy));
+    // Find the nearest shell by *squared* distance — sqrt is monotonic, so the
+    // closest squared distance is the closest distance. In turbo many shells can
+    // be airborne at once, so this saves a sqrt per shell every frame; we take
+    // the single real square root only once, and only if something is in range.
+    let bestSq = Infinity;
+    for (const p of s.projectiles) {
+      const dx = p.x - ox;
+      const dy = p.y - oy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestSq) bestSq = d2;
+    }
     const threshold = 460; // ~36% of the screen width
-    const intensity = best < threshold ? 1 - best / threshold : 0;
+    const intensity = bestSq < threshold * threshold ? 1 - Math.sqrt(bestSq) / threshold : 0;
     this.sfx.flyby(intensity);
     if (intensity > 0.06) {
       const now = performance.now();
@@ -392,6 +448,15 @@ export default class ControllerScene extends Phaser.Scene {
     }
   }
 
+  // Wipe every trace of the end-of-match cracktro so the next match (or the
+  // lobby) starts from a clean controller: clear the leftover sine-scroller
+  // pixels off the fx canvas and drop the stale status line.
+  clearEndScreen() {
+    this.cracktro = null;
+    if (this.fxc && this.fx.width) this.fxc.clearRect(0, 0, this.fx.width, this.fx.height);
+    if (this.$('status')) this.$('status').textContent = '';
+  }
+
   refresh() {
     const matchEnd = this.phase === PHASE.MATCH_END;
     const playing = !!this.phase && !matchEnd;
@@ -399,6 +464,8 @@ export default class ControllerScene extends Phaser.Scene {
     this.$('post').hidden = !matchEnd;
     this.fx.hidden = !matchEnd;
     this.canvas.style.display = matchEnd ? 'none' : 'block'; // hide aim view during the cracktro
+    // Mute the live HUD line behind the end screen (cleaned up afterwards).
+    this.$('info').hidden = matchEnd;
 
     const showBiome = this.isChooser();
     this.$('biome').hidden = !showBiome;
@@ -406,6 +473,7 @@ export default class ControllerScene extends Phaser.Scene {
       this.$('biomeName').textContent = BIOMES[this.biomeIndex].name;
       this.$('roundsName').textContent = `${ROUND_OPTIONS[this.roundsIndex]} rounds`;
       this.$('hpName').textContent = hpLabel(HP_OPTIONS[this.hpIndex]);
+      this.$('modeName').textContent = GAME_MODES[this.modeIndex].label;
     }
     this.updateShellUI();
     if (playing) this.updateReadout();
@@ -576,6 +644,7 @@ function injectControllerStyles() {
     .tp-ctl{align-items:stretch;}
     .tp-ctl-card{width:100%;max-width:560px;margin:auto;display:flex;flex-direction:column;}
     .tp-ctl header{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+    .tp-ctl .tp-logo-sm{width:38px;height:38px;flex:none;border-radius:9px;}
     .tp-ctl #name{flex:1;min-width:0;font-size:clamp(22px,6vw,34px);font-weight:bold;color:var(--accent);
       background:transparent;border:none;border-bottom:2px dashed #ffffff55;padding:4px 2px;}
     .tp-ctl .room{font-size:clamp(13px,3.6vw,20px);color:#cdd6e6;white-space:nowrap;}
@@ -599,6 +668,8 @@ function injectControllerStyles() {
     .tp-ctl #fire:disabled,.tp-ctl #again:disabled{background:#3a4a66;opacity:.7;}
     .tp-ctl #fire.ready{background:#2f7d32;}
     .tp-ctl #fire.waiting{background:#c9892b;}
+    .tp-ctl #fire.urgent{background:#d63b2f;animation:tp-pulse .5s ease-in-out infinite;}
+    @keyframes tp-pulse{50%{filter:brightness(1.25);}}
     .tp-ctl .ghost{background:transparent;border:2px solid #ffffff44;color:#cdd6e6;}
     .tp-ctl #status{font-size:clamp(14px,4vw,22px);margin-top:12px;color:#cdd6e6;text-align:center;min-height:26px;}
     .tp-ctl #fx{width:100%;height:34vh;min-height:200px;border-radius:14px;display:block;margin:6px 0;}

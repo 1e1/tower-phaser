@@ -1,0 +1,59 @@
+{
+  "title": "Capitolo 2 (esperto) — Rendering senza asset: sintesi procedurale",
+  "meta.desc": "Livello esperto: generazione di texture a runtime, Web Audio (oscillatori, inviluppi), la matematica del colore lerp/shade/barrelColor, la geometria animata della manica a vento, particelle e blend mode, e i livelli di qualità.",
+
+  "hero.badge": "Esperto · Lotto 2 · Deserto",
+  "hero.kicker": "Capitolo 2 · livello esperto",
+  "hero.title": "Rendering senza asset: sintesi procedurale",
+  "hero.lead": "Nessuna immagine, nessun file audio: tutto è <strong>generato dal codice</strong>. Vediamo le texture create a runtime, il suono fatto con <strong>Web Audio</strong>, la matematica del colore, la geometria animata della manica a vento e i compromessi di qualità.",
+
+  "s1.h2": "Texture generate a runtime",
+  "s1.lead": "Il progetto non spedisce alcun PNG. Tutte le texture delle particelle vengono <b>disegnate una volta al boot</b> su un canvas, registrate in cache e poi riutilizzate, tinte di volta in volta.",
+  "s1.code.cap": "src/systems/textures.js — un „smoke“ di cerchi traslucidi sovrapposti",
+  "s1.code.c1": "// strati molto trasparenti",
+  "s1.code.c2": "// → un gradiente morbido, senza immagine",
+  "s1.p1": "Una scintilla bianca diventa neve, braci o detriti semplicemente cambiando la <b>tinta</b> a runtime. Il fumo è un soffio fatto di cerchi traslucidi sovrapposti; il flash è un nucleo additivo brillante. Un pugno di primitive copre tutti gli effetti.",
+  "s1.callout.nerd": "<b>Da ricordare.</b> Un asset di base bianco + una tinta a runtime = N varianti al prezzo di una. È il <b>texture atlas del povero</b>: zero file, una sola generazione.",
+
+  "s2.h2": "Web Audio: oscillatori e inviluppi",
+  "s2.p1": "Nessun file audio nemmeno qui. Ogni effetto è costruito da <b>oscillatori</b> e <b>rumore filtrato</b>, modellati da <b>inviluppi</b> di volume (rampe esponenziali). Il «boom» del cannone è un'onda sinusoidale che precipita di tono, con un crepitio di rumore passa-basso sopra.",
+  "s2.code.cap": "src/systems/Sfx.js — esplosione: rumore filtrato + inviluppo discendente",
+  "s2.code.c1": "// rumore bianco (buffer casuale)",
+  "s2.code.c2": "// diventa cupo",
+  "s2.code.c3": "// si spegne",
+  "s2.p2": "L'esplosione è rumore passa-basso che decade; il «whizz» di un proiettile vicino è un'onda a dente di sega passa-banda la cui frequenza e volume salgono con la prossimità. Tutto sintetizzato dal vivo, senza alcun caricamento. Su iOS, dove l'API Vibration è bloccata, questo sibilo audio sostituisce il feedback aptico che si sentirebbe altrove.",
+  "s2.callout.suspended": "<b>Il contesto sospeso.</b> I browser creano l'<code class=\"inline\">AudioContext</code> sospeso e lo riprendono solo dopo un gesto dell'utente. Un'unica istanza <code class=\"inline\">Sfx</code> condivisa vive sul registry del gioco e viene sbloccata (<code class=\"inline\">unlock()</code>) alla prima interazione — altrimenti i primi suoni svaniscono in silenzio.",
+  "s2.callout.tip": "<b>Per i curiosi.</b> Il contesto audio parte sospeso nei browser: dev'essere sbloccato da un gesto utente (<code class=\"inline\">ctx.resume()</code>). Per questo il primo clic «sveglia» il suono. Un solo <code class=\"inline\">AudioContext</code> condiviso vive sul registry del gioco.",
+
+  "s3.h2": "La matematica del colore: lerp, shade, barrelColor",
+  "s3.p1": "I colori non sono codificati a mano per ogni stato: si <b>calcolano</b>. Tre primitive bastano — l'interpolazione lineare (<code class=\"inline\">lerp</code>), la moltiplicazione di luminosità (<code class=\"inline\">shade</code>) e la loro composizione, come <code class=\"inline\">barrelColor</code> che scalda il cannone con la potenza.",
+  "s3.code.cap": "src/render/visuals.js — lerp, shade e il colore della canna",
+  "s3.code.c1": "// ricompone l'intero",
+  "s3.p2": "Tutto è <b>manipolazione di bit</b> sui canali RGB impacchettati in un intero. Dato che queste funzioni sono pure, le condividono sia la TV (Phaser) sia il mini-canvas del controller: stesso colore, ovunque.",
+  "s3.callout.nerd": "<b>Da ricordare.</b> Calcolare i colori invece di scriverli a mano dà transizioni continue (la canna che si scalda) gratis, e tiene la palette coerente tra biomi diversi.",
+
+  "s4.h2": "Geometria animata: la manica a vento",
+  "s4.p1": "La manica a vento non è una sprite: è <b>geometria calcolata</b> a ogni fotogramma. <code class=\"inline\">computeWindsock</code> restituisce gli estremi del palo e una lista di quadrilateri a strisce che si assottigliano verso la punta, puntano sottovento, si sollevano con la forza e ondeggiano nel tempo.",
+  "s4.code.cap": "src/render/visuals.js — il profilo della manica reagisce al vento",
+  "s4.code.c1": "// più vento → più lunga",
+  "s4.code.c2": "// più piatta col vento forte",
+  "s4.code.c3": "// ondeggio",
+  "s4.p2": "La funzione restituisce <b>numeri</b> (vertici dei quadrilateri); ogni vista li dipinge a modo suo. Ancora la stessa idea: il calcolo visivo è disaccoppiato dalla tecnologia di disegno.",
+
+  "s5.h2": "Particelle, blend mode e livelli di qualità",
+  "s5.p1": "Gli effetti più costosi sono le <b>particelle</b>, spesso disegnate in <b>blend additivo</b> (le sovrapposizioni schiariscono, ideale per scintille e flash). Su hardware modesto questo carico può far crollare gli fps.",
+  "s5.code.cap": "src/objects/Background.js — le braci, in additivo",
+  "s5.code.c1": "// nascono in basso",
+  "s5.code.c2": "// salgono",
+  "s5.code.c3": "// si rimpiccioliscono morendo",
+  "s5.code.c4": "// blend additivo → bagliore",
+  "s5.p2": "All'avvio, un breve <b>benchmark</b> misura il throughput di rendering e classifica il dispositivo in un livello. Il renderer poi riduce gli effetti: meno nuvole, e lo strato di particelle viene semplicemente rimosso sui dispositivi <code class=\"inline\">'lite'</code>.",
+  "s5.code2.cap": "src/objects/Background.js — la qualità decide cosa disegnare",
+  "s5.code2.c1": "// lo strato ambientale è il più semplice da sacrificare su un dispositivo debole",
+  "s5.callout.tip": "<b>La morale.</b> Sintesi procedurale = bundle minuscolo e nessun caricamento bloccante; il prezzo è la CPU a runtime. Misurarla e adattarsi (livelli di qualità) è ciò che mantiene fluido anche un televisore datato.",
+
+  "footer.suffix": "capitolo {n}/{total} · livello esperto",
+
+  "pager.prev": "← Capitolo 1 · Loop deterministico",
+  "pager.next": "Capitolo 3 · Protocollo di rete &amp; coerenza →"
+}

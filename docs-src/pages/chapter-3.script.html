@@ -1,0 +1,60 @@
+    <script>
+      (function () {
+        const cv = document.getElementById('net'), ctx = cv.getContext('2d');
+        const W = cv.width, H = cv.height;
+        const nodes = {
+          p1: { x: 90, y: 70, label: '{{sim.node.p1}}', c: '#3a6df0' },
+          p2: { x: 90, y: 230, label: '{{sim.node.p2}}', c: '#ff6b5e' },
+          sv: { x: 320, y: 150, label: '{{sim.node.sv}}', c: '#5b7da6' },
+          tv: { x: 560, y: 150, label: '{{sim.node.tv}}', c: '#2b2535' },
+        };
+        let msgs = [], think = 0, t0 = 0;
+        function box(n, big) {
+          ctx.fillStyle = '#fff'; ctx.strokeStyle = n.c; ctx.lineWidth = 3;
+          const w = big ? 120 : 96, h = 54;
+          roundRect(n.x - w / 2, n.y - h / 2, w, h, 10); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#2b2535'; ctx.font = 'bold 15px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(n.label, n.x, n.y);
+        }
+        function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+        function send(from, to, c, label) { msgs.push({ from, to, c, label, p: 0 }); }
+        function volley() {
+          msgs = []; think = 0;
+          send(nodes.p1, nodes.sv, '#3a6df0', '{{sim.msg.aim}}');
+          send(nodes.p2, nodes.sv, '#ff6b5e', '{{sim.msg.aim}}');
+        }
+        function frame(t) {
+          if (!t0) t0 = t; const dt = Math.min((t - t0) / 1000, 0.05); t0 = t;
+          ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#eaf2fb'; ctx.fillRect(0, 0, W, H);
+          // liens
+          ctx.strokeStyle = '#c7d6e8'; ctx.lineWidth = 6;
+          line(nodes.p1, nodes.sv); line(nodes.p2, nodes.sv); line(nodes.sv, nodes.tv);
+          // messages
+          let arrived = 0, total = msgs.length;
+          msgs.forEach((m) => {
+            m.p += dt * 0.9;
+            const e = Math.min(m.p, 1);
+            const x = m.from.x + (m.to.x - m.from.x) * e, y = m.from.y + (m.to.y - m.from.y) * e;
+            ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
+            if (e >= 1) arrived++;
+          });
+          // quand les deux intentions ont atteint le serveur, le serveur « réfléchit » puis diffuse
+          if (total === 2 && arrived === 2 && think === 0) think = 0.0001;
+          if (think > 0) {
+            think += dt;
+            if (think > 0.5) {
+              think = 0; msgs = [];
+              send(nodes.sv, nodes.tv, '#3f8f2f', '{{sim.msg.state}}');
+              send(nodes.sv, nodes.p1, '#3f8f2f', '{{sim.msg.state}}');
+              send(nodes.sv, nodes.p2, '#3f8f2f', '{{sim.msg.state}}');
+            }
+          }
+          box(nodes.p1); box(nodes.p2); box(nodes.tv); box(nodes.sv, true);
+          if (think > 0) { ctx.fillStyle = '#3f8f2f'; ctx.font = 'bold 14px Nunito'; ctx.fillText('{{sim.computing}}', nodes.sv.x, nodes.sv.y + 44); }
+          requestAnimationFrame(frame);
+        }
+        function line(a, b) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+        document.getElementById('play').addEventListener('click', volley);
+        requestAnimationFrame(frame);
+      })();
+    </script>

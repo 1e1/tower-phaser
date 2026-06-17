@@ -1,0 +1,59 @@
+{
+  "title": "Kapitel 2 (Profi) — Rendering ohne Assets: prozedurale Synthese",
+  "meta.desc": "Profi-Niveau: Laufzeit-Texturgenerierung, Web-Audio-Synthese mit Oszillatoren und Hüllkurven, Farbmathematik (lerp, shade, barrelColor), die animierte Windsack-Geometrie, Partikelsysteme mit Blend-Modi und Qualitätsstufen.",
+
+  "hero.badge": "Profi · Lot 2 · Wüste",
+  "hero.kicker": "Kapitel 2 · Profi-Niveau",
+  "hero.title": "Rendering ohne Assets: prozedurale Synthese",
+  "hero.lead": "Kein einziges Bild, keine einzige Audiodatei: alles wird <strong>im Code erzeugt</strong>. Texturen zur Laufzeit, Klang aus <strong>Oszillatoren und Hüllkurven</strong>, Farben aus reiner <strong>Mathematik</strong>, ein animierter <strong>Windsack</strong> und Partikel mit Blend-Modi.",
+
+  "s1.h2": "Texturen zur Laufzeit erzeugen",
+  "s1.lead": "Beim Start zeichnet das Spiel ein paar winzige Texturen <b>ein einziges Mal</b> und legt sie im Texture-Cache ab. Danach werden sie getönt, geblendet und tausendfach von Partikeln wiederverwendet.",
+  "s1.code.cap": "src/systems/textures.js — ein „smoke“ aus gestapelten transluzenten Kreisen",
+  "s1.code.c1": "// sehr transparente Schichten",
+  "s1.code.c2": "// → ein weicher Verlauf, ohne Bild",
+  "s1.p1": "Eine Handvoll Bausteine — <code class=\"inline\">spark</code>, <code class=\"inline\">smoke</code>, <code class=\"inline\">flash</code>, <code class=\"inline\">cloud</code> — genügt für alle Effekte. Weiß gezeichnet, zur Laufzeit getönt: dieselbe Textur dient für Schnee, Funken oder Glut.",
+  "s1.callout.nerd": "<b>Für Neugierige.</b> Die Texturen sind absichtlich weiß: weiß gezeichnet lassen sie sich zur Laufzeit in jede Farbe <b>tönen</b> (Bernstein für Sand, Weiß für Schnee, Orange für Glut). Eine Textur, tausend Verwendungen.",
+
+  "s2.h2": "Klang: Oszillatoren &amp; Hüllkurven",
+  "s2.p1": "Jeder Soundeffekt ist ein kleiner Graph aus Web-Audio-Knoten: eine Quelle (Oszillator oder gefiltertes Rauschen), ein Filter und ein <code class=\"inline\">gain</code>, dessen Wert über die Zeit fällt — die <b>Hüllkurve</b>. Genau dieses Abklingen erzeugt den „Boom“.",
+  "s2.code.cap": "src/systems/Sfx.js — Explosion: gefiltertes Rauschen + abklingende Hüllkurve",
+  "s2.code.c1": "// weißes Rauschen (zufälliger Puffer)",
+  "s2.code.c2": "// wird tief",
+  "s2.code.c3": "// klingt aus",
+  "s2.p2": "Die <b>exponentielle</b> Rampe ist kein kosmetisches Detail: Das Ohr nimmt Lautstärke und Tonhöhe logarithmisch wahr, also <em>klingt</em> ein exponentielles Abklingen linear. Der <code class=\"inline\">flyby</code> (das anhaltende Pfeifen einer nahenden Granate) treibt die Idee mit <code class=\"inline\">setTargetAtTime</code> weiter — eine Glättung erster Ordnung, um ruckfrei zwischen Frequenzen zu gleiten. Unter iOS, wo die Vibration-API gesperrt ist, ersetzt dieses Audio-Pfeifen das haptische Feedback, das man sonst spüren würde.",
+  "s2.callout.suspended": "<b>Der suspendierte Kontext.</b> Browser erzeugen den <code class=\"inline\">AudioContext</code> suspendiert und setzen ihn erst nach einer Nutzergeste fort. Eine einzige geteilte <code class=\"inline\">Sfx</code>-Instanz lebt auf dem Game-Registry und wird bei der ersten Interaktion entsperrt (<code class=\"inline\">unlock()</code>) — sonst verschwinden die ersten Klänge lautlos.",
+  "s2.callout.tip": "<b>Für Neugierige.</b> Ein einziger gemeinsamer <code class=\"inline\">master</code>-Gain (auf 0,35) bündelt alle Effekte. Browser starten den AudioContext „suspended“: Erst eine Nutzergeste (<code class=\"inline\">unlock()</code>) weckt ihn — deshalb braucht es überall einen ersten Klick.",
+
+  "s3.h2": "Farbmathematik: lerp, shade, barrelColor",
+  "s3.p1": "Farben sind hier Zahlen, mit denen man rechnet. Ein <code class=\"inline\">lerp</code> mischt linear zwischen zwei Werten; <code class=\"inline\">shade</code> multipliziert die Helligkeit; <code class=\"inline\">barrelColor</code> verbindet beides, um das Kanonenrohr beim Laden von Stahl zu Glut zu treiben.",
+  "s3.code.cap": "src/render/visuals.js — shade &amp; barrelColor",
+  "s3.code.c1": "// setzt den Integer wieder zusammen",
+  "s3.p2": "Die Farben werden als 24-Bit-Integer geführt (Phaser-freundlich) und nur am Rand per <code class=\"inline\">intToCss</code> in einen CSS-String übersetzt, wenn der Canvas-Controller sie braucht.",
+  "s3.callout.nerd": "<b>Für Neugierige.</b> Alles ist <b>begrenzt</b> (<code class=\"inline\">clamp 0..255</code>) vor dem Zusammensetzen: Ein aufhellender <code class=\"inline\">factor &gt; 1</code> läuft nie von einem Kanal in den nächsten über.",
+
+  "s4.h2": "Der Windsack: animierte Geometrie",
+  "s4.p1": "Der Windsack ist keine Sprite-Animation, sondern <b>berechnete Geometrie</b>. Aus Stärke und Zeit ergibt <code class=\"inline\">computeWindsock</code> eine Reihe verjüngender Quads, die in Windrichtung zeigen, sich mit der Stärke heben und in der Zeit flattern.",
+  "s4.code.cap": "src/render/visuals.js — computeWindsock (Auszug)",
+  "s4.code.c1": "// länger bei mehr Wind",
+  "s4.code.c2": "// flacher, je windiger",
+  "s4.code.c3": "// Flattern",
+  "s4.p2": "Da die Geometrie renderer-unabhängig ist, sieht der Windsack auf der Phaser-TV und im Canvas-Controller exakt gleich aus — eine Funktion, zwei Zeichner. Die Streifen wechseln Farbe je nach Segmentindex, ein klassisches Windsack-Muster ganz ohne Textur.",
+
+  "s5.h2": "Partikel, Blend-Modi &amp; Qualitätsstufen",
+  "s5.p1": "Partikelsysteme beschreiben <b>Regeln</b> (Geschwindigkeit, Lebensdauer, Anfangs-/Endgröße, Tönung), keine einzelnen Punkte. Glut und Mündungsblitze nutzen einen <b>additiven Blend-Modus</b>: Übereinanderliegende Partikel summieren ihr Licht und glühen auf.",
+  "s5.code.cap": "src/objects/Background.js — die Glut, additiv",
+  "s5.code.c1": "// entstehen unten",
+  "s5.code.c2": "// steigen auf",
+  "s5.code.c3": "// schrumpfen im Sterben",
+  "s5.code.c4": "// additive Mischung → Glühen",
+  "s5.p2": "Damit das auf schwacher Hardware nicht einbricht, skaliert die in Lot 2 ermittelte <b>Qualitätsstufe</b> die Last: Unter 45 fps wechselt das Gerät auf <code class=\"inline\">'lite'</code> und die Partikelschicht — die teuerste — wird schlicht weggelassen.",
+  "s5.code2.cap": "src/objects/Background.js — die Qualität entscheidet, was gezeichnet wird",
+  "s5.code2.c1": "// die Umgebungsschicht lässt sich auf schwachen Geräten am leichtesten opfern",
+  "s5.callout.tip": "<b>Merke dir.</b> Prozedurale Synthese bedeutet: alles ist eine Funktion. Texturen, Klänge, Farben und der Windsack entstehen aus Code — also einstellbar, leichtgewichtig und konsequent über beide Renderer hinweg.",
+
+  "footer.suffix": "Kapitel {n}/{total} · Profi-Niveau",
+
+  "pager.prev": "← Kapitel 1 · Deterministische Schleife",
+  "pager.next": "Kapitel 3 · Netzwerkprotokoll →"
+}

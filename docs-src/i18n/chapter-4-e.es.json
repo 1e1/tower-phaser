@@ -1,0 +1,62 @@
+{
+  "title": "Capítulo 4 (experto) — Terreno destructible &amp; matemática rápida",
+  "meta.desc": "Nivel experto: generación del heightfield (suma de senos, edge blend, plataformas), los cráteres como sustracción geométrica, cuevas y voladizos, el determinismo, el viento continuo del modo turbo y un enlace al anexo de Mates.",
+
+  "hero.badge": "Experto · Fase 4 · Volcán",
+  "hero.kicker": "Capítulo 4 · nivel experto",
+  "hero.title": "Terreno destructible &amp; matemática rápida",
+  "hero.lead": "El relieve construido con una <strong>suma de senos</strong>, los cráteres como <strong>sustracción geométrica</strong>, las cuevas y voladizos, el <strong>determinismo</strong>, y la onda de rachas del <strong>viento continuo</strong> del modo turbo.",
+
+  "s1.h2": "Generar el relieve: una suma de senos",
+  "s1.lead": "El heightfield se construye superponiendo <b>tres ondas senoidales</b> de amplitudes, frecuencias y fases sorteadas a partir de la semilla. Una capa grande da la silueta; dos más finas, los detalles.",
+  "s1.code.cap": "src/sim/terrain.js — tres octavas de seno",
+  "s1.p1": "Dos refinamientos importantes. Las <b>plataformas</b>: los bordes izquierdo y derecho se mantienen planos para asentar las torres. Y el <b>edge blend</b>: cerca de esas plataformas, el relieve se atenúa hacia el plano para evitar un escalón brusco.",
+  "s1.code2.cap": "src/sim/terrain.js — plataformas planas + fundido de borde",
+  "s1.code2.c1": "// zócalo plano para la torre",
+  "s1.callout.nerd": "<b>Para los curiosos.</b> El parámetro <code class=\"inline\">roughness</code> viene del bioma (1.4 en el volcán, 0.85 en la tundra): escala las amplitudes, así que el mismo código produce dunas suaves o picos abruptos según el lugar.",
+
+  "s2.h2": "Cuevas y voladizos: sólido = bajo la superficie menos los cráteres",
+  "s2.p1": "Combinando el suelo y los cráteres se obtiene una solidez estilo <b>Worms</b>: el material existe por debajo de la superficie <em>menos</em> los cráteres. Un cráter enteramente bajo la superficie deja intacta la materia que tiene encima, así que <b>cuevas y voladizos</b> son posibles.",
+  "s2.code.cap": "src/sim/terrain.js — pointSolid, cuevas y voladizos",
+  "s2.code.c1": "// por encima del suelo: aire",
+  "s2.code.c2": "// sólido salvo si está cavado",
+  "s2.p2": "La solidez de un punto se calcula al vuelo combinando dos pruebas independientes: está bajo la superficie <b>y</b> fuera de todo cráter. Por eso un cráter excavado bajo un montículo deja flotando la materia de arriba: cuevas y voladizos surgen gratis, sin lógica dedicada.",
+
+  "s2.xsec.title": "Sólido menos cráteres",
+  "s2.xsec.solid": "sólido",
+  "s2.xsec.crater": "vacío (cráter)",
+  "s2.xsec.overhang": "↑ saliente que « flota »",
+  "s2.xsec.cap": "Un cráter bajo la cresta deja un saliente por encima: la misma prueba tan simple produce una topología rica.",
+
+  "s3.h2": "Cráteres: sustracción geométrica rápida",
+  "s3.p1": "Cavar no borra píxeles: añade un <b>disco</b> a una lista de cráteres. La solidez de un punto se calcula al vuelo, comparando la distancia al centro con el radio — <b>al cuadrado</b>, para evitar la raíz cuadrada (ver el <a href=\"annex-math.html\">anexo de Mates</a>).",
+  "s3.code.cap": "src/sim/terrain.js — pertenencia a un cráter sin Math.sqrt",
+  "s3.p2": "Como la raíz cuadrada es monótona, comparar <code class=\"inline\">dx² + dy²</code> con <code class=\"inline\">r²</code> da exactamente el mismo veredicto que comparar la distancia con <code class=\"inline\">r</code>, usando solo multiplicaciones. Es Pitágoras, despojado de su raíz.",
+  "s3.callout.nerd": "<b>Para los curiosos.</b> Ni mallas ni operaciones booleanas de polígonos. Un array de alturas más una lista de discos, consultados por una sola función booleana, basta para modelar cuevas estilo Worms.",
+
+  "s4.h2": "Determinismo: el suelo es función pura de la semilla",
+  "s4.p1": "Toda la generación parte del RNG con semilla. Sin <code class=\"inline\">Math.random()</code> en ninguna parte: la misma semilla recorre la misma sucesión de números y produce el mismo relieve, en el servidor y en cada cliente.",
+  "s4.code.cap": "src/sim/Simulation.js — nuevo terreno, una semilla",
+  "s4.code.c1": "// el snapshot solo lleva la semilla; cada cliente regenera idéntico",
+  "s4.p2": "Los cráteres siguen la misma disciplina: nacen de eventos deterministas (impactos resueltos en el servidor) y viajan en el snapshot como lista. Misma semilla + misma lista de cráteres ⇒ mismo terreno, bit a bit, en todas partes.",
+  "s4.callout.tip": "<b>La idea.</b> Determinismo + semilla = se puede transmitir un mundo entero en un solo entero. Es la misma técnica que vimos para la red en el capítulo 3: enviar la receta, no el plato.",
+
+  "s5.h2": "El viento continuo del modo turbo",
+  "s5.p1": "En turbo, el viento no se sortea por turno: <b>fluye sin cortes</b>. Se desliza de un keypoint al siguiente cada 10 segundos con un <b>smoothstep</b>, y se le superpone una <b>onda de rachas</b> hecha de dos senos desfasados.",
+  "s5.code.cap": "src/sim/Simulation.js — updateTurboWind: base suavizada + rachas",
+  "s5.code.c1": "// arrastra el exceso, sin salto",
+  "s5.code.c2": "// nuevo objetivo aleatorio",
+  "s5.code.c3": "// smoothstep",
+  "s5.p2": "Los keypoints se mantienen por debajo del 80 % del máximo para que la onda de rachas tenga margen antes de chocar con el recorte — y todo son solo multiplicaciones, sumas y dos senos: lo bastante barato para correr en cada tick.",
+  "s5.callout.nerd": "<b>Para los curiosos.</b> <code class=\"inline\">gustiness</code> se sortea una vez al inicio de la partida (0 = viento estable, 1 = borrascoso): es la « personalidad » de viento de ese duelo. Los keypoints se mantienen por debajo del 80 % del máximo para que la onda de rachas tenga margen y no choque contra el recorte.",
+
+  "s6.h2": "Por qué nada de esto necesita una raíz cuadrada",
+  "s6.lead": "Todo lo que has visto evita la operación cara: trayectorias en pasitos aditivos, colisiones en cajas alineadas (AABB), cráteres en distancias al cuadrado, viento suavizado con un polinomio en vez de trigonometría pesada.",
+  "s6.p1": "El <a href=\"annex-math.html\">anexo de Mates rápidas</a> desmonta esta idea de punta a punta: la leyenda de la « fast inverse square root » de Quake III, por qué comparar cuadrados nunca queda obsoleto, y un pequeño demo interactivo de la prueba « ¿dentro del círculo? » — exactamente la misma comparación que <code class=\"inline\">inCrater</code>.",
+  "s6.link": "Abrir el anexo de Mates →",
+
+  "footer.suffix": "capítulo {n}/{total} · nivel experto",
+
+  "pager.prev": "← Capítulo 3 · Protocolo de red",
+  "pager.next": "Anexo · Mates rápidas →"
+}

@@ -1,0 +1,46 @@
+{
+  "title": "Kapitel 1 (Mittel) — Die Architektur eines Spiels",
+  "meta.desc": "Mittleres Niveau: die Spielschleife und der Zeitschritt, Szenen als Zustandsautomat, die Trennung von Simulation und Rendering sowie der modulare Aufbau von Tower Duel.",
+
+  "hero.badge": "Mittel · Lot 1 · Wiese",
+  "hero.kicker": "Kapitel 1 · mittleres Niveau",
+  "hero.title": "Die Architektur eines Spiels",
+  "hero.lead": "Wir nehmen Lot 1 noch einmal vor, diesmal mit dem Blick eines Entwicklers: die Schleife und der <strong>Zeitschritt</strong>, die Szenen als <strong>Zustandsautomat</strong>, und die große Idee, die das ganze Projekt strukturiert — <strong>die Simulation vom Rendering trennen</strong>.",
+
+  "s1.h2": "Die Schleife und die Falle der Zeit",
+  "s1.lead": "Jedes Echtzeitspiel ist eine Schleife: <b>Eingaben lesen → den Zustand aktualisieren → zeichnen</b>, immer wieder. Die Feinheit steckt im „aktualisieren“.",
+  "s1.p1": "Verschiebst du ein Objekt bei jedem Bild um eine feste Anzahl Pixel, hängt deine Geschwindigkeit von der <b>Bildrate</b> ab: doppelt so schnell auf einem 120-Hz-Bildschirm wie auf 60 Hz. Die Lösung ist der <b>Zeitschritt</b> (<code class=\"inline\">dt</code>): Wir multiplizieren jede Bewegung mit der tatsächlich verstrichenen Zeit, ausgedrückt in Sekunden.",
+  "s1.code.cap": "der Zeitschritt macht das Spiel unabhängig von der Maschine",
+  "s1.code.c1": "// ms → s",
+  "s1.code.var": "geschwindigkeit * dt;     ",
+  "s1.code.c2": "// überall dieselbe reale Geschwindigkeit",
+  "s1.callout": "<b>Zwei Uhren.</b> Der Client <b>zeichnet</b> so schnell, wie es der Bildschirm erlaubt (oft 60 fps). Aber die <b>Partie</b> selbst läuft serverseitig mit einem festen Takt — dazu kommen wir in Kapitel 3. Diese beiden Uhren auseinanderzuhalten ist eine Architekturentscheidung, kein Detail.",
+
+  "s2.h2": "Die Szenen: ein Zustandsautomat",
+  "s2.p1": "Phaser organisiert das Spiel in <b>Szenen</b>. Von oben betrachtet ist das ein <b>endlicher Zustandsautomat</b>: Zu jedem Zeitpunkt ist eine Szene aktiv, und explizite Übergänge führen von einer zur nächsten.",
+  "s2.fig.alt": "Zustandsautomat der Szenen",
+  "s2.fig.tv": "Tv (Bildschirm)",
+  "s2.fig.match": "Match…",
+  "s2.fig.cap": "Der <b>Gerätetyp</b> entscheidet über den Zweig: ein großer Bildschirm hostet (TV), ein Telefon tritt bei (Controller).",
+  "s2.p2": "Jede Szene hat einen klaren Lebenszyklus: <code class=\"inline\">init</code> (Daten empfangen), <code class=\"inline\">create</code> (die Anzeige aufbauen), <code class=\"inline\">update</code> (jedes Bild) und ein <code class=\"inline\">SHUTDOWN</code>, in dem wir <b>aufräumen</b> (Listener entfernen, DOM-Elemente abbauen). Dieses Aufräumen zu vergessen, ist das sichere Speicherleck beim Wechsel von einer Szene zur nächsten.",
+
+  "s3.h2": "Die große Idee: Simulation ≠ Rendering",
+  "s3.p1": "Die wichtigste Entscheidung des Projekts: Der <b>Kern des Spiels kennt Phaser nicht</b>. Die gesamte Logik — Flugbahnen, Kollisionen, Wind, Punktestand — lebt in <code class=\"inline\">src/sim/</code>, in reinem JavaScript, <b>ohne jede grafische Abhängigkeit</b>.",
+  "s3.li1": "🧠 <code class=\"inline\">src/sim/</code> — die <b>Simulation</b>: was passiert? (kann unter Node laufen, ohne Browser)",
+  "s3.li2": "🎨 <code class=\"inline\">src/scenes/</code>, <code class=\"inline\">src/objects/</code> — das <b>Rendering</b>: wie sieht es aus?",
+  "s3.li3": "⚙️ <code class=\"inline\">src/config/</code> — die <b>Daten</b>: Einstellungen und Themes, getrennt vom Code.",
+  "s3.callout": "<b>Warum dieser Aufwand?</b> Weil dieselbe Simulation <b>auf dem Server</b> läuft (dem einzigen Schiedsrichter der Partie) und dabei testbar und wiederholbar bleibt. Das „Was“ vom „Wie“ zu entkoppeln, macht den Multiscreen-Modus aus Lot 3 erst möglich, ohne die Physik neu zu schreiben.",
+
+  "s4.h2": "Docker, als reproduzierbare Grenze betrachtet",
+  "s4.p1": "Das <code class=\"inline\">Dockerfile</code> ist aus einem Architekturgrund <b>mehrstufig</b>: die <b>Bauzeit</b> von der <b>Laufzeit</b> zu trennen. Die erste Stufe installiert das gesamte Werkzeug und kompiliert; die zweite behält nur das Nötigste, um zu <em>laufen</em>.",
+  "s4.code.cap": "Dockerfile — zwei Stufen, zwei Verantwortungen",
+  "s4.code.c1": "# Stufe 1: bauen (braucht die ganze Toolchain)",
+  "s4.code.c2": "# Stufe 2: ausführen (schlank, nur Produktions-Deps)",
+  "s4.p2": "Ergebnis: ein kleineres Image, ohne Compiler und ohne Entwicklungs-Abhängigkeiten in der Produktion. Dieselbe Logik prägt das in v1.1.0 ergänzte <b>Server-Bundle</b> (zip / tar.gz): nur <code class=\"inline\">dist/</code>, <code class=\"inline\">server/</code> und die geteilte Simulation mitnehmen.",
+  "s4.callout": "<b>Merke dir.</b> Die Architektur von Lot 1 passt in einen Satz: eine zeitgesteuerte Schleife, Szenen als Zustandsautomat und eine <b>vom Rendering entkoppelte Simulation</b> — das Fundament, auf dem alles andere aufbaut.",
+
+  "footer.suffix": "Kapitel {n}/{total} · mittleres Niveau",
+
+  "pager.prev": "← Startseite",
+  "pager.next": "Kapitel 2 · Daten, Rendering &amp; Synthese →"
+}

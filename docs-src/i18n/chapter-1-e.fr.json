@@ -1,0 +1,41 @@
+{
+  "title": "Chapitre 1 (expert) — Boucle déterministe &amp; intégration numérique",
+  "meta.desc": "Niveau expert : pas de temps fixe et serveur autoritatif, intégration d'Euler semi-implicite et son erreur, et déterminisme par RNG à graine pour que serveur et clients voient la même partie.",
+
+  "hero.badge": "Expert · Lot 1 · Prairie",
+  "hero.kicker": "Chapitre 1 · niveau expert",
+  "hero.title": "Boucle déterministe &amp; intégration numérique",
+  "hero.lead": "Au fond du moteur : pourquoi un <strong>pas de temps fixe</strong> et un <strong>serveur autoritatif</strong>, ce que vaut réellement l'<strong>intégration d'Euler</strong>, et comment garantir qu'un seul et même calcul produit toujours la même partie.",
+
+  "s1.h2": "Pas fixe, autorité unique",
+  "s1.lead": "La simulation n'avance pas au rythme de l'affichage. Le serveur la fait progresser par <b>pas fixes</b> de 33 ms (≈ 30 Hz), indépendamment des fps de chaque écran.",
+  "s1.code.cap": "server/Room.js — l'horloge autoritative",
+  "s1.code.c1": "// ~30 Hz",
+  "s1.code.c2": "// pas constant, en secondes",
+  "s1.p1": "Un pas <b>constant</b> a deux vertus. D'abord la <b>stabilité numérique</b> : l'erreur d'intégration ne dépend plus d'un <code class=\"inline\">dt</code> erratique (un pic de lag ne fait plus « téléporter » un boulet à travers une tour). Ensuite le <b>déterminisme</b> : mêmes entrées + mêmes pas ⇒ même résultat, bit pour bit.",
+  "s1.callout": "<b>Autorité.</b> Les clients n'intègrent <em>jamais</em> la physique. Ils envoient des <b>intentions</b> (angle, puissance, « prêt ») et n'affichent que les <b>snapshots</b> renvoyés. Cela élimine les désaccords entre machines — et la triche par un client modifié.",
+
+  "s2.h2": "Intégrer le mouvement : Euler semi-implicite",
+  "s2.p1": "La trajectoire obéit à une équation différentielle (accélération constante par pas). On l'approche par la méthode la plus simple, l'<b>intégration d'Euler</b> — mais dans sa variante <b>semi-implicite</b> (symplectique) : on met à jour la <b>vitesse d'abord</b>, puis la position avec cette vitesse neuve.",
+  "s2.code.cap": "src/sim/Simulation.js — stepProjectiles",
+  "s2.code.vx": "vent    * dt;   ",
+  "s2.code.c1": "// 1) vitesse mise à jour en premier",
+  "s2.code.vy": "gravite * dt;",
+  "s2.code.px": "p.vx * dt;      ",
+  "s2.code.c2": "// 2) position avec la vitesse neuve",
+  "s2.p2": "L'Euler « naïf » (position avant vitesse) dérive et gonfle l'énergie au fil du temps ; la variante semi-implicite reste bien plus stable pour une dépense identique. L'erreur locale est en <code class=\"inline\">O(dt²)</code> : à 30 Hz et pour des vols de quelques secondes, l'écart est invisible — et surtout, il est <b>le même pour tout le monde</b>.",
+  "s2.callout": "<b>Sous-pas.</b> Besoin de plus de précision sans accélérer l'horloge ? On découpe chaque tick en N sous-pas de <code class=\"inline\">dt/N</code>. Le simulateur de tir du chapitre découverte le fait déjà (2 sous-pas par image) pour lisser la courbe. C'est le compromis classique précision/coût.",
+
+  "s3.h2": "Reproductibilité : la graine fait foi",
+  "s3.p1": "Pour que le serveur et chaque client dessinent <b>exactement</b> le même terrain, on bannit <code class=\"inline\">Math.random()</code> de tout ce qui doit être partagé. À la place, un <b>générateur pseudo-aléatoire à graine</b> : même graine ⇒ même suite de nombres ⇒ même monde.",
+  "s3.code.cap": "le terrain est une pure fonction de la graine",
+  "s3.code.c1": "// le serveur n'envoie que la graine ; chaque client régénère à l'identique",
+  "s3.p2": "Le snapshot transporte donc la <b>graine</b>, pas les centaines de hauteurs du terrain — économie de bande passante <em>et</em> garantie de cohérence. Même principe pour le jitter caché des tirs : tiré du RNG du serveur, jamais transmis, donc invisible et pourtant reproductible côté serveur.",
+  "s3.rng.cap": "src/sim/rng.js — mulberry32, un PRNG à graine minuscule",
+  "s3.callout": "<b>À retenir.</b> Boucle à pas fixe + autorité serveur + RNG à graine = une partie <b>déterministe et rejouable</b>. C'est l'ossature invisible qui rend possible tout le reste : réseau, terrain destructible, vent continu.",
+
+  "footer.suffix": "chapitre {n}/{total} · niveau expert",
+
+  "pager.prev": "← Accueil",
+  "pager.next": "Chapitre 2 · Rendu sans assets →"
+}

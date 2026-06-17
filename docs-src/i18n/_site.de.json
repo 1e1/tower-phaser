@@ -1,0 +1,14 @@
+{
+  "nav.home": "Startseite",
+  "nav.annex": "Anhänge",
+  "nav.math": "Mathe",
+  "nav.chapters": "Kapitel",
+  "level.legend": "Niveau",
+  "level.d.label": "Einstieg",
+  "level.d.sub": "für Anfänger",
+  "level.i.label": "Mittel",
+  "level.i.sub": "die Architektur",
+  "level.e.label": "Profi",
+  "level.e.sub": "in der Tiefe",
+  "footer.prefix": "Macher-Notizbuch für <b>Tower Duel</b> · "
+}

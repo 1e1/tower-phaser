@@ -1,0 +1,50 @@
+{
+  "title": "Chapter 2 (intermediate) — Data, rendering &amp; synthesis",
+  "meta.desc": "Intermediate level: data-driven biomes, a renderer-agnostic visuals module, runtime-generated textures, synthesized Web Audio, parallax via depth/scrollFactor, and quality tiers from a startup benchmark.",
+
+  "hero.badge": "Intermediate · Batch 2 · Desert",
+  "hero.kicker": "Chapter 2 · intermediate level",
+  "hero.title": "Data, rendering &amp; synthesis",
+  "hero.lead": "How a single game wears four very different outfits: biomes described as <strong>data</strong>, a <strong>renderer-agnostic</strong> visuals module, textures and sound <strong>generated at runtime</strong>, depth through layers, and quality that adapts to the device.",
+
+  "s1.h2": "Data-driven biomes",
+  "s1.lead": "A biome isn't code: it's <b>data</b>. One plain object describes the sky, the terrain palette, the celestial body, the parallax ridges and the ambient particle effect. The renderer reads the sheet and paints the rest.",
+  "s1.code.cap": "src/config/biomes.js — one biome's sheet",
+  "s1.code.c1": "// sky gradient",
+  "s1.code.c2": "// two parallax ridges",
+  "s1.code.c3": "// background particles",
+  "s1.code.c4": "// drives the terrain ruggedness",
+  "s1.p1": "Four biomes — <b>Meadow</b> 🌳, <b>Desert</b> 🏜️, <b>Tundra</b> ❄️, <b>Volcano</b> 🌋 — share one engine. To add a fifth, you add an object, not a code path.",
+  "s1.callout.tip": "<b>Why data, not code.</b> Settings that live as data are easy to tweak, test and serialize. Notice <code class=\"inline\">roughness</code> rides along in the biome: the same number drives the terrain generator <em>and</em> the wind feel, keeping each place coherent.",
+
+  "s2.h2": "One renderer-agnostic module for two surfaces",
+  "s2.p1": "The TV draws with <b>Phaser</b>; the phone controller draws a small preview on a <b>plain canvas</b>. To keep the cannon, the charge tint and the windsock identical on both, the shared maths lives in <code class=\"inline\">src/render/visuals.js</code> — pure functions that return numbers, never touching either renderer.",
+  "s2.code.cap": "src/render/visuals.js — colour maths, framework-free",
+  "s2.code.c1": "// barrel: cool steel at low power, glowing red at full charge",
+  "s2.code.c2": "// …g, b the same",
+  "s2.p2": "This module knows neither Phaser nor the DOM: it returns <b>numbers</b> (colours, geometry points). Each view draws them with its own technology — one shared source of truth for the look.",
+  "s2.callout.nerd": "<b>For the curious.</b> The module exposes helpers like <code class=\"inline\">shade()</code>, <code class=\"inline\">craterRimColor()</code> and <code class=\"inline\">computeWindsock()</code>. None imports Phaser. That's the rule: anything <em>shared</em> between renderers must stay renderer-agnostic — it computes geometry and colours, and each surface draws them its own way.",
+
+  "s3.h2": "Textures generated at runtime",
+  "s3.p1": "The project ships <b>no image files</b>. The particle sprites — spark, smoke, flash, cloud — are drawn once at boot into off-screen textures, then tinted and blended at runtime. Asset-free, yet fully styleable.",
+  "s3.code.cap": "src/systems/textures.js — baking sprites at boot",
+  "s3.code.c1": "// reused, tinted, for every biome",
+  "s3.code2.cap": "src/systems/Sfx.js — the cannon “boom”",
+  "s3.code2.c1": "// it descends",
+  "s3.p2": "No audio files either. Every effect is built at runtime from <b>oscillators</b> and <b>filtered noise</b> through the Web Audio API, in <code class=\"inline\">src/systems/Sfx.js</code>. A cannon shot, for instance, is a short low-passed noise crack plus a descending sine thump.",
+  "s3.callout.audiogate": "<b>The browser gate.</b> Browsers start the audio context <em>suspended</em>; it can only resume after a user gesture. So <code class=\"inline\">Sfx.unlock()</code> runs on the first tap/click — without it, the first sounds would silently never play.",
+  "s3.callout.tip": "<b>Remember.</b> An “asset-free” bundle is tiny, caches trivially, and suffers no blocking load. The cost shifts to <b>CPU at runtime</b> — a trade-off we accept (see the next section).",
+
+  "s4.h2": "Depth, parallax &amp; quality tiers",
+  "s4.p1": "The fake 3D depth is just two Phaser properties per layer: <code class=\"inline\">depth</code> (draw order) and <code class=\"inline\">scrollFactor</code> (how much it follows the camera). Far ridges scroll slowly, the foreground scrolls fully — and the inter-round camera pan reveals continuous parallax.",
+  "s4.code.cap": "src/objects/Background.js — layered scenery",
+  "s4.p2": "Smart TVs and weak browsers can choke on the full particle/parallax load. So the host <b>measures its own frame rate</b> for a short window at startup and records a quality tier. The renderer then scales effects to match.",
+  "s4.code2.cap": "src/systems/benchmark.js — pick a tier from real fps",
+  "s4.code2.c1": "// the renderer reads this",
+  "s4.callout.nerd": "<b>Remember.</b> Batch 2's architecture is “describe, don't hard-code”: biomes as data, visuals as shared pure functions, textures and sound synthesized on the fly — and an honest measurement deciding how much to draw.",
+
+  "footer.suffix": "chapter {n}/{total} · intermediate level",
+
+  "pager.prev": "← Chapter 1 · The architecture",
+  "pager.next": "Chapter 3 · Real-time client/server →"
+}

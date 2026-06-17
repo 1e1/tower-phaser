@@ -1,0 +1,57 @@
+{
+  "title": "Kapitel 3 (Mittel) — Echtzeit Client/Server",
+  "meta.desc": "Mittleres Niveau: der autoritative Server und seine Räume, das Protokoll aus Absichten und Snapshots, die geteilte Phaser-freie Simulation, verborgene Information, die Zuschauer-Warteschlange mit Sitzübernahme und die Rückkehr in die Lobby.",
+
+  "hero.badge": "Mittel · Lot 3 · Tundra",
+  "hero.kicker": "Kapitel 3 · mittleres Niveau",
+  "hero.title": "Echtzeit Client/Server",
+  "hero.lead": "Mehrere Bildschirme, eine Wahrheit: ein <strong>autoritativer Server</strong> in Räumen, ein Protokoll aus <strong>Absichten</strong> und <strong>Snapshots</strong>, eine von Server und Clients <strong>geteilte Simulation</strong> — und Information, die absichtlich verborgen bleibt.",
+
+  "s1.h2": "Der autoritative Server und seine Räume",
+  "s1.lead": "Eine einzige Quelle der Wahrheit: der Server. Er besitzt die <b>Simulation</b> und schreitet sie mit festem Takt voran (~30 Hz). Jede Partie lebt in einem <b>Raum</b>, identifiziert durch einen 4-Buchstaben-Code.",
+  "s1.code.cap": "server/Room.js — der Takt und die Slots eines Raums",
+  "s1.code.c1": "// ~30 Hz autoritativer Schritt",
+  "s1.code.c2": "// zwei Spieler-Slots",
+  "s1.code.c3": "// die wartende Zuschauer-Schlange",
+  "s1.code.c4": "// alle TV-Zuschauer",
+  "s1.code.c5": "// die autoritative Simulation, am Matchstart erzeugt",
+  "s1.p1": "Der Server hostet (über <code class=\"inline\">server/index.js</code>) den WebSocket und verteilt jede Nachricht an den richtigen Raum: <code class=\"inline\">host</code> legt einen Raum an, <code class=\"inline\">join</code> setzt einen Teilnehmer hinein, alles Übrige (<code class=\"inline\">aim</code>, <code class=\"inline\">ready</code>, <code class=\"inline\">shell</code>…) geht an die Methoden des Raums. Keine Spiellogik lebt in der Netzwerkschicht.",
+  "s1.callout": "<b>Merke dir.</b> „Der Server hat immer recht.“ Da nur er rechnet, können sich die Bildschirme nicht widersprechen — und das ist zugleich die erste Verteidigungslinie gegen das Schummeln.",
+
+  "s2.h2": "Das Protokoll: Absichten hinauf, Snapshots herab",
+  "s2.p1": "Zwei Nachrichtenarten reisen über die Leitung. Vom Controller hinauf: kleine <b>Absichten</b> (Winkel, Stärke, „bereit“, Geschosswahl). Vom Server herab: regelmäßige <b>Snapshots</b> des Spielzustands.",
+  "s2.fig.alt": "Absichten und Snapshots",
+  "s2.fig.ctrl1": "📱 Controller",
+  "s2.fig.ctrl2": "📱 Controller",
+  "s2.fig.server": "🧑‍⚖️ Server",
+  "s2.fig.viewers": "📺 TV",
+  "s2.fig.intents": "aim / ready",
+  "s2.fig.snapshots": "snapshot ~30 Hz",
+  "s2.fig.cap": "Der Controller sendet Absichten; der Server schickt jedem den Snapshot zurück.",
+  "s2.p2": "Bei jedem Tick treibt der Raum die Simulation um einen festen Schritt voran, sammelt die aufgetretenen Ereignisse und sendet dann den Snapshot an alle Abonnenten des Raums:",
+  "s2.code.cap": "server/Room.js — eine Schleifenrunde",
+
+  "s3.h2": "Dieselbe Simulation, geteilt von allen",
+  "s3.p1": "Der entscheidende Kniff aus Lot 1 zahlt sich jetzt aus: Die Simulation in <code class=\"inline\">src/sim/</code> ist <b>Phaser-frei</b>. Der Server importiert genau dieselbe Datei und lässt sie unter Node laufen:",
+  "s3.code.cap": "server/Room.js — der Server benutzt die Client-Simulation",
+  "s3.p2": "Das ist das Dividende der Architekturentscheidung aus Kapitel 1: Dieselbe Physik läuft auf dem Server (dem Richter) und bleibt unter Node testbar. Niemand schreibt die Flugbahnen „fürs Netzwerk“ neu.",
+  "s3.snapomit.cap": "src/sim/Simulation.js — was ein Snapshot wirklich überträgt",
+  "s3.snapomit.c1": "// die Zuschauer-TV bekommt die gewählten Zielwerte der Spieler nie zu sehen;",
+  "s3.snapomit.c2": "// nur die ready-Flags und — nach dem Schuss — die entstandenen Geschosse.",
+  "s3.callout.nerd": "<b>Verborgene Information.</b> Der Snapshot <b>enthält nicht</b> Winkel oder Stärke der zielenden Spieler — diese Zahlen werden auf der TV nie angezeigt. Nur die „bereit“-Flags und, sobald geschossen wurde, die Geschosse werden gesendet. Die Informationsasymmetrie steckt <em>im Protokoll</em>.",
+
+  "s4.h2": "Sitze, Warteschlange und Abgänge",
+  "s4.p1": "Ein Raum ist lebendig: Leute kommen, gehen, übernehmen. Der Raum behandelt diese Übergänge, ohne die Partie zu zerbrechen. Ein ankommender Teilnehmer nimmt einen freien Sitz, sonst reiht er sich als Zuschauer in die <b>Schlange</b> ein.",
+  "s4.code1.cap": "server/Room.js — freier Sitz oder Warteschlange",
+  "s4.code1.c1": "/* Spieler */",
+  "s4.code1.c2": "/* Zuschauer in der Schlange */",
+  "s4.p2": "Gibt ein Spieler seinen Sitz frei (freiwilliger Abgang oder Trennung), <b>übernimmt</b> der Erste der Schlange (<code class=\"inline\">promoteInto</code>). Und füllt niemand mehr beide Sitze mitten im Match, <b>kehrt der Raum in die Lobby zurück</b>: Die TV zeigt Code und QR wieder an.",
+  "s4.code2.cap": "server/Room.js — zurück in die Lobby, wenn ein Sitz leer bleibt",
+  "s4.code2.c1": "// ein wartender Zuschauer nimmt den Sitz",
+  "s4.callout": "<b>Merke dir.</b> Netzwerk heißt auch all die „unglücklichen“ Fälle: Abgänge, Reconnects, frei werdende Plätze. Diesen Zustand in einem einzigen <code class=\"inline\">Room</code>-Objekt zu bündeln, macht diese Übergänge lesbar und testbar.",
+
+  "footer.suffix": "Kapitel {n}/{total} · mittleres Niveau",
+
+  "pager.prev": "← Kapitel 2 · Daten &amp; Rendering",
+  "pager.next": "Kapitel 4 · Zerstörbares Terrain →"
+}

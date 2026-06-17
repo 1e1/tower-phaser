@@ -1,0 +1,14 @@
+{
+  "nav.home": "Accueil",
+  "nav.annex": "Annexes",
+  "nav.math": "Maths",
+  "nav.chapters": "Chapitres",
+  "level.legend": "Niveau",
+  "level.d.label": "Découverte",
+  "level.d.sub": "pour débuter",
+  "level.i.label": "Intermédiaire",
+  "level.i.sub": "l'architecture",
+  "level.e.label": "Expert",
+  "level.e.sub": "en profondeur",
+  "footer.prefix": "Carnet du créateur de <b>Tower Duel</b> · "
+}

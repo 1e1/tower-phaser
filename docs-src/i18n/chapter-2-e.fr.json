@@ -1,0 +1,59 @@
+{
+  "title": "Chapitre 2 (expert) — Rendu sans assets : synthèse procédurale",
+  "meta.desc": "Niveau expert : génération de textures au runtime, synthèse audio Web Audio (oscillateurs et enveloppes), les maths de couleur lerp/shade/barrelColor, la géométrie animée de la manche à air, les systèmes de particules et blend modes, et les paliers de qualité.",
+
+  "hero.badge": "Expert · Lot 2 · Désert",
+  "hero.kicker": "Chapitre 2 · niveau expert",
+  "hero.title": "Rendu sans assets : synthèse procédurale",
+  "hero.lead": "Aucune image, aucun fichier son. Tout naît du code : <strong>textures</strong> dessinées au boot, <strong>sons</strong> faits d'oscillateurs et d'enveloppes, <strong>couleurs</strong> interpolées par les maths, et <strong>particules</strong> assemblées par blend modes.",
+
+  "s1.h2": "Textures générées au runtime",
+  "s1.lead": "Pas de PNG dans le bundle. Au boot, on dessine quelques primitives une fois et on les fige en textures GPU réutilisables. Le surcoût est payé une seule fois, au démarrage.",
+  "s1.code.cap": "src/systems/textures.js — un « smoke » empilé en cercles translucides",
+  "s1.code.c1": "// couches très transparentes",
+  "s1.code.c2": "// → un dégradé doux, sans image",
+  "s1.p1": "La <code class=\"inline\">spark</code> (un disque blanc dur), le <code class=\"inline\">smoke</code> (cercles empilés), le <code class=\"inline\">flash</code> (cœur additif) et le <code class=\"inline\">cloud</code> (blobs fusionnés) couvrent tous les besoins. Tout est ensuite <b>teinté au runtime</b> via le biome, ce qui évite d'avoir une texture par couleur.",
+  "s1.callout.nerd": "<b>Pourquoi une texture blanche ?</b> Une primitive blanche se teinte vers n'importe quelle couleur par simple multiplication. Une étincelle devient flocon, braise ou débris selon le <code class=\"inline\">tint</code> — une seule texture, quatre ambiances.",
+
+  "s2.h2": "Web Audio : oscillateurs et enveloppes",
+  "s2.p1": "Chaque effet est un petit graphe audio assemblé à la volée : une <b>source</b> (oscillateur ou bruit), un ou plusieurs <b>filtres</b>, et un <b>gain</b> dont la courbe dans le temps forme l'<b>enveloppe</b> (l'attaque, puis l'extinction).",
+  "s2.code.cap": "src/systems/Sfx.js — explosion : bruit filtré + enveloppe descendante",
+  "s2.code.c1": "// bruit blanc (buffer aléatoire)",
+  "s2.code.c2": "// devient grave",
+  "s2.code.c3": "// s'éteint",
+  "s2.p2": "La rampe <b>exponentielle</b> n'est pas un détail cosmétique : l'oreille perçoit le volume et la hauteur de façon logarithmique, donc une décroissance exponentielle <em>sonne</em> linéaire. Le <code class=\"inline\">flyby</code> (le sifflement continu d'un obus qui s'approche) pousse l'idée plus loin avec <code class=\"inline\">setTargetAtTime</code> — un lissage de premier ordre pour glisser sans à-coups entre les fréquences. Sur iOS, où l'API Vibration est bloquée, ce sifflement audio remplace le retour haptique qu'on ressentirait ailleurs.",
+  "s2.callout.suspended": "<b>Le contexte suspendu.</b> Les navigateurs créent l'<code class=\"inline\">AudioContext</code> en état suspendu et ne le reprennent qu'après un geste de l'utilisateur. Une unique instance <code class=\"inline\">Sfx</code> partagée vit sur le registre du jeu et est débloquée (<code class=\"inline\">unlock()</code>) à la première interaction — sinon les premiers sons disparaissent en silence.",
+  "s2.callout.tip": "<b>À retenir.</b> Un son synthétisé = source + filtres + enveloppe. On ne stocke aucun échantillon : on décrit une <b>recette</b> que le navigateur exécute. Le bundle reste minuscule.",
+
+  "s3.h2": "Les maths de couleur : lerp, shade, barrelColor",
+  "s3.p1": "Les couleurs dynamiques (canon qui chauffe, bord de cratère roussi) reposent sur deux opérations élémentaires sur des entiers RGB : <b>multiplier la luminosité</b> (<code class=\"inline\">shade</code>) et <b>interpoler</b> entre deux teintes (<code class=\"inline\">lerp</code> canal par canal).",
+  "s3.code.cap": "src/render/visuals.js — assombrir/éclaircir un canal à la fois",
+  "s3.code.c1": "// recompose l'entier",
+  "s3.p2": "<code class=\"inline\">barrelColor(power)</code> lerp de l'acier froid vers le rouge brûlant selon un ratio de puissance borné à [0, 1] ; <code class=\"inline\">craterRimColor(edge)</code> tire la teinte de relief du biome vers un brun foncé pour un bord « terre remuée » plutôt qu'un anneau noir. Le décalage de bits (<code class=\"inline\">&gt;&gt; 16</code>, <code class=\"inline\">&amp; 0xff</code>) extrait chaque canal d'un entier 0xRRGGBB.",
+  "s3.callout.nerd": "<b>Pour les curieux.</b> Tout est <b>borné</b> (<code class=\"inline\">clamp 0..255</code>) avant recomposition : un <code class=\"inline\">factor &gt; 1</code> qui éclaircit ne déborde jamais d'un canal sur le suivant.",
+
+  "s4.h2": "Géométrie animée : la manche à air",
+  "s4.p1": "La manche à air n'est pas un sprite : c'est une <b>géométrie calculée</b> chaque image. <code class=\"inline\">computeWindsock</code> renvoie un mât et une suite de quadrilatères rayés qui s'allongent avec la force, s'orientent sous le vent et flottent dans le temps.",
+  "s4.code.cap": "src/render/visuals.js — la ligne centrale qui ondule",
+  "s4.code.c1": "// k = force normalisée [0,1]",
+  "s4.code.c2": "// retombe quand il n'y a pas de vent",
+  "s4.code.c3": "// flottement",
+  "s4.p2": "L'amplitude du flottement croît avec la force (<code class=\"inline\">k</code>) <b>et</b> avec la distance le long de la manche (<code class=\"inline\">f</code>) : la base reste rigide, la pointe fouette. Les segments alternent deux couleurs (rayures) et rétrécissent vers la pointe. Comme ce code est agnostique, la TV (Phaser) et la manette (canvas brut) dessinent exactement la même manche.",
+
+  "s5.h2": "Particules, blend modes &amp; paliers de qualité",
+  "s5.p1": "L'arrière-plan est un système de particules paramétré par le biome : durée de vie, vitesses, échelle, et surtout le <b>mode de fusion</b>. Les braises du volcan utilisent l'<b>additif</b> (les couleurs s'additionnent → cœur lumineux), là où neige et feuilles restent en fusion normale.",
+  "s5.code.cap": "src/objects/Background.js — les braises, en additif",
+  "s5.code.c1": "// naissent en bas",
+  "s5.code.c2": "// montent",
+  "s5.code.c3": "// rétrécissent en mourant",
+  "s5.code.c4": "// fusion additive → lueur",
+  "s5.p2": "Le glow du soleil/lune utilise aussi <code class=\"inline\">BlendModes.ADD</code> avec un <code class=\"inline\">scrollFactor</code> faible, pour rester quasi fixe et lumineux. Tout cela coûte cher en remplissage (fill rate). D'où le <b>benchmark</b> de démarrage : sous 45 fps, l'appareil est rangé en palier <code class=\"inline\">'lite'</code> et la couche de particules — la plus gourmande — est tout simplement supprimée.",
+  "s5.code2.cap": "src/objects/Background.js — la qualité décide ce qu'on dessine",
+  "s5.code2.c1": "// la couche ambiante est la plus simple à sacrifier sur un appareil faible",
+  "s5.callout.tip": "<b>À retenir.</b> « Sans assets » déplace le coût des octets vers le CPU/GPU. On l'assume avec deux garde-fous : on <b>fige</b> ce qui peut l'être (textures au boot) et on <b>dégrade</b> proprement (paliers de qualité) plutôt que de saccader.",
+
+  "footer.suffix": "chapitre {n}/{total} · niveau expert",
+
+  "pager.prev": "← Chapitre 1 · Boucle déterministe",
+  "pager.next": "Chapitre 3 · Protocole réseau &amp; cohérence d'état →"
+}
