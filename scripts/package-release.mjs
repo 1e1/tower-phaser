@@ -24,9 +24,10 @@ if (!existsSync(join(root, 'dist', 'index.html'))) {
   process.exit(1);
 }
 
-// Only the runtime essentials. The server imports src/sim and src/config at
-// runtime; the rest of src/ is already compiled into dist/.
-const INCLUDE = ['dist', 'server', 'src/sim', 'src/config', 'package.json', 'package-lock.json', 'LICENSE'];
+// Only the runtime essentials. The server imports src/sim, src/config and
+// src/net (the shared binary snapshot codec) at runtime; the rest of src/ is
+// already compiled into dist/.
+const INCLUDE = ['dist', 'server', 'src/sim', 'src/config', 'src/net', 'package.json', 'package-lock.json', 'LICENSE'];
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });
@@ -46,7 +47,7 @@ no build step: copy this folder to any host with **Node.js 18+** and run it.
 
 ## Run
 
-    npm ci --omit=dev    # install express + ws only (a few MB)
+    npm ci --omit=dev    # install express + ws + compression only (a few MB)
     npm start            # = node server/index.js, serves the game on :3000
 
 Then open http://<host>:3000 on the shared screen (TV). Players join from phones
@@ -66,7 +67,8 @@ on the same network by scanning the QR code or entering the room code.
 - dist/                 the built single-page game (served as static files)
 - server/               Node HTTP + WebSocket server (authoritative match loop)
 - src/sim, src/config   the Phaser-free simulation the server imports
-- package.json + lock   runtime dependencies (express, ws)
+- src/net               the shared binary snapshot codec (server + client)
+- package.json + lock   runtime dependencies (express, ws, compression)
 
 For HTTPS / reverse-proxy notes (the WebSocket upgrade headers), see the
 tutorial's technical annex: https://1e1.github.io/tower-phaser/

@@ -136,6 +136,35 @@ and Italian — under `docs/en/`, `docs/fr/`, `docs/de/`, `docs/es/` and
 English), and a language switcher in the page header links the matching page
 across all five.
 
+The published `docs/` is generated — never edit it by hand. The source lives in
+`docs-src/` (one layout, one tokenised body per page, one JSON string catalog
+per page × language), driven by `docs-src/site.config.mjs`:
+
+```bash
+npm run build:docs   # regenerate docs/ from docs-src/ (prints a coverage matrix)
+```
+
+French is the reference language; the other four derive from it. To keep the
+5 × N catalogs in sync, `scripts/i18n-sync.mjs` reports drift and fills the gap
+through DeepL (HTML tag mode, so `<b>`/emojis survive), translating only the
+keys that are missing or whose FR source changed — not the whole corpus:
+
+```bash
+npm run i18n:check   # report drift: missing / stale (FR changed) / leftover keys
+npm run i18n:sync    # translate just the diff via DeepL, then review the listed keys
+```
+
+`i18n:sync` needs `DEEPL_API_KEY` in the environment (a free key, suffix `:fx`,
+routes to api-free automatically). A lockfile (`docs-src/i18n/.i18n-lock.json`)
+records the FR source hash per key so a later FR edit flags every locale's
+matching key as stale — commit it alongside the catalogs.
+
+An architecture annex, **[A match's life cycle](docs/en/annex-lobby.html)**,
+covers the lobby, the Architect/Rival personas, the controller/TV state machine
+and the reconnection model — with four interactive simulators (start gate,
+state-machine walker, 10 s reconnection grace, and the inter-round parallax
+continuity).
+
 ## Roadmap
 
 - **Lot 1** — Dockerized single-page game. *(done)*
@@ -147,6 +176,13 @@ across all five.
   screens; cleaner phone end-screen; distance-math optimizations
   (squared-distance comparisons); and a three-level tutorial
   (Discovery / Intermediate / Expert) with a new *fast maths* annex. *(done)*
+- **v1.2.0** — Pre-match setup overhaul: the name is remembered on the device,
+  Escape returns to the home screen (the host tears the room down, a phone just
+  disconnects), a locked/slept phone keeps its seat for 10s and auto-reconnects,
+  and the match no longer auto-starts — the first player configures it inside a
+  depth-scroll scene (settings framed between two towers) then a player claims a
+  side by tapping a tower, with a mutual ready gate. Plus binary snapshot frames,
+  gzip and projectile interpolation for a smoother, lighter wire. *(done)*
 
 ## Project layout
 

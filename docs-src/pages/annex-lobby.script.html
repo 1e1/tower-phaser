@@ -1,0 +1,171 @@
+    <script>
+      (function () {
+        // shared helpers --------------------------------------------------------
+        function rr(ctx, x, y, w, h, r) {
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+          else { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); }
+        }
+        function evPos(cv, e) {
+          const r = cv.getBoundingClientRect();
+          const sx = cv.width / r.width, sy = cv.height / r.height;
+          const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+          const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+          return { x: cx * sx, y: cy * sy };
+        }
+        const GOLD = '#e0a32e', BLUE = '#4f8fff', RED = '#ff6b5e', OK = '#3f8f2f', KO = '#d8552f', INK = '#2b2535', DIM = '#5b5470';
+
+        // ① — persona & start gate ---------------------------------------------
+        (function () {
+          const cv = document.getElementById('persona'); if (!cv) return;
+          const ctx = cv.getContext('2d'); const W = cv.width, H = cv.height;
+          const page1 = document.getElementById('p2page1'), camp = document.getElementById('p2camp'), join = document.getElementById('p2join');
+          function phone(x, label, color) {
+            ctx.fillStyle = '#fff'; ctx.strokeStyle = color; ctx.lineWidth = 3;
+            rr(ctx, x, 30, 150, 110, 16); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = color; ctx.font = "bold 18px Fredoka, sans-serif"; ctx.textAlign = 'center';
+            ctx.fillText(label, x + 75, 64);
+          }
+          function lamp(x, y, on, txt) {
+            ctx.beginPath(); ctx.arc(x, y, 11, 0, 7);
+            ctx.fillStyle = on ? OK : '#cfc7bf'; ctx.fill();
+            if (on) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 5, y); ctx.lineTo(x - 1, y + 5); ctx.lineTo(x + 6, y - 6); ctx.stroke(); }
+            ctx.fillStyle = DIM; ctx.font = "13px Nunito, sans-serif"; ctx.textAlign = 'center'; ctx.fillText(txt, x, y + 28);
+          }
+          function draw() {
+            ctx.fillStyle = '#fbf3ea'; ctx.fillRect(0, 0, W, H);
+            phone(60, '{{sim2.architecte}}', GOLD);
+            phone(430, '{{sim2.rival}}', BLUE);
+            // page-1 lamp sits under the Architect (he owns page 1), camp in the middle, join under the Rival
+            lamp(135, 95, page1.checked, '{{sim2.page1}}');
+            lamp(320, 95, camp.checked, '{{sim2.camp}}');
+            lamp(505, 95, join.checked, '{{sim2.join}}');
+            const go = page1.checked && camp.checked && join.checked;
+            ctx.fillStyle = go ? OK : GOLD; rr(ctx, 160, 168, 320, 36, 18); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.font = "bold 20px Fredoka, sans-serif"; ctx.textAlign = 'center';
+            ctx.fillText(go ? '{{sim2.start}}' : '{{sim2.waiting}}', 320, 193);
+          }
+          [page1, camp, join].forEach((c) => c.addEventListener('change', draw));
+          draw();
+        })();
+
+        // ② — state-machine walker ---------------------------------------------
+        (function () {
+          const cv = document.getElementById('walker'); if (!cv) return;
+          const ctx = cv.getContext('2d'); const W = cv.width;
+          const N = {
+            accueil: { x: 80, y: 70, label: '{{sim3.accueil}}' },
+            lobby: { x: 250, y: 70, label: '{{sim3.lobby}}' },
+            command: { x: 430, y: 70, label: '{{sim3.command}}' },
+            cracktro: { x: 560, y: 70, label: '{{sim3.cracktro}}' },
+          };
+          const order = ['accueil', 'lobby', 'command', 'cracktro'];
+          const trans = {
+            accueil: [{ to: 'lobby', label: '{{sim3.t.join}}' }],
+            lobby: [{ to: 'command', label: '{{sim3.t.start}}' }, { to: 'accueil', label: '{{sim3.t.quitter}}' }],
+            command: [{ to: 'cracktro', label: '{{sim3.t.fin}}' }],
+            cracktro: [{ to: 'lobby', label: '{{sim3.t.rejouer}}' }, { to: 'accueil', label: '{{sim3.t.quitter}}' }],
+          };
+          let cur = 'accueil'; let hits = [];
+          function node(k) {
+            const n = N[k], active = k === cur; const w = 116, h = 44, x = n.x - w / 2, y = n.y - h / 2;
+            ctx.fillStyle = active ? GOLD : '#fff'; ctx.strokeStyle = active ? GOLD : '#cfc7bf'; ctx.lineWidth = active ? 3 : 2;
+            rr(ctx, x, y, w, h, 12); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = active ? '#fff' : INK; ctx.font = "bold 14px Fredoka, sans-serif"; ctx.textAlign = 'center';
+            ctx.fillText(n.label, n.x, n.y + 5);
+          }
+          function draw() {
+            ctx.fillStyle = '#fbf3ea'; ctx.fillRect(0, 0, W, cv.height);
+            // forward rail
+            ctx.strokeStyle = '#d8cfc6'; ctx.lineWidth = 2;
+            for (let i = 0; i < order.length - 1; i++) { const a = N[order[i]], b = N[order[i + 1]]; ctx.beginPath(); ctx.moveTo(a.x + 58, a.y); ctx.lineTo(b.x - 58, b.y); ctx.stroke(); }
+            order.forEach(node);
+            // phone preview (current view)
+            ctx.fillStyle = '#fff'; ctx.strokeStyle = '#cfc7bf'; ctx.lineWidth = 2; rr(ctx, 270, 130, 100, 70, 10); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = GOLD; ctx.font = "bold 13px Fredoka, sans-serif"; ctx.textAlign = 'center'; ctx.fillText(N[cur].label, 320, 170);
+            // available transitions as clickable pills
+            ctx.font = "bold 15px Nunito, sans-serif"; hits = [];
+            const acts = trans[cur]; const total = acts.length; const pillW = 200, gap = 24;
+            let bx = (W - (total * pillW + (total - 1) * gap)) / 2;
+            ctx.fillStyle = DIM; ctx.font = "14px Nunito, sans-serif"; ctx.fillText('{{sim3.tap}}', W / 2, 248);
+            acts.forEach((a) => {
+              ctx.fillStyle = '#2e6f8e'; rr(ctx, bx, 258, pillW, 34, 17); ctx.fill();
+              ctx.fillStyle = '#fff'; ctx.font = "bold 15px Nunito, sans-serif"; ctx.textAlign = 'center'; ctx.fillText(a.label, bx + pillW / 2, 280);
+              hits.push({ x: bx, y: 258, w: pillW, h: 34, to: a.to }); bx += pillW + gap;
+            });
+          }
+          cv.addEventListener('click', (e) => {
+            const p = evPos(cv, e);
+            for (const h of hits) if (p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h) { cur = h.to; draw(); return; }
+          });
+          draw();
+        })();
+
+        // ③ — reconnection grace window ----------------------------------------
+        (function () {
+          const cv = document.getElementById('recon'); if (!cv) return;
+          const ctx = cv.getContext('2d'); const W = cv.width, H = cv.height;
+          const sld = document.getElementById('reconAt');
+          const X0 = 50, X1 = W - 50, GRACE = 10, MAX = 16;
+          const tx = (t) => X0 + (t / MAX) * (X1 - X0);
+          function draw() {
+            const t = parseFloat(sld.value);
+            ctx.fillStyle = '#fbf3ea'; ctx.fillRect(0, 0, W, H);
+            const y = 96;
+            // grace (green) + lapsed (red) bands
+            ctx.fillStyle = 'rgba(63,143,47,0.18)'; ctx.fillRect(X0, y - 14, tx(GRACE) - X0, 28);
+            ctx.fillStyle = 'rgba(216,85,47,0.14)'; ctx.fillRect(tx(GRACE), y - 14, X1 - tx(GRACE), 28);
+            ctx.strokeStyle = '#bcae9f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(X1, y); ctx.stroke();
+            // 10s tick
+            ctx.strokeStyle = KO; ctx.beginPath(); ctx.moveTo(tx(GRACE), y - 18); ctx.lineTo(tx(GRACE), y + 18); ctx.stroke();
+            ctx.fillStyle = KO; ctx.font = "bold 13px 'JetBrains Mono', monospace"; ctx.textAlign = 'center'; ctx.fillText('{{sim4.grace}}', tx(GRACE), y - 24);
+            // socket-drop marker at t=0
+            ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X0, y, 6, 0, 7); ctx.fill();
+            ctx.font = "13px Nunito, sans-serif"; ctx.textAlign = 'left'; ctx.fillText('{{sim4.drop}}', X0 - 4, y + 38);
+            // reconnect marker at t
+            const x = tx(t); const ok = t <= GRACE;
+            ctx.strokeStyle = ok ? OK : KO; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y - 20); ctx.lineTo(x, y + 20); ctx.stroke();
+            ctx.fillStyle = ok ? OK : KO; ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
+            ctx.textAlign = 'center'; ctx.font = "bold 13px Nunito, sans-serif"; ctx.fillText('{{sim4.reconnect}} ' + t.toFixed(1) + 's', x, y - 28);
+            // verdict
+            ctx.fillStyle = ok ? OK : KO; ctx.font = "bold 19px Fredoka, sans-serif"; ctx.textAlign = 'center';
+            ctx.fillText(ok ? '{{sim4.ok}}' : '{{sim4.ko}}', W / 2, H - 16);
+          }
+          sld.addEventListener('input', draw);
+          draw();
+        })();
+
+        // ④ — parallax continuity (the inter-round slide) -----------------------
+        (function () {
+          const cv = document.getElementById('px'); if (!cv) return;
+          const ctx = cv.getContext('2d'); const W = cv.width, H = cv.height;
+          const bake = document.getElementById('pxbake'), posEl = document.getElementById('pxpos');
+          let baked = 0, cam = 0, anim = 0;
+          function ridge(color, baseY, amp, factor, seed) {
+            const p = (cam + baked) * factor; ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, H);
+            for (let x = 0; x <= W; x += 6) { const t = (x + p) / 240; const y = baseY - amp * Math.sin(t * 1.3 + seed) - amp * 0.5 * Math.sin(t * 2.7 + seed * 2); ctx.lineTo(x, y); }
+            ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+          }
+          function tower(x) { ctx.fillStyle = GOLD; ctx.fillRect(x - 16, H - 96, 32, 96); }
+          function draw() {
+            const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#24406e'); g.addColorStop(1, '#0e1730'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+            const sx = W * 0.74 - (cam + baked) * 0.12; ctx.fillStyle = '#e9c46a'; ctx.beginPath(); ctx.arc(sx, 60, 26, 0, 7); ctx.fill();
+            ridge('#2c3e63', H * 0.74, 34, 0.25, 1.2); ridge('#3c5688', H * 0.9, 26, 0.45, 3.1);
+            if (anim) { tower(W / 2 - cam); tower(W / 2 + 640 - cam); } else { tower(W / 2); }
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke(); ctx.setLineDash([]);
+            posEl.textContent = '{{sim1.pos}} ' + Math.round(cam + baked) + ' px';
+          }
+          function next() {
+            if (anim) return; const from = cam, span = 640, dur = 650; let start = 0;
+            function step(now) {
+              if (!start) start = now; const k = Math.min(1, (now - start) / dur); cam = from + span * (k * k * (3 - 2 * k)); draw();
+              if (k < 1) anim = requestAnimationFrame(step); else { anim = 0; if (bake.checked) baked += cam; cam = 0; draw(); }
+            }
+            anim = requestAnimationFrame(step);
+          }
+          document.getElementById('pxnext').addEventListener('click', next);
+          bake.addEventListener('change', () => { baked = 0; cam = 0; draw(); });
+          draw();
+        })();
+      })();
+    </script>

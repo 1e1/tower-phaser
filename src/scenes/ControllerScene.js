@@ -1,12 +1,16 @@
 import Phaser from 'phaser';
 
-import { COLORS, AIM, MAX_WIND, ROUND_OPTIONS, HP_OPTIONS, GAME_MODES } from '../config/constants.js';
+import { COLORS, AIM, MAX_WIND, ROUND_OPTIONS, HP_OPTIONS, GAME_MODES, GAME_WIDTH } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { SHELLS } from '../config/shells.js';
 import { PHASE } from '../sim/Simulation.js';
-import { injectStyles } from './LobbyScene.js';
+import { injectStyles, saveName, randomHandle, BUILD_ID } from './LobbyScene.js';
 import { drawTowerTop } from '../ui/towerTop.js';
 import { intToCss, shade } from '../render/visuals.js';
+
+// Each ammo type whistles a little differently (a slight variation): heavier
+// shells sing lower, lighter shells higher. Keyed by shell id.
+const WHISTLE_FREQ = { normal: 1200, heavy: 820, light: 1560, salvo: 1080, explosive: 980 };
 
 // Phone/tablet controller. Full-viewport responsive overlay, themed to the
 // current biome. Aiming is graphical: drag on the tower view to set the angle
@@ -21,11 +25,31 @@ export default class ControllerScene extends Phaser.Scene {
   init(data) {
     this.player = data.player;
     this.code = data.code;
-    this.name = data.name || `Player ${data.player + 1}`;
-    this.facing = this.player === 0 ? 1 : -1;
-    this.ownTowerX = this.player === 0 ? 120 : 1280 - 120;
-    this.color = this.player === 0 ? COLORS.towerP1 : COLORS.towerP2;
-    this.biomeChooser = data.isBiomeChooser ? this.player : -1;
+    this.name = data.name || randomHandle();
+    this.token = data.token || null;
+    // Camp state must exist before applySlot so the colour starts neutral: a side
+    // colour is earned by claiming a camp, never handed out by arrival order.
+    this.campChooser = -1;
+    this.campChosen = false;
+    this.applySlot(this.player); // facing / own-tower X / side colour from the slot
+    this.biomeChooser = -1; // post-match biome chooser (the loser); set via roster
+    // --- pre-match setup ---
+    this.isConfigOwner = !!data.isConfigOwner;
+    this.setup = true;
+    this.view = 'lobby'; // canonical view: 'lobby' | 'command' | 'cracktro'
+    this.inSetup = true; // pre-match lobby until the first roster/snapshot says otherwise
+    this.configDone = false;
+    // Depth scroll: z=0 framed between two huge towers with the settings in the
+    // distance; z=1 pulled back to the two small towers (the camp picker). The
+    // entry position is set once per lobby (placedZ); the other player's camp
+    // pick must never re-snap it.
+    this.placedZ = false;
+    this.z = 0;
+    this.zTarget = 0;
+    this.dragY = null; // active vertical drag origin, or null
+    this.campPick = null; // { slot, t } crumble animation
+    this.lastInteract = 0;
+    this.reconnecting = false;
     this.biomeIndex = 0;
     this.roundsIndex = 1;
     this.hpIndex = 0;
@@ -50,6 +74,39 @@ export default class ControllerScene extends Phaser.Scene {
     this.unsubs = [];
   }
 
+  // Slot drives side, own-tower position and the *potential* side colour. The
+  // colour actually shown stays neutral until a camp is claimed (see myColor).
+  // Re-derived on a camp swap (the server may move us between seats during setup).
+  applySlot(slot) {
+    this.player = slot;
+    this.facing = slot === 0 ? 1 : -1;
+    this.ownTowerX = slot === 0 ? 120 : 1280 - 120;
+    this.slotColor = slot === 0 ? COLORS.towerP1 : COLORS.towerP2;
+    this.color = this.myColor();
+  }
+
+  // A side has been settled (claimed by us, or the chooser is decided) — only
+  // then does a player wear a colour; before that everyone reads as neutral.
+  campDecided() {
+    return this.campChosen || (this.campChooser != null && this.campChooser !== -1);
+  }
+
+  myColor() {
+    // An in-flight pick adopts the tapped side immediately (matches the tower
+    // glow), before the server's reslot lands; otherwise our settled slot colour.
+    if (this.campPick) return this.campPick.slot === 0 ? COLORS.towerP1 : COLORS.towerP2;
+    return this.campDecided() ? this.slotColor : COLORS.towerNeutral;
+  }
+
+  // Re-tint the controller to the current side (neutral until a camp is claimed).
+  // The accent threads through the name, fire button, shell highlights, aim view
+  // and sync line, so the player wears their colours over the biome backdrop
+  // without the screen turning monochrome or ever borrowing the rival's colour.
+  applyAccent() {
+    this.color = this.myColor();
+    if (this.overlay) this.overlay.style.setProperty('--accent', intToCss(this.color));
+  }
+
   create() {
     this.client = this.registry.get('client');
     this.sfx = this.registry.get('sfx');
@@ -65,17 +122,25 @@ export default class ControllerScene extends Phaser.Scene {
       <div class="tp-ctl-card">
         <header>
           <img class="tp-logo-sm" src="icon.svg" alt="" />
-          <input id="name" maxlength="12" value="${escapeHtml(this.name)}" />
+          <input id="name" maxlength="14" value="${escapeHtml(this.name)}" />
           <span class="room">Room ${this.code}</span>
         </header>
         <div id="info"></div>
 
-        <div id="biome" hidden>
-          <div class="row"><button id="biomeL">◀</button><span id="biomeName"></span><button id="biomeR">▶</button></div>
-          <div class="row"><button id="roundsL">◀</button><span id="roundsName"></span><button id="roundsR">▶</button></div>
-          <div class="row"><button id="hpL">◀</button><span id="hpName"></span><button id="hpR">▶</button></div>
-          <div class="row"><button id="modeL">◀</button><span id="modeName"></span><button id="modeR">▶</button></div>
-          <div class="hint">You set the biome, rounds, health and mode</div>
+        <div id="setup" hidden>
+          <div id="setupSync"><span id="syncMe"></span><span id="syncOpp"></span></div>
+          <div id="setupStage">
+            <canvas id="setupCanvas"></canvas>
+            <div id="cfg">
+              <div class="row"><button id="biomeL">◀</button><span id="biomeName"></span><button id="biomeR">▶</button></div>
+              <div class="row"><button id="roundsL">◀</button><span id="roundsName"></span><button id="roundsR">▶</button></div>
+              <div class="row"><button id="hpL">◀</button><span id="hpName"></span><button id="hpR">▶</button></div>
+              <div class="row"><button id="modeL">◀</button><span id="modeName"></span><button id="modeR">▶</button></div>
+            </div>
+            <div id="scrollHint"><span>⌄</span></div>
+          </div>
+          <div id="setupStatus"></div>
+          <button id="leave" class="ghost">Leave room</button>
         </div>
 
         <canvas id="ttv"></canvas>
@@ -83,16 +148,23 @@ export default class ControllerScene extends Phaser.Scene {
         <div id="controls" hidden>
           <div id="readout">Angle 45° · Power 50%</div>
           <div id="shells" class="shellrow">${SHELLS.map((s, i) => `<button data-shell="${i}" title="${s.name}"><b class="ct"></b><svg viewBox="0 0 24 24" fill="currentColor">${s.svg}</svg><span>${s.name}</span></button>`).join('')}</div>
-          <button id="fire">VALIDATE SHOT</button>
+          <button id="fire"><span class="bore"></span><span class="lbl">VALIDATE SHOT</span><span class="track"><i class="drain"></i></span></button>
           <div id="status"></div>
         </div>
 
         <canvas id="fx" hidden></canvas>
-        <div id="post" hidden>
-          <button id="again">Play again</button>
-          <button id="leave" class="ghost">Disconnect</button>
+        <div id="endbtns" hidden>
+          <button id="again" class="endbtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 7l5 5V8a4 4 0 1 1-4 4H6a6 6 0 1 0 6-7z"/></svg>
+            <span>Rematch</span>
+          </button>
+          <button id="leaveEnd" class="endbtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l1.4-1.4L8.83 13H16v-2H8.83l2.58-2.6L10 7l-5 5 5 5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4z"/></svg>
+            <span>Bow out</span>
+          </button>
         </div>
-      </div>`;
+      </div>
+      <p class="tp-build">build ${BUILD_ID}</p>`;
     this.overlay = overlay;
     document.body.appendChild(overlay);
     this.$ = (id) => overlay.querySelector(`#${id}`);
@@ -101,26 +173,119 @@ export default class ControllerScene extends Phaser.Scene {
     this.ctx = this.canvas.getContext('2d');
     this.fx = this.$('fx');
     this.fxc = this.fx.getContext('2d');
+    this.stage = this.$('setupCanvas');
+    this.stageCtx = this.stage.getContext('2d');
 
+    this.rememberSession(); // so a reconnect after lock/sleep can reclaim the seat
     this.wireEvents();
     this.startRenderLoop();
 
     this.track(this.client.on('roster', (m) => this.onRoster(m)));
     this.track(this.client.on('snapshot', (m) => this.onSnapshot(m)));
-    this.track(this.client.on('demoted', (m) =>
-      this.scene.start('Tv', { spectator: true, code: this.code, queue: m.queue }),
-    ));
-    this.track(this.client.on('close', () => { this.$('info').textContent = 'Disconnected'; }));
+    this.track(this.client.on('reslot', (m) => this.onReslot(m)));
+    // --- connection lifecycle (lock/sleep recovery) ---
+    this.track(this.client.on('close', () => this.onDisconnected()));
+    this.track(this.client.on('reopen', () => this.onReopen()));
+    this.track(this.client.on('rejoined', (m) => this.onRejoined(m)));
+    this.track(this.client.on('rejoinFailed', () => this.goHome(true)));
+    this.track(this.client.on('joined', (m) => this.onReJoinedFresh(m)));
+    this.track(this.client.on('roomClosed', () => this.goHome(true)));
 
+    this.installEscape();
     this.applyBiome();
     this.refresh();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubs.forEach((off) => off());
       if (this.raf) cancelAnimationFrame(this.raf);
-      this.sfx.flyby(0);
+      if (this.escHandler) window.removeEventListener('keydown', this.escHandler);
+      this.sfx.whistles([]); // silence any lingering shell whistles
       overlay.remove();
     });
+  }
+
+  // --- session / reconnection ----------------------------------------------
+
+  rememberSession() {
+    try {
+      sessionStorage.setItem(
+        'towerduel.session',
+        JSON.stringify({ code: this.code, token: this.token, name: this.name }),
+      );
+    } catch { /* private mode */ }
+  }
+
+  forgetSession() {
+    try { sessionStorage.removeItem('towerduel.session'); } catch { /* ignore */ }
+  }
+
+  onDisconnected() {
+    this.reconnecting = true;
+    this.refresh();
+  }
+
+  // The socket recovered. Reclaim the held seat with our token; the server falls
+  // back to a fresh join if the 10s grace window already lapsed.
+  onReopen() {
+    if (this.token) this.client.send('rejoin', { code: this.code, token: this.token, name: this.name });
+  }
+
+  onRejoined(m) {
+    this.reconnecting = false;
+    if (typeof m.slot === 'number' && m.slot !== this.player) this.applySlot(m.slot);
+    if (m.token) this.token = m.token;
+    if (typeof m.isConfigOwner === 'boolean') this.isConfigOwner = m.isConfigOwner;
+    // Come back wearing our colours, not neutral grey: restore the claimed side.
+    if (typeof m.campChooser === 'number') {
+      this.campChooser = m.campChooser;
+      if (m.campChooser === this.player) this.campChosen = true;
+    }
+    this.rememberSession();
+    this.applyBiome();
+    this.applyAccent();
+    this.refresh();
+  }
+
+  // rejoin fell back to a fresh add: keep playing if we got a seat, else spectate.
+  onReJoinedFresh(m) {
+    if (m.role === 'spectator') {
+      this.forgetSession();
+      this.scene.start('Tv', { spectator: true, code: this.code, queue: m.queue });
+      return;
+    }
+    this.reconnecting = false;
+    if (typeof m.slot === 'number') this.applySlot(m.slot);
+    if (m.token) this.token = m.token;
+    this.isConfigOwner = !!m.isConfigOwner;
+    if (typeof m.campChooser === 'number') {
+      this.campChooser = m.campChooser;
+      if (m.campChooser === this.player) this.campChosen = true;
+    }
+    this.rememberSession();
+    this.applyBiome();
+    this.applyAccent();
+    this.refresh();
+  }
+
+  onReslot(m) {
+    if (typeof m.slot === 'number') this.applySlot(m.slot);
+    if (typeof m.isConfigOwner === 'boolean') this.isConfigOwner = m.isConfigOwner;
+    this.applyBiome();
+    this.refresh();
+  }
+
+  // Escape on a keyboard device returns to the home screen. A TV closing tears
+  // the room down (all players are sent home); a phone simply disconnects.
+  installEscape() {
+    this.escHandler = (e) => { if (e.key === 'Escape') this.goHome(); };
+    window.addEventListener('keydown', this.escHandler);
+  }
+
+  goHome(skipSend = false) {
+    if (!skipSend) this.client.send('goHome');
+    this.forgetSession();
+    this.token = null;
+    this.scene.start('Lobby', { auto: 'join' });
   }
 
   track(off) { this.unsubs.push(off); }
@@ -130,8 +295,10 @@ export default class ControllerScene extends Phaser.Scene {
     this.$('name').addEventListener('input', () => {
       clearTimeout(nameTimer);
       nameTimer = setTimeout(() => {
-        this.name = this.$('name').value.trim() || `Player ${this.player + 1}`;
+        this.name = this.$('name').value.trim() || randomHandle();
         this.client.send('name', { name: this.name });
+        saveName(this.name); // persist on this device for next time
+        this.rememberSession();
       }, 300);
     });
 
@@ -160,8 +327,142 @@ export default class ControllerScene extends Phaser.Scene {
     this.$('hpR').addEventListener('click', () => this.cycleHp(1));
     this.$('modeL').addEventListener('click', () => this.cycleMode(-1));
     this.$('modeR').addEventListener('click', () => this.cycleMode(1));
-    this.$('again').addEventListener('click', () => this.playAgain());
-    this.$('leave').addEventListener('click', () => this.client.send('leave'));
+    this.$('leave').addEventListener('click', () => this.goHome());
+    // CRACKTRO buttons: replay reveals the rematch lobby; quit leaves the room.
+    this.$('again').addEventListener('click', () => this.dismissCracktro());
+    this.$('leaveEnd').addEventListener('click', () => this.goHome());
+
+    this.wireSetup();
+  }
+
+  // Depth scroll: a vertical drag (or wheel) pulls the camera back from z=0
+  // (settings framed between two huge towers) to z=1 (the two small towers — the
+  // camp picker). Tapping a tower at the camp end claims a side / confirms ready.
+  wireSetup() {
+    const stage = this.$('setupStage');
+    let startY = 0;
+    let startZ = 0;
+    let moved = false;
+    const begin = (e) => {
+      if (!this.canScroll()) return;
+      this.dragY = startY = e.touches ? e.touches[0].clientY : e.clientY;
+      startZ = this.zTarget;
+      moved = false;
+    };
+    const move = (e) => {
+      if (this.dragY == null) return;
+      const y = e.touches ? e.touches[0].clientY : e.clientY;
+      const h = stage.getBoundingClientRect().height || 1;
+      // Dragging up (finger up) pulls the camera back — like scrolling down.
+      this.zTarget = Phaser.Math.Clamp(startZ + (startY - y) / (h * 0.7), 0, 1);
+      this.z = this.zTarget;
+      if (Math.abs(y - startY) > 10) moved = true; // touch jitter tolerance: a tap stays a tap
+      this.noteInteract();
+      e.preventDefault();
+    };
+    const end = () => {
+      if (this.dragY == null) return;
+      this.dragY = null;
+      this.snapZ(); // settle to config or camp end
+    };
+    stage.addEventListener('pointerdown', begin);
+    stage.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+    stage.addEventListener('wheel', (e) => {
+      if (!this.canScroll()) return;
+      this.zTarget = Phaser.Math.Clamp(this.zTarget + Math.sign(e.deltaY) * 0.34, 0, 1);
+      this.noteInteract();
+      this.snapZ();
+      e.preventDefault();
+    }, { passive: false });
+
+    // Tap a tower at the camp end: pick a side (chooser) or confirm (others).
+    // Gate on the settled intent (zTarget), not the still-animating z, so a tap
+    // lands the moment the camp end is selected rather than after the lerp.
+    this.stage.addEventListener('pointerup', (e) => {
+      if (moved || this.zTarget < 0.5) return; // only a deliberate tap, at the camp end
+      const r = this.stage.getBoundingClientRect();
+      const x = (e.changedTouches ? e.changedTouches[0].clientX : e.clientX) - r.left;
+      this.tapTower(x < r.width / 2 ? 0 : 1);
+    });
+  }
+
+  // --- setup flow ----------------------------------------------------------
+
+  noteInteract() { this.lastInteract = performance.now(); }
+
+  // Exactly one canonical view is shown at any time (the frozen state machine):
+  //   LOBBY      — pre-match setup, and the rematch lobby after the cracktro
+  //   COMMANDEMENT — aiming / firing, through all rounds
+  //   CRACKTRO   — end-of-match fx + Rejouer/Quitter
+  // (ACCUEIL lives in LobbyScene, before this scene starts.)
+  computeView() {
+    const matchEnd = this.phase === PHASE.MATCH_END;
+    if (matchEnd && this.cracktro) return 'cracktro';
+    if (this.phase && !matchEnd) return 'command';
+    return 'lobby'; // pre-match, or rematch lobby once the cracktro is dismissed
+  }
+
+  inLobby() {
+    return this.view === 'lobby';
+  }
+
+  // Only the config owner moves between the settings page and the camp page; the
+  // other player is held on the camp page (no access to the settings). The owner
+  // keeps this freedom throughout the lobby — a camp pick never locks them out.
+  canScroll() {
+    return this.inLobby() && this.isConfigOwner;
+  }
+
+  // Resolve what this player does in the lobby, from the roster state. Page 2 is
+  // "fastest wins" for both personas, so the Rival may also claim a side.
+  //   config-chooser : Architect — owns page 1 AND has/claims the camp
+  //   config-only    : Architect — owns page 1, opponent took the camp first
+  //   camp-chooser   : Rival — may claim the camp (no page-1 access)
+  //   camp-taken     : Rival — the Architect took the camp first; locked to the rest
+  setupRole() {
+    const me = this.player;
+    if (this.campChooser === -1) {
+      return this.isConfigOwner ? 'config-chooser' : 'camp-chooser';
+    }
+    if (this.isConfigOwner) return this.campChooser === me ? 'config-chooser' : 'config-only';
+    return this.campChooser === me ? 'camp-chooser' : 'camp-taken';
+  }
+
+  setZ(z) {
+    this.zTarget = z;
+    this.noteInteract();
+  }
+
+  // Settle the scroll to whichever end is closer. For the config owner, crossing
+  // into the camp end validates the settings; scrolling back to the settings
+  // page retracts that validation, so the match cannot start while the owner is
+  // still on page 1 (even if the rival has already claimed a side).
+  snapZ() {
+    const goCamp = this.zTarget >= 0.5;
+    if (this.isConfigOwner && goCamp !== this.configDone) {
+      this.configDone = goCamp;
+      this.client.send('configDone', { value: goCamp });
+    }
+    this.setZ(goCamp ? 1 : 0);
+  }
+
+  // A tower was tapped at the camp end. Only a chooser may claim a side; the
+  // config-only Architect and the camp-taken Rival have nothing to tap.
+  tapTower(slot) {
+    const role = this.setupRole();
+    if ((role === 'config-chooser' || role === 'camp-chooser') && !this.campChosen) {
+      this.chooseCampSlot(slot);
+    }
+  }
+
+  chooseCampSlot(slot) {
+    if (this.campChosen) return;
+    this.campChosen = true;
+    this.campPick = { slot, t: 0 }; // drives the "other tower crumbles" animation
+    this.sfx.blip(880);
+    this.client.send('camp', { slot });
+    this.refresh();
   }
 
   // --- aim -----------------------------------------------------------------
@@ -213,22 +514,76 @@ export default class ControllerScene extends Phaser.Scene {
     this.renderFireButton();
   }
 
-  // The validate/cancel button, including the turbo shot-clock countdown.
+  // A burst of muzzle smoke + a flash from the FIRE button's cannon bore, the
+  // instant our shot leaves the barrel. Particles are short-lived DOM nodes on
+  // the body (so they can drift past the button), centred on the bore.
+  fireSmoke() {
+    const bore = this.overlay && this.overlay.querySelector('#fire .bore');
+    if (!bore) return;
+    const r = bore.getBoundingClientRect();
+    if (!r.width) return;
+    const ox = r.left + r.width / 2;
+    const oy = r.top + r.height / 2;
+    const flash = document.createElement('div');
+    flash.className = 'tp-mflash';
+    flash.style.left = `${ox}px`;
+    flash.style.top = `${oy}px`;
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 240);
+    for (let i = 0; i < 8; i += 1) {
+      const p = document.createElement('div');
+      p.className = 'tp-puff';
+      const ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.3; // upward fan
+      const dist = 26 + Math.random() * 56;
+      const s = 9 + Math.random() * 16;
+      p.style.left = `${ox}px`;
+      p.style.top = `${oy}px`;
+      p.style.width = `${s}px`;
+      p.style.height = `${s}px`;
+      p.style.setProperty('--dx', `${Math.cos(ang) * dist}px`);
+      p.style.setProperty('--dy', `${Math.sin(ang) * dist - 16}px`);
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 760);
+    }
+  }
+
+  // The validate/cancel button: label, the turbo shot-clock countdown bar, and
+  // the escalating-shake urgency. Updates the inner .lbl/.drain (never the button
+  // text directly, which would wipe the bore/track elements).
   renderFireButton() {
     const btn = this.$('fire');
-    if (this.phase === PHASE.FIRING && !this.turbo) {
+    const lbl = btn.querySelector('.lbl');
+    const drain = btn.querySelector('.drain');
+    // Classic: once the volley is away it is inert until the next aim. Cover
+    // RESOLVING too, otherwise the order lock (still set) would briefly show
+    // "✖ Cancel order" between the shells landing and the next AIMING phase.
+    if ((this.phase === PHASE.FIRING || this.phase === PHASE.RESOLVING) && !this.turbo) {
+      this.locked = false; // drop the stale order lock so AIMING re-arms cleanly
       btn.disabled = true;
-      btn.classList.remove('ready', 'waiting', 'urgent');
-      btn.textContent = 'Firing…';
+      btn.classList.remove('waiting', 'urgent', 'hasclock');
+      btn.style.removeProperty('--shk');
+      lbl.textContent = 'Firing…';
       return;
     }
     btn.disabled = false;
     const sc = this.shotClock;
     const clock = sc != null ? ` ${sc.toFixed(1)}s` : '';
     btn.classList.toggle('waiting', this.locked);
-    btn.classList.toggle('urgent', !this.locked && sc != null && sc <= 2);
-    if (this.locked) btn.textContent = `✖ Cancel${sc != null ? ` ·${clock}` : ' order'}`;
-    else btn.textContent = sc != null ? `🔥 FIRE!${clock}` : 'VALIDATE SHOT';
+    const urgent = !this.locked && sc != null && sc <= 2;
+    btn.classList.toggle('urgent', urgent);
+
+    // Shot-clock bar: drains from full to empty over the mode's cadence.
+    btn.classList.toggle('hasclock', sc != null);
+    if (drain) {
+      const max = GAME_MODES[this.modeIndex]?.cadence || 8;
+      drain.style.width = sc != null ? `${Math.max(0, Math.min(1, sc / max)) * 100}%` : '100%';
+    }
+    // Escalating shake: amplitude grows as the last 2s tick away (~0.8px → ~4px).
+    if (urgent) btn.style.setProperty('--shk', `${(0.8 + (2 - sc) * 1.6).toFixed(2)}px`);
+    else btn.style.removeProperty('--shk');
+
+    if (this.locked) lbl.textContent = `✖ Cancel${sc != null ? ` ·${clock}` : ' order'}`;
+    else lbl.textContent = sc != null ? `🔥 FIRE!${clock}` : 'VALIDATE SHOT';
   }
 
   // --- pickers -------------------------------------------------------------
@@ -255,9 +610,14 @@ export default class ControllerScene extends Phaser.Scene {
     });
   }
 
-  isChooser() { return this.biomeChooser === this.player && (!this.inMatch || this.postmatch); }
+  // Who may edit the match settings: the config owner (first player before the
+  // first match, the loser between matches).
+  canEditConfig() {
+    return this.inLobby() && this.isConfigOwner;
+  }
 
   cycleBiome(dir) {
+    if (!this.canEditConfig()) return;
     this.biomeIndex = (this.biomeIndex + dir + BIOMES.length) % BIOMES.length;
     this.sfx.blip(700);
     this.client.send('config', { biomeId: BIOMES[this.biomeIndex].id });
@@ -266,6 +626,7 @@ export default class ControllerScene extends Phaser.Scene {
   }
 
   cycleRounds(dir) {
+    if (!this.canEditConfig()) return;
     this.roundsIndex = (this.roundsIndex + dir + ROUND_OPTIONS.length) % ROUND_OPTIONS.length;
     this.sfx.blip(620);
     this.client.send('config', { rounds: ROUND_OPTIONS[this.roundsIndex] });
@@ -273,6 +634,7 @@ export default class ControllerScene extends Phaser.Scene {
   }
 
   cycleHp(dir) {
+    if (!this.canEditConfig()) return;
     this.hpIndex = (this.hpIndex + dir + HP_OPTIONS.length) % HP_OPTIONS.length;
     this.sfx.blip(580);
     this.client.send('config', { hp: HP_OPTIONS[this.hpIndex] });
@@ -280,16 +642,12 @@ export default class ControllerScene extends Phaser.Scene {
   }
 
   cycleMode(dir) {
+    if (!this.canEditConfig()) return;
     this.modeIndex = (this.modeIndex + dir + GAME_MODES.length) % GAME_MODES.length;
     const m = GAME_MODES[this.modeIndex];
     this.sfx.blip(660);
     this.client.send('config', { turbo: m.turbo, cadence: m.cadence });
     this.$('modeName').textContent = m.label;
-  }
-
-  playAgain() {
-    this.client.send('playAgain');
-    this.$('again').disabled = true; this.$('again').textContent = 'Waiting for opponent…';
   }
 
   // Tint the controller to the current biome (dark enough to keep text legible).
@@ -302,9 +660,18 @@ export default class ControllerScene extends Phaser.Scene {
   // --- server messages -----------------------------------------------------
 
   onRoster(m) {
+    const wasInMatch = this.inMatch;
     this.biomeChooser = m.biomeChooser ?? -1;
     this.inMatch = !!m.inMatch;
     this.postmatch = !!m.postmatch;
+    this.setup = !!m.setup;
+    this.configDone = !!m.configDone;
+    this.campChooser = m.campChooser ?? -1;
+    this.roster = m.players || [];
+    this.isConfigOwner = !!this.roster[this.player]?.isConfigOwner;
+    this.oppConnected = !!this.roster[this.player === 0 ? 1 : 0]?.connected;
+    this.inSetup = this.setup && !this.inMatch;
+
     if (m.config) {
       const bi = BIOMES.findIndex((b) => b.id === m.config.biomeId);
       if (bi !== -1) { this.biomeIndex = bi; this.applyBiome(); }
@@ -315,13 +682,30 @@ export default class ControllerScene extends Phaser.Scene {
       const mi = GAME_MODES.findIndex((g) => g.turbo === m.config.turbo && (!g.turbo || g.cadence === m.config.cadence));
       if (mi !== -1) this.modeIndex = mi;
     }
+
     // The match was aborted (opponent left) and the room is back to the lobby:
-    // drop back to the pre-match waiting state.
-    if (!m.inMatch && this.phase) {
+    // drop the match state and re-place us in the depth scene.
+    if (!m.inMatch && (this.phase || wasInMatch)) {
       this.phase = null;
       this.prevPhase = null;
       this.clearEndScreen();
       this.unlock();
+      this.campChosen = false;
+      this.campPick = null;
+      this.placedZ = false;
+    }
+
+    // Reconcile the optimistic local camp pick with the authoritative chooser.
+    // When the camp is released for a rematch (campChooser back to -1), we do NOT
+    // reset here: the player keeps their colours through the end-of-match cracktro
+    // and only goes neutral once they tap Rematch (see dismissCracktro) — or the
+    // match was aborted, handled by the !inMatch reset above.
+    if (this.campChooser === this.player) {
+      this.campChosen = true;
+    } else if (this.campChooser !== -1) {
+      // Lost the first-tap race: drop our optimistic pick and settle to the rest.
+      this.campChosen = false;
+      this.campPick = null;
     }
     this.refresh();
   }
@@ -370,7 +754,6 @@ export default class ControllerScene extends Phaser.Scene {
     this.renderFireButton();
 
     if (s.phase === PHASE.MATCH_END && this.prevPhase !== PHASE.MATCH_END) {
-      this.$('again').disabled = false; this.$('again').textContent = 'Play again';
       this.startCracktro(s);
     }
     if (s.phase !== PHASE.MATCH_END && this.cracktro) this.clearEndScreen();
@@ -401,7 +784,14 @@ export default class ControllerScene extends Phaser.Scene {
     };
     for (const e of events) {
       if (e.type === 'fire') {
-        if (e.owner === this.player) { this.sfx.boom(); this.vibe(35); } // only my own cannon
+        if (e.owner === this.player) {
+          this.sfx.boom(); this.vibe(35); // only my own cannon
+          this.fireSmoke(); // smoke + flash burst from the FIRE button's cannon bore
+          // Our shot is away: drop the order lock so the button returns to
+          // "FIRE/VALIDATE" instead of staying stuck on "Cancel order". In turbo
+          // there is no phase change to re-arm on, so this event is what does it.
+          if (this.locked) this.unlock();
+        }
       } else if (e.type === 'impact') {
         const v = near(e.x, e.y);
         if (v > 0.05) this.sfx.explosion(v); // only impacts near my tower, scaled
@@ -419,33 +809,51 @@ export default class ControllerScene extends Phaser.Scene {
     }
   }
 
-  // Continuous "bullet whizz" + proximity buzz, scaled by how close the nearest
-  // shell is to this player's own tower.
+  // The tower is a "mic": every airborne shell whistles, but only within 20% of
+  // the screen width of THIS player's tower — loudest right at the tower, silent
+  // at the edge of range. Each shell is its own voice (a triple salvo = three
+  // overlapping whistles), and it plays whenever shells are up: classic (FIRING)
+  // and turbo (shells fly during AIMING). A shell launching from here is loud
+  // then fades as it leaves; an incoming one swells as it nears.
   proximity(s, me) {
-    if (s.phase !== PHASE.FIRING || !s.projectiles.length) { this.sfx.flyby(0); return; }
+    if (!s.projectiles.length) { this.sfx.whistles([]); return; }
     const ox = this.ownTowerX;
-    const oy = me.groundY - 48;
-    // Find the nearest shell by *squared* distance — sqrt is monotonic, so the
-    // closest squared distance is the closest distance. In turbo many shells can
-    // be airborne at once, so this saves a sqrt per shell every frame; we take
-    // the single real square root only once, and only if something is in range.
-    let bestSq = Infinity;
+    const oy = (me.groundY ?? 600) - 48;
+    const range = GAME_WIDTH * 0.20; // mic range = 20% of the screen width
+    const r2 = range * range;
+    const voices = [];
+    let nearest = 0;
     for (const p of s.projectiles) {
       const dx = p.x - ox;
       const dy = p.y - oy;
+      // Compare squared distances first; take the one sqrt only when in range.
       const d2 = dx * dx + dy * dy;
-      if (d2 < bestSq) bestSq = d2;
+      if (d2 >= r2) continue; // out of mic range -> no sound
+      const intensity = 1 - Math.sqrt(d2) / range; // 1 at the tower, 0 at the edge
+      voices.push({ id: p.id, intensity, freq: WHISTLE_FREQ[p.shell] ?? WHISTLE_FREQ.normal });
+      if (intensity > nearest) nearest = intensity;
     }
-    const threshold = 460; // ~36% of the screen width
-    const intensity = bestSq < threshold * threshold ? 1 - Math.sqrt(bestSq) / threshold : 0;
-    this.sfx.flyby(intensity);
-    if (intensity > 0.06) {
+    this.sfx.whistles(voices);
+    // Proximity haptic buzz tracks the closest shell in range (throttled).
+    if (nearest > 0.06) {
       const now = performance.now();
       if (now - this.lastVibe > 110) {
         this.lastVibe = now;
-        this.vibe(Math.round(8 + intensity * 55));
+        this.vibe(Math.round(8 + nearest * 55));
       }
     }
+  }
+
+  // Skip / finish the cracktro: wipe it and reveal the rematch lobby underneath.
+  // This is where the finished match's side is dropped — colours are kept through
+  // the whole cracktro and only go neutral now (on Rematch), so both towers stand
+  // again for a fresh pick.
+  dismissCracktro() {
+    this.clearEndScreen();
+    this.campChosen = false;
+    this.campPick = null;
+    this.applyAccent();
+    this.refresh();
   }
 
   // Wipe every trace of the end-of-match cracktro so the next match (or the
@@ -458,30 +866,80 @@ export default class ControllerScene extends Phaser.Scene {
   }
 
   refresh() {
-    const matchEnd = this.phase === PHASE.MATCH_END;
-    const playing = !!this.phase && !matchEnd;
-    this.$('controls').hidden = !playing;
-    this.$('post').hidden = !matchEnd;
-    this.fx.hidden = !matchEnd;
-    this.canvas.style.display = matchEnd ? 'none' : 'block'; // hide aim view during the cracktro
-    // Mute the live HUD line behind the end screen (cleaned up afterwards).
-    this.$('info').hidden = matchEnd;
+    this.view = this.computeView();
+    const v = this.view;
 
-    const showBiome = this.isChooser();
-    this.$('biome').hidden = !showBiome;
-    if (showBiome) {
-      this.$('biomeName').textContent = BIOMES[this.biomeIndex].name;
-      this.$('roundsName').textContent = `${ROUND_OPTIONS[this.roundsIndex]} rounds`;
-      this.$('hpName').textContent = hpLabel(HP_OPTIONS[this.hpIndex]);
-      this.$('modeName').textContent = GAME_MODES[this.modeIndex].label;
-    }
+    this.applyAccent(); // neutral until a camp is claimed, then the side colour
+
+    this.$('setup').hidden = v !== 'lobby';
+    this.$('controls').hidden = v !== 'command';
+    this.fx.hidden = v !== 'cracktro';
+    this.$('endbtns').hidden = v !== 'cracktro';
+    this.canvas.style.display = v === 'command' ? 'block' : 'none'; // aim view only mid-match
+    this.$('info').hidden = v !== 'command';
+
+    this.overlay.classList.toggle('reconnecting', !!this.reconnecting);
+    if (v === 'lobby') this.renderSetup();
+    else this.placedZ = false; // re-place on the next lobby entry
     this.updateShellUI();
-    if (playing) this.updateReadout();
+    if (v === 'command') this.updateReadout();
+  }
 
-    if (!this.phase) {
-      this.$('info').textContent = showBiome
-        ? 'Pick a biome — waiting for the opponent…'
-        : 'Waiting for the opponent to join…';
+  // Drive the depth-scene lobby (pre-match and rematch alike): config labels +
+  // editability, the one-time entry placement, the scroll hint and status line.
+  renderSetup() {
+    this.$('biomeName').textContent = BIOMES[this.biomeIndex].name;
+    this.$('roundsName').textContent = `${ROUND_OPTIONS[this.roundsIndex]} rounds`;
+    this.$('hpName').textContent = hpLabel(HP_OPTIONS[this.hpIndex]);
+    this.$('modeName').textContent = GAME_MODES[this.modeIndex].label;
+    this.$('cfg').classList.toggle('locked', !this.canEditConfig());
+
+    const status = this.$('setupStatus');
+    this.renderSync();
+
+    // Place the camera once per lobby: the config owner starts on the settings
+    // (page 1), everyone else on the camp page (page 2). Never re-snap after —
+    // the other player's camp pick must not move us.
+    if (!this.placedZ) {
+      this.setZ(this.isConfigOwner ? 0 : 1);
+      this.placedZ = true;
+    }
+
+    const role = this.setupRole();
+    this.$('scrollHint').hidden = !(this.canScroll() && this.zTarget < 0.5);
+
+    // Colour says which side you are on — never spell out "blue"/"red".
+    if (role === 'config-chooser') {
+      status.textContent = this.zTarget < 0.5
+        ? 'Set up the match, then scroll down to pick your tower'
+        : (this.campChosen ? 'Your tower is set — starting soon' : 'Tap a tower to claim it');
+    } else if (role === 'config-only') {
+      status.textContent = this.zTarget < 0.5
+        ? 'Set up the match — your rival claimed a side'
+        : 'Your rival picked first — starting soon';
+    } else if (role === 'camp-chooser') {
+      status.textContent = this.campChosen ? 'Your tower is set — waiting…' : 'Tap a tower to claim it';
+    } else { // camp-taken
+      status.textContent = 'Your side is set — waiting for the start…';
+    }
+  }
+
+  // Persistent two-sided line shown in the lobby, so each player sees the other's
+  // state (joining / setting up / side claimed).
+  renderSync() {
+    const oppSlot = this.player === 0 ? 1 : 0;
+    const oppEl = this.$('syncOpp');
+    const meDone = this.campChosen || (this.isConfigOwner && this.configDone && this.zTarget >= 0.5);
+    this.$('syncMe').textContent = meDone ? 'You · ready ✓' : 'You · setting up…';
+    oppEl.classList.remove('ready', 'off');
+    if (!this.oppConnected) {
+      oppEl.textContent = 'Opponent · not here yet';
+      oppEl.classList.add('off');
+    } else if (this.campChooser === oppSlot) {
+      oppEl.textContent = 'Opponent · side claimed ✓';
+      oppEl.classList.add('ready');
+    } else {
+      oppEl.textContent = 'Opponent · setting up…';
     }
   }
 
@@ -493,10 +951,87 @@ export default class ControllerScene extends Phaser.Scene {
       if (this.phase === PHASE.FIRING && this.prevFireSeen !== true) { this.flash = 1; this.prevFireSeen = true; }
       if (this.phase !== PHASE.FIRING) this.prevFireSeen = false;
       this.drawView();
+      if (this.$ && !this.$('setup').hidden) this.drawSetupStage();
       if (this.cracktro) this.drawCracktro();
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
+  }
+
+  // --- setup depth scene ---------------------------------------------------
+
+  // One continuous depth space. z=0: the settings panel is in focus, framed by
+  // two huge towers whose inner edges bleed in from the screen sides. Pulling
+  // back (z→1) shrinks the towers and draws them together into the camp picker
+  // while the settings recede and fade out.
+  drawSetupStage() {
+    const t = performance.now();
+    if (this.dragY == null) this.z += (this.zTarget - this.z) * 0.16;
+
+    // Page 1 holds perfectly still — the bobbing scroll-hint arrow is enough of
+    // an invitation to pull back; the towers must not drift on their own.
+    const z = Phaser.Math.Clamp(this.z, 0, 1);
+
+    // Settings panel recedes and dissolves as we pull back; once faded it lets
+    // taps through to the towers behind it.
+    const cfg = this.$('cfg');
+    const fade = Phaser.Math.Clamp(1 - z / 0.55, 0, 1);
+    cfg.style.opacity = String(fade);
+    // Keep the centring translate (CSS uses top/left:50% + translate(-50%,-50%));
+    // overriding transform with scale() alone would drop it and shift the panel.
+    cfg.style.transform = `translate(-50%,-50%) scale(${0.78 + 0.22 * fade})`;
+    cfg.style.pointerEvents = fade > 0.3 ? 'auto' : 'none';
+
+    const r = this.fitCanvas(this.stage, this.stageCtx);
+    if (!r) return;
+    const ctx = this.stageCtx;
+    const W = r.width;
+    const H = r.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // ground shimmer
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(0, H * 0.9, W, H * 0.1);
+
+    if (this.campPick) this.campPick.t = Math.min(1, this.campPick.t + 0.05);
+    // The viewer's side is settled once a camp has been claimed (by them or the
+    // chooser); the framing towers then reflect it even from page 1.
+    const settled = this.campPick ||
+      (this.setupRole() !== 'config-chooser' && this.setupRole() !== 'camp-chooser' &&
+       this.campChooser >= 0);
+    const colors = [COLORS.towerP1, COLORS.towerP2];
+    // The slot we'll end up in — the tapped side wins immediately, before the
+    // server's reslot lands, so the glow/crumble never flickers inverted.
+    const mySlot = this.campPick ? this.campPick.slot : this.player;
+
+    for (let slot = 0; slot < 2; slot += 1) {
+      // Depth interpolation: huge & at the edges up close → small & centred far.
+      const baseY = (H * 0.96) - (1 - z) * H * 0.06;
+      const h = H * (1.5 - z * 1.0); // 1.5H close, 0.5H pulled back
+      const w = Math.max(40, W * (0.5 - z * 0.32));
+      const edgeX = slot === 0 ? -W * 0.06 : W * 1.06; // inner edge bleeds in
+      const campX = slot === 0 ? W * 0.3 : W * 0.7;
+      const cx = edgeX + (campX - edgeX) * z;
+      const facing = slot === 0 ? 1 : -1;
+
+      let oy = 0;
+      let alpha = 1;
+      let glow = 0;
+      const crumbling = settled && slot !== mySlot;
+      if (crumbling) {
+        const ct = this.campPick ? this.campPick.t : 1;
+        oy = ct * h * 0.5;
+        alpha = (1 - ct) * z; // only visible once pulled back, then falls away
+      } else if (settled && slot === mySlot) {
+        glow = colors[slot]; // your standing tower
+      }
+      // Fade the framing towers in slightly as we approach the camp end so the
+      // picker reads cleanly.
+      drawTowerGlyph(ctx, cx, baseY + oy, w, h, colors[slot], facing, {
+        time: t, fuse: z > 0.6 && !crumbling, alpha, glow,
+      });
+
+    }
   }
 
   fitCanvas(canvas, ctx) {
@@ -514,7 +1049,9 @@ export default class ControllerScene extends Phaser.Scene {
     drawTowerTop(this.ctx, r.width, r.height, {
       angle: this.aimAngle, power: this.aimPower, facing: this.facing,
       color: this.color, wind: this.wind, time: performance.now(), flash: this.flash,
-      ready: this.locked && this.phase === PHASE.AIMING, // fuse goes out the moment we fire
+      // Fuse sparks while our shot is committed and waiting (locked locally or
+      // confirmed ready by the server); it goes out the moment the volley fires.
+      ready: (this.locked || this.serverReady) && this.phase === PHASE.AIMING,
     });
     if (this.phase === PHASE.AIMING && !this.locked) this.drawAimGuide(r.width, r.height);
   }
@@ -567,6 +1104,11 @@ export default class ControllerScene extends Phaser.Scene {
     const loses = ['DISGRACE FOR GENERATIONS', 'SHAME… UTTER SHAME', 'YOUR ANCESTORS WEEP'];
     const text = draw ? 'AN HONOURABLE DRAW' : won ? wins[(Math.random() * wins.length) | 0] : loses[(Math.random() * loses.length) | 0];
     this.cracktro = { text, won, draw, t: 0, stars: Array.from({ length: 60 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() * 0.8 + 0.2 })) };
+
+    // The winner's phone gets a victory bugle; the loser already heard their own
+    // tower collapse, so it stays silent (no salt in the wound).
+    if (won) this.sfx.fanfare();
+    // The rematch lobby is revealed only when the player taps Rejouer (no timer).
   }
 
   drawCracktro() {
@@ -632,6 +1174,119 @@ function hpLabel(n) {
   return `${'❤'.repeat(n)} ${n} HP`;
 }
 
+// A compact stone tower for the setup screens (peek + camp picker). Mirrors the
+// TV battlefield tower: a masonry body (running-bond courses), crenellations with
+// mortar joints, relief shading, and a raised barrel whose length/width track the
+// body so it scales correctly at any size. Optional calm fuse ember + side glow.
+function drawTowerGlyph(ctx, cx, baseY, w, h, color, facing, o = {}) {
+  const bx = cx - w / 2;
+  const by = baseY - h;
+  const baseAlpha = o.alpha != null ? o.alpha : 1;
+  const bodyCss = intToCss(color);
+  const mortarCss = intToCss(shade(color, 0.6));
+  const litCss = intToCss(shade(color, 1.16));
+  const darkCss = intToCss(shade(color, 0.78));
+  const joint = Math.max(1, w * 0.02);
+
+  ctx.save();
+  ctx.globalAlpha = baseAlpha;
+  if (o.glow) {
+    ctx.shadowColor = intToCss(o.glow);
+    ctx.shadowBlur = 22;
+  }
+
+  // Stone body.
+  roundRect(ctx, bx, by, w, h, 6);
+  ctx.fillStyle = bodyCss;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Masonry: offset courses drawn as mortar joints, clipped to the body.
+  ctx.save();
+  roundRect(ctx, bx, by, w, h, 6);
+  ctx.clip();
+  ctx.strokeStyle = mortarCss;
+  ctx.lineWidth = joint;
+  const rowH = Math.max(10, h / 7);
+  const blockW = Math.max(14, w / 2.4);
+  let row = 0;
+  for (let y = by + rowH; y < by + h; y += rowH, row += 1) {
+    ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx + w, y); ctx.stroke();
+    const off = (row % 2) * (blockW / 2);
+    for (let x = bx + off; x < bx + w; x += blockW) {
+      if (x <= bx) continue;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + rowH); ctx.stroke();
+    }
+  }
+  // Top highlight + base shadow for relief.
+  ctx.globalAlpha = baseAlpha * 0.5;
+  ctx.fillStyle = litCss;
+  ctx.fillRect(bx, by, w, Math.max(2, h * 0.03));
+  ctx.globalAlpha = baseAlpha * 0.18;
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(bx, by + h - Math.max(4, h * 0.06), w, Math.max(4, h * 0.06));
+  ctx.restore();
+
+  // Crenellated top (merlons) with a mortar outline.
+  const merlon = (w - 8) / 5;
+  const mh = Math.max(7, h * 0.05);
+  ctx.lineWidth = joint;
+  for (let i = 0; i < 3; i += 1) {
+    const mx = bx + 4 + i * merlon * 2;
+    ctx.fillStyle = darkCss;
+    ctx.fillRect(mx, by - mh, merlon, mh);
+    ctx.strokeStyle = mortarCss;
+    ctx.strokeRect(mx, by - mh, merlon, mh);
+  }
+
+  // Barrel, raised ~40°, sized to the body (same length/width ratio as the TV
+  // tower: ~0.46 of the height long, ~0.13 of the width thick).
+  const px = cx;
+  const py = by + Math.max(2, h * 0.02);
+  const rad = (40 * Math.PI) / 180;
+  const blen = h * 0.46;
+  const bwid = Math.max(4, w * 0.13);
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(Math.atan2(-Math.sin(rad), facing * Math.cos(rad)));
+  ctx.fillStyle = '#d7dde8';
+  roundRect(ctx, 0, -bwid / 2, blen, bwid, bwid * 0.4);
+  ctx.fill();
+  ctx.restore();
+
+  // Hub.
+  ctx.fillStyle = '#d7dde8';
+  ctx.beginPath();
+  ctx.arc(px, py, Math.max(4, w * 0.08), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Fuse ember — a soft, slow glow (calmer than the old bright flare).
+  if (o.fuse) {
+    const fx = px - facing * w * 0.18;
+    const fy = py - h * 0.14;
+    const tw = 0.55 + 0.25 * Math.sin((o.time || 0) * 0.012);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = baseAlpha * 0.6;
+    const r = Math.max(3, h * 0.035) * tw;
+    const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r * 2);
+    g.addColorStop(0, 'rgba(255,224,150,0.7)');
+    g.addColorStop(1, 'rgba(255,150,60,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(fx, fy, r * 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -642,18 +1297,43 @@ function injectControllerStyles() {
   style.id = 'tp-ctl-styles';
   style.textContent = `
     .tp-ctl{align-items:stretch;}
-    .tp-ctl-card{width:100%;max-width:560px;margin:auto;display:flex;flex-direction:column;}
+    /* A slim accent rail at the top is the player's "colours" — it eases from
+       neutral slate to the chosen side, signature without going monochrome. */
+    .tp-ctl-card{width:100%;max-width:560px;margin:auto;display:flex;flex-direction:column;
+      border-top:4px solid var(--accent);border-radius:0 0 14px 14px;padding-top:10px;
+      box-shadow:0 -2px 22px -8px var(--accent);transition:border-color .55s ease,box-shadow .55s ease;}
     .tp-ctl header{display:flex;justify-content:space-between;align-items:center;gap:12px;}
     .tp-ctl .tp-logo-sm{width:38px;height:38px;flex:none;border-radius:9px;}
     .tp-ctl #name{flex:1;min-width:0;font-size:clamp(22px,6vw,34px);font-weight:bold;color:var(--accent);
-      background:transparent;border:none;border-bottom:2px dashed #ffffff55;padding:4px 2px;}
+      background:transparent;border:none;border-bottom:2px dashed #ffffff55;padding:4px 2px;transition:color .55s ease;}
     .tp-ctl .room{font-size:clamp(13px,3.6vw,20px);color:#cdd6e6;white-space:nowrap;}
     .tp-ctl #info{font-size:clamp(15px,4.2vw,24px);margin:10px 0 4px;color:#eaf3ff;}
     .tp-ctl #ttv{width:100%;height:34vh;min-height:190px;display:block;margin:4px 0;touch-action:none;cursor:crosshair;}
     .tp-ctl .row{display:flex;align-items:center;justify-content:center;gap:16px;margin:6px 0;}
     .tp-ctl .row button{width:auto;background:transparent;color:#fff;border:none;font-size:30px;cursor:pointer;padding:0 8px;}
-    .tp-ctl #biomeName,.tp-ctl #roundsName,.tp-ctl #hpName{font-size:clamp(18px,5vw,26px);font-weight:bold;min-width:130px;text-align:center;}
-    .tp-ctl #biome .hint{font-size:14px;color:#cdd6e6;margin-top:2px;text-align:center;}
+    .tp-ctl #biomeName,.tp-ctl #roundsName,.tp-ctl #hpName,.tp-ctl #modeName{font-size:clamp(18px,5vw,26px);font-weight:bold;min-width:130px;text-align:center;}
+    .tp-ctl #setupSync{display:flex;justify-content:space-between;gap:10px;align-items:center;
+      font-size:clamp(13px,3.6vw,17px);font-weight:bold;margin:8px 0 2px;}
+    .tp-ctl #setupSync span{flex:1;padding:6px 10px;border-radius:10px;background:#ffffff10;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .tp-ctl #syncMe{text-align:left;color:var(--accent);}
+    .tp-ctl #syncOpp{text-align:right;color:#cdd6e6;}
+    .tp-ctl #syncOpp.ready{color:#7fd98a;background:#2f7d3222;}
+    .tp-ctl #syncOpp.off{color:#e7a14a;}
+    .tp-ctl #setupStage{position:relative;width:100%;height:52vh;min-height:320px;overflow:hidden;
+      margin:6px 0;touch-action:none;cursor:ns-resize;border-radius:14px;}
+    .tp-ctl #setupCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+    .tp-ctl #cfg{position:absolute;top:50%;left:50%;width:90%;transform:translate(-50%,-50%);
+      transform-origin:center;will-change:transform,opacity;}
+    .tp-ctl #cfg.locked{opacity:.6;}
+    .tp-ctl #cfg.locked .row button{visibility:hidden;}
+    .tp-ctl #scrollHint{position:absolute;left:0;right:0;bottom:8px;text-align:center;color:#cdd6e6;
+      font-size:13px;pointer-events:none;}
+    .tp-ctl #scrollHint span{display:inline-block;font-size:26px;line-height:1;animation:tp-bob 1.3s ease-in-out infinite;}
+    @keyframes tp-bob{0%,100%{transform:translateY(0);opacity:.5;}50%{transform:translateY(6px);opacity:1;}}
+    .tp-ctl #setupStatus{font-size:clamp(14px,4vw,20px);text-align:center;color:#cdd6e6;min-height:22px;margin-top:6px;}
+    .tp-ctl.reconnecting:after{content:'Reconnecting…';position:fixed;top:0;left:0;right:0;z-index:30;
+      text-align:center;padding:8px;background:#c9892b;color:#fff;font-weight:bold;font-size:16px;}
     .tp-ctl #readout{text-align:center;font-size:clamp(15px,4.2vw,22px);color:#eaf3ff;margin:2px 0 4px;}
     .tp-ctl .shellrow{display:flex;justify-content:center;gap:8px;margin:6px 0;}
     .tp-ctl .shellrow button{position:relative;flex:1;max-width:74px;padding:8px 2px 5px;display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -663,17 +1343,78 @@ function injectControllerStyles() {
     .tp-ctl .shellrow button .ct{position:absolute;top:1px;right:5px;font-size:11px;font-weight:bold;color:#ffd27a;}
     .tp-ctl .shellrow button.on{border-color:var(--accent);background:#ffffff28;color:#fff;}
     .tp-ctl .shellrow button.out{opacity:.32;}
-    .tp-ctl #fire,.tp-ctl #again,.tp-ctl #leave{width:100%;margin-top:10px;padding:clamp(16px,3vh,26px);
-      font-size:clamp(20px,5.4vw,30px);font-weight:bold;border:none;border-radius:18px;background:var(--accent);color:#fff;cursor:pointer;}
-    .tp-ctl #fire:disabled,.tp-ctl #again:disabled{background:#3a4a66;opacity:.7;}
-    .tp-ctl #fire.ready{background:#2f7d32;}
-    .tp-ctl #fire.waiting{background:#c9892b;}
-    .tp-ctl #fire.urgent{background:#d63b2f;animation:tp-pulse .5s ease-in-out infinite;}
-    @keyframes tp-pulse{50%{filter:brightness(1.25);}}
+    /* FIRE — a siege-engine key: iron-banded frame, corner rivets, a cannon bore
+       the muzzle smoke pours from, on a camp-coloured face (--face). */
+    .tp-ctl #fire{position:relative;width:100%;margin-top:10px;padding:clamp(16px,3vh,26px) 18px;
+      display:flex;align-items:center;justify-content:center;gap:12px;overflow:visible;
+      font-size:clamp(20px,5.4vw,30px);font-weight:bold;border:none;border-radius:12px;color:#fff;cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      background:
+        radial-gradient(circle at 13px 13px,#cfd6e2 2.8px,transparent 3.4px),
+        radial-gradient(circle at calc(100% - 13px) 13px,#cfd6e2 2.8px,transparent 3.4px),
+        radial-gradient(circle at 13px calc(100% - 13px),#cfd6e2 2.8px,transparent 3.4px),
+        radial-gradient(circle at calc(100% - 13px) calc(100% - 13px),#cfd6e2 2.8px,transparent 3.4px),
+        linear-gradient(180deg,rgba(255,255,255,.24),rgba(0,0,0,.24)),var(--face,var(--accent));
+      box-shadow:inset 0 0 0 4px #232a38,inset 0 0 0 6px rgba(255,255,255,.10),0 6px 0 rgba(0,0,0,.4),0 13px 24px -10px #000;
+      transition:background .4s ease,box-shadow .12s ease;}
+    .tp-ctl #fire .lbl{position:relative;z-index:2;}
+    .tp-ctl #fire .bore{flex:none;width:26px;height:26px;border-radius:50%;position:relative;z-index:2;
+      background:radial-gradient(circle at 50% 42%,#000 44%,#1a1f2a 46%,#2c3342 64%,#444c5e 80%);
+      box-shadow:inset 0 0 0 3px rgba(255,255,255,.32),inset 0 2px 5px #000;}
+    .tp-ctl #fire:active{transform:translateY(4px);box-shadow:inset 0 0 0 4px #232a38,inset 0 0 0 6px rgba(255,255,255,.10),0 2px 0 rgba(0,0,0,.4);}
+    .tp-ctl #fire:disabled{filter:grayscale(.5) brightness(.82);opacity:.8;}
+    .tp-ctl #fire.waiting{--face:#c9892b;}
+    /* Shot-clock countdown: a centred bar that leaves the corner rivets visible. */
+    .tp-ctl #fire .track{position:absolute;left:50%;transform:translateX(-50%);bottom:7px;width:54%;height:5px;
+      border-radius:3px;background:rgba(0,0,0,.32);overflow:hidden;display:none;z-index:2;}
+    .tp-ctl #fire.hasclock .track{display:block;}
+    .tp-ctl #fire .track .drain{display:block;height:100%;width:100%;background:#fff;border-radius:3px;transition:width .12s linear;}
+    /* Urgency = an escalating shake (light→strong via --shk), readable on any camp. */
+    .tp-ctl #fire.urgent{animation:tp-shake .42s ease-in-out infinite;}
+    @keyframes tp-shake{
+      0%,100%{transform:translate(0,0);}
+      20%{transform:translate(calc(var(--shk,1px) * -1),calc(var(--shk,1px) * .4));}
+      40%{transform:translate(var(--shk,1px),calc(var(--shk,1px) * -.4));}
+      60%{transform:translate(calc(var(--shk,1px) * -1),calc(var(--shk,1px) * -.4));}
+      80%{transform:translate(var(--shk,1px),calc(var(--shk,1px) * .4));}
+    }
+    /* Muzzle smoke + flash, spawned on the document body at the bore on firing. */
+    .tp-puff{position:fixed;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:60;
+      background:radial-gradient(circle,rgba(223,230,240,.85),rgba(150,166,184,.6) 55%,transparent 72%);
+      animation:tp-puff .76s ease-out forwards;}
+    @keyframes tp-puff{from{opacity:.85;transform:translate(-50%,-50%) scale(.4);}
+      to{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.9);}}
+    .tp-mflash{position:fixed;width:44px;height:44px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:61;
+      background:radial-gradient(circle,rgba(255,244,190,.95),rgba(255,180,70,.5) 50%,transparent 70%);animation:tp-mflash .22s ease-out forwards;}
+    @keyframes tp-mflash{from{opacity:1;transform:translate(-50%,-50%) scale(.5);}to{opacity:0;transform:translate(-50%,-50%) scale(1.6);}}
     .tp-ctl .ghost{background:transparent;border:2px solid #ffffff44;color:#cdd6e6;}
+    .tp-ctl #leave{display:block;margin:14px auto 0;padding:8px 18px;font-size:14px;border:none;
+      background:transparent;color:#9fb0c8;cursor:pointer;text-decoration:underline;}
+
+    /* --- end-of-match: a courteous send-off + crafted "stone tablet" buttons --- */
+    .tp-ctl #endbtns{display:flex;flex-direction:column;gap:12px;align-items:stretch;margin-top:6px;}
+    /* Softly chamfered corners + a chunky 3D bevel and a hard base edge: a
+       pressable stone tablet, not a flat rounded rectangle. */
+    .tp-ctl .endbtn{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;
+      width:100%;margin:0;padding:clamp(14px,2.6vh,20px) 18px;font-family:inherit;font-weight:bold;
+      font-size:clamp(17px,4.8vw,24px);letter-spacing:.4px;color:#fff;border:none;cursor:pointer;border-radius:12px;
+      -webkit-tap-highlight-color:transparent;
+      -webkit-clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%,0 10px);
+      clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%,0 10px);
+      transition:transform .08s ease,filter .2s ease;}
+    .tp-ctl .endbtn svg{width:1.15em;height:1.15em;fill:currentColor;flex:none;}
+    .tp-ctl .endbtn:active{filter:brightness(1.06);}
+    /* Primary (Rematch) — camp-coloured stone, lit top, hard cast base edge. */
+    .tp-ctl #again.endbtn{background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(0,0,0,.22)),var(--accent);
+      box-shadow:inset 0 3px 0 rgba(255,255,255,.5),inset 0 -4px 10px rgba(0,0,0,.4),inset 0 0 0 2px rgba(0,0,0,.18),0 6px 0 rgba(0,0,0,.35),0 12px 22px -10px #000;}
+    .tp-ctl #again.endbtn:active{transform:translateY(4px);box-shadow:inset 0 3px 0 rgba(255,255,255,.5),inset 0 -4px 10px rgba(0,0,0,.4),inset 0 0 0 2px rgba(0,0,0,.18),0 2px 0 rgba(0,0,0,.35);}
+    /* Courteous exit (Bow out) — a quieter slate tablet, same physical feel. */
+    .tp-ctl #leaveEnd.endbtn{background:linear-gradient(180deg,#2a3550,#1b2438);color:#dfe8f7;font-weight:600;
+      box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 8px rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,255,255,.10),0 5px 0 rgba(0,0,0,.3);}
+    .tp-ctl #leaveEnd.endbtn:active{transform:translateY(3px);box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 8px rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,255,255,.1),0 1px 0 rgba(0,0,0,.3);}
+    .tp-ctl #leaveEnd.endbtn svg{opacity:.85;}
     .tp-ctl #status{font-size:clamp(14px,4vw,22px);margin-top:12px;color:#cdd6e6;text-align:center;min-height:26px;}
-    .tp-ctl #fx{width:100%;height:34vh;min-height:200px;border-radius:14px;display:block;margin:6px 0;}
-    .tp-ctl #post{display:flex;flex-direction:column;}
+    .tp-ctl #fx{width:100%;height:34vh;min-height:200px;border-radius:14px;display:block;margin:6px 0;cursor:pointer;}
   `;
   document.head.appendChild(style);
 }

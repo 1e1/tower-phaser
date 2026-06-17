@@ -1,9 +1,11 @@
 import { createServer } from 'node:http';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import os from 'node:os';
 
 import express from 'express';
+import compression from 'compression';
 import { WebSocketServer } from 'ws';
 
 import Room from './Room.js';
@@ -30,14 +32,38 @@ const PUBLIC_HOST = process.env.PUBLIC_HOST || null;
 // Explicit override always wins; otherwise fall back to the detected LAN IP.
 const ADVERTISED_HOST = PUBLIC_HOST || LAN_IP;
 
+// Build stamp for this server checkout (short commit hash), surfaced on /healthz
+// so you can compare it against the `build …` shown on the TV/phone and catch a
+// device stuck on a cached bundle. Env override wins for tarball/CI deploys.
+const BUILD_ID = process.env.BUILD_ID || (() => {
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim();
+  } catch {
+    return 'unknown';
+  }
+})();
+
 const app = express();
-app.use(express.static(DIST));
+// gzip every text response — the client bundle is ~1.7 MB uncompressed and
+// drops to a few hundred KB over the wire, the single biggest first-load win.
+app.use(compression());
+app.use(express.static(DIST, {
+  setHeaders: (res, filePath) => {
+    // Vite fingerprints everything under /assets, so it can be cached forever.
+    // index.html, the service worker and the manifest fall through to the
+    // default (revalidated) so a redeploy is picked up immediately.
+    if (filePath.includes(`${sep}assets${sep}`)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
 // Lightweight health/diagnostic endpoint, declared BEFORE the SPA fallback so it
 // is actually reached. If this returns JSON, the Node process is the one serving
 // requests (and you can read its pid); if it returns index.html or a platform
 // 404, requests are being served statically and the WebSocket has no backend.
 app.get('/healthz', (_req, res) => {
-  res.json({ ok: true, pid: process.pid, uptime: Math.round(process.uptime()) });
+  res.json({ ok: true, build: BUILD_ID, pid: process.pid, uptime: Math.round(process.uptime()) });
 });
 // SPA fallback for any non-asset route.
 app.get(/.*/, (_req, res) => res.sendFile(join(DIST, 'index.html')));
@@ -114,7 +140,17 @@ function handle(socket, msg) {
       socket.room = room;
       socket.role = 'tv';
       room.addTv(socket);
-      send(socket, { t: 'hosted', code, role: 'tv', lanIp: ADVERTISED_HOST, publicHost: PUBLIC_HOST });
+      send(socket, { t: 'hosted', code, role: 'tv', token: room.tvToken, lanIp: ADVERTISED_HOST, publicHost: PUBLIC_HOST });
+      break;
+    }
+
+    // Reclaim the host anchor after a transient disconnect (host reload / blip).
+    // If the room or token is gone, the room has been torn down — tell the TV.
+    case 'rehost': {
+      const room = rooms.get((msg.code || '').toUpperCase());
+      if (!room || !room.reattachTv(socket, msg.token)) {
+        send(socket, { t: 'roomClosed' });
+      }
       break;
     }
 
@@ -131,8 +167,37 @@ function handle(socket, msg) {
       break;
     }
 
+    // Reclaim a held seat after a transient disconnect (phone lock/sleep). If the
+    // grace window already lapsed, fall back to a fresh join.
+    case 'rejoin': {
+      const room = rooms.get((msg.code || '').toUpperCase());
+      if (!room) {
+        send(socket, { t: 'rejoinFailed', reason: 'gone' });
+        return;
+      }
+      socket.room = room;
+      socket.name = msg.name || 'Player';
+      if (!room.rejoin(socket, msg.token, socket.name)) {
+        const res = room.addParticipant(socket, socket.name);
+        send(socket, { t: 'joined', code: room.code, ...res });
+      }
+      break;
+    }
+
     case 'config':
       if (socket.room) socket.room.setConfig(socket, msg);
+      break;
+
+    case 'configDone':
+      if (socket.room) socket.room.markConfigDone(socket, msg.value);
+      break;
+
+    case 'camp':
+      if (socket.room) socket.room.chooseCamp(socket, msg.slot);
+      break;
+
+    case 'goHome':
+      if (socket.room) socket.room.exit(socket);
       break;
 
     case 'name':
@@ -155,12 +220,8 @@ function handle(socket, msg) {
       if (socket.room) socket.room.sendRoster();
       break;
 
-    case 'playAgain':
-      if (socket.room) socket.room.playAgain(socket);
-      break;
-
     case 'leave':
-      if (socket.room) socket.room.leave(socket);
+      if (socket.room) socket.room.exit(socket);
       break;
 
     default:

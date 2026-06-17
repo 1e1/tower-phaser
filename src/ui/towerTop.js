@@ -80,23 +80,30 @@ export function drawTowerTop(ctx, w, h, o) {
   ctx.lineTo(fx, fy);
   ctx.stroke();
   if (o.ready) {
-    const tw = 0.6 + 0.4 * Math.sin(o.time * 0.03);
+    const tw = 0.55 + 0.45 * Math.sin(o.time * 0.03);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const r = h * 0.05 * tw;
-    const grad = ctx.createRadialGradient(fx, fy, 0, fx, fy, r * 2.4);
-    grad.addColorStop(0, 'rgba(255,230,128,0.95)');
+    // A big, bright halo so the "shot is armed and waiting" state reads clearly
+    // on a phone (not just on the TV).
+    const r = h * 0.085 * (0.85 + 0.25 * tw);
+    const grad = ctx.createRadialGradient(fx, fy, 0, fx, fy, r * 2.8);
+    grad.addColorStop(0, 'rgba(255,245,205,1)');
+    grad.addColorStop(0.4, 'rgba(255,210,110,0.9)');
     grad.addColorStop(1, 'rgba(255,140,42,0)');
     ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(fx, fy, r * 2.4, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    // a few flickering sparks
-    for (let i = 0; i < 4; i += 1) {
-      const a = o.time * 0.02 + i * 1.7;
-      const d = (i + tw) * h * 0.012;
-      ctx.fillStyle = '#ffe680';
-      ctx.fillRect(fx + Math.cos(a) * d, fy - Math.abs(Math.sin(a)) * d - h * 0.01, 2, 2);
+    ctx.beginPath(); ctx.arc(fx, fy, r * 2.8, 0, Math.PI * 2); ctx.fill();
+    // white-hot core
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath(); ctx.arc(fx, fy, Math.max(2.5, h * 0.014), 0, Math.PI * 2); ctx.fill();
+    // flickering sparks flying off the wick
+    for (let i = 0; i < 8; i += 1) {
+      const a = o.time * 0.02 + i * 0.9;
+      const d = ((i % 4) + tw) * h * 0.02;
+      ctx.fillStyle = i % 2 ? '#ffe680' : '#ffffff';
+      const sz = 2 + (i % 3);
+      ctx.fillRect(fx + Math.cos(a) * d, fy - Math.abs(Math.sin(a)) * d - h * 0.012, sz, sz);
     }
+    ctx.restore();
   }
 
   // Muzzle flash on firing.

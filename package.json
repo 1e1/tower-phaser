@@ -1,25 +1,32 @@
 {
   "name": "tower-phaser",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "Two-player artillery duel built with Phaser. Both players set angle and power at the same time, then both shots fire together.",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "vite",
     "dev:server": "node server/index.js",
     "build": "vite build",
     "build:docs": "node scripts/build-docs.mjs",
+    "i18n:check": "node scripts/i18n-sync.mjs check",
+    "i18n:sync": "node scripts/i18n-sync.mjs translate --apply",
     "preview": "vite preview --host",
     "start": "node server/index.js",
     "package": "npm run build && node scripts/package-release.mjs"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "express": "^4.21.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "phaser": "^4.1.0",
     "qrcode": "^1.5.4",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^0.21.2"
   }
 }

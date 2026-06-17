@@ -214,7 +214,9 @@ export default class Simulation {
         const angle = Math.max(AIM.minAngle, Math.min(AIM.maxAngle, tower.angle + spreadOffset + jitterA));
         const power = Math.max(AIM.minPower, Math.min(AIM.maxPower, tower.power + jitterP));
         const v = aimVector(angle, tower.facing);
-        const speed = power * PHYSICS.speedScale;
+        // Muzzle velocity scales with the shell's weight (fixed-energy cannon):
+        // heavier shells leave slower (shorter reach), lighter ones faster.
+        const speed = power * PHYSICS.speedScale * (shell.speedFactor ?? 1);
         this.projectileSeq += 1;
         this.projectiles.push({
           id: this.projectileSeq,
@@ -459,7 +461,7 @@ export default class Simulation {
       })),
       projectiles: this.projectiles
         .filter((p) => p.alive)
-        .map((p) => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), owner: p.owner })),
+        .map((p) => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), owner: p.owner, shell: p.shellId })),
     };
   }
 }

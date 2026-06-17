@@ -1,12 +1,13 @@
 {
   "title": "Annexes — Tower Duel",
   "meta.desc": "Les annexes du carnet Tower Duel : déploiement (Docker & hébergement), maths rapides, et le brief de départ commenté.",
-
   "hero.badge": "Bonus",
   "hero.kicker": "Le carnet",
   "hero.title": "Annexes",
   "hero.lead": "Des compléments pour aller plus loin que les 4 chapitres : héberger le jeu, un détour par les maths, et les coulisses du brief de départ.",
-
+  "card.lobby.lot": "🎮 Architecture",
+  "card.lobby.title": "Cycle d’une partie",
+  "card.lobby.desc": "Lobby, personas Architecte/Rival, machine à états et reconnexion — avec 4 simulateurs interactifs.",
   "card.deploy.lot": "⚙️ Technique",
   "card.deploy.title": "Déploiement",
   "card.deploy.desc": "Construire l'image Docker et héberger le jeu en ligne (alwaysdata, VPS, plateforme conteneur, statique).",
@@ -16,9 +17,7 @@
   "card.brief.lot": "📝 Coulisses",
   "card.brief.title": "Le brief de départ",
   "card.brief.desc": "Le cahier des charges qui a tout lancé — présenté, commenté et critiqué : comment bien décrire un projet.",
-
   "pager.prev": "← Accueil",
   "pager.next": "Annexes",
-
   "footer.suffix": "annexes 📎"
 }

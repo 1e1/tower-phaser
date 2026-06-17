@@ -181,31 +181,102 @@ export default class Sfx {
     osc.stop(now + 0.62);
   }
 
-  // Continuous "bullet whizz": a persistent band-passed tone whose volume and
-  // pitch rise as a shell nears the listener's tower (intensity 0..1) and fall
-  // as it recedes. Call with 0 to silence it. Works on iOS (audio), unlike the
-  // Vibration API.
-  flyby(intensity) {
+  // Polyphonic "bullet whizz": each in-flight shell is its own band-passed voice,
+  // keyed by projectile id, so a triple salvo whistles as three overlapping
+  // tones. The caller passes the live set every frame as
+  //   [{ id, intensity 0..1, freq }]
+  // — volume + pitch rise with intensity (proximity to the listener's tower) and
+  // a voice fades out the moment its shell leaves the set. Each voice stays well
+  // under the boom/impact level. Works on iOS, unlike the Vibration API.
+  whistles(list) {
     const ctx = this.ensure();
-    if (!this.fly) {
-      const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = 1200;
-      bp.Q.value = 7;
-      const g = ctx.createGain();
-      g.gain.value = 0;
-      osc.connect(bp).connect(g).connect(this.master);
-      osc.start();
-      this.fly = { osc, bp, g };
-    }
+    if (!this.whz) this.whz = new Map(); // projectile id -> { osc, bp, g }
     const now = ctx.currentTime;
-    const i = this.enabled ? Math.max(0, Math.min(1, intensity)) : 0;
-    this.fly.g.gain.setTargetAtTime(i * 0.2, now, 0.04);
-    const f = 600 + i * 1300;
-    this.fly.osc.frequency.setTargetAtTime(f, now, 0.04);
-    this.fly.bp.frequency.setTargetAtTime(f * 1.4, now, 0.04);
+    const live = new Set();
+
+    for (const s of list) {
+      live.add(s.id);
+      let v = this.whz.get(s.id);
+      if (!v) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.Q.value = 6;
+        const g = ctx.createGain();
+        g.gain.value = 0;
+        osc.connect(bp).connect(g).connect(this.master);
+        osc.start();
+        v = { osc, bp, g };
+        this.whz.set(s.id, v);
+      }
+      const i = this.enabled ? Math.max(0, Math.min(1, s.intensity)) : 0;
+      const base = s.freq || 1200;
+      const f = base * (0.7 + i * 0.6); // pitch climbs as it nears
+      v.g.gain.setTargetAtTime(i * 0.13, now, 0.04); // capped below boom/impact
+      v.osc.frequency.setTargetAtTime(f, now, 0.04);
+      v.bp.frequency.setTargetAtTime(f * 1.5, now, 0.04);
+    }
+
+    // Retire voices whose shell is gone (landed / off-screen): fade then stop.
+    for (const [id, v] of this.whz) {
+      if (live.has(id)) continue;
+      v.g.gain.setTargetAtTime(0, now, 0.05);
+      try { v.osc.stop(now + 0.2); } catch { /* already stopped */ }
+      this.whz.delete(id);
+    }
+  }
+
+  // A single brass note for the victory fanfare: a detuned sawtooth pair through
+  // a lowpass with a punchy attack and a touch of vibrato on held notes — a
+  // trumpet-ish voice built from the same primitives as everything else here.
+  brassNote(freq, t0, dur, peak = 0.3) {
+    const ctx = this.ensure();
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = freq;
+    const o2 = ctx.createOscillator(); // detuned twin for body
+    o2.type = 'sawtooth';
+    o2.frequency.value = freq * 1.006;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(Math.min(6500, freq * 2), t0);
+    lp.frequency.linearRampToValueAtTime(Math.min(9000, freq * 5), t0 + 0.05);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.025);
+    g.gain.setValueAtTime(peak, t0 + dur * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+    o.connect(lp);
+    o2.connect(lp);
+    lp.connect(g).connect(this.master);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+    o2.start(t0); o2.stop(t0 + dur + 0.02);
+    if (dur > 0.25) {
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 5.5;
+      const lg = ctx.createGain();
+      lg.gain.value = freq * 0.006;
+      lfo.connect(lg);
+      lg.connect(o.frequency);
+      lg.connect(o2.frequency);
+      lfo.start(t0 + 0.08); lfo.stop(t0 + dur);
+    }
+  }
+
+  // Victory bugle — the cavalry "Charge!" call (G–C–E–G rising to a held top),
+  // played on the WINNER's phone at the end of a match (the loser, meanwhile,
+  // hears their own tower collapse).
+  fanfare() {
+    if (!this.enabled) return;
+    const ctx = this.ensure();
+    const t = ctx.currentTime + 0.05;
+    const G4 = 392; const C5 = 523.25; const E5 = 659.25; const G5 = 783.99;
+    const seq = [
+      [G4, 0, 0.12], [C5, 0.12, 0.12], [E5, 0.24, 0.12],
+      [G5, 0.36, 0.20], [E5, 0.60, 0.10], [G5, 0.72, 0.55, 0.34],
+    ];
+    seq.forEach((n) => this.brassNote(n[0], t + n[1], n[2], n[3] || 0.3));
   }
 
   // Short UI tone for menu navigation and confirmation.

@@ -26,9 +26,15 @@ export default class Background {
     this.biome = biome;
     this.quality = quality;
     this.clouds = [];
+    this.ridges = [];
     this.windValue = 0;
     this.windTarget = 0;
     this.gustTime = 0;
+    // Accumulated parallax distance (in foreground px) baked into the scenery so
+    // the inter-round camera pan never snaps back: when the pan ends and the
+    // camera scroll resets, each layer is re-placed where the pan left it, then
+    // the world keeps scrolling continuously across rounds (see shiftWorld).
+    this.bakedScroll = 0;
 
     this.drawSky();
     this.drawCelestial();
@@ -54,44 +60,53 @@ export default class Background {
 
   drawCelestial() {
     const { celestial } = this.biome;
-    const x = GAME_WIDTH * celestial.x;
+    this.celestialFactor = 0.12;
+    this.celestialBaseX = GAME_WIDTH * celestial.x;
+    const x = this.celestialBaseX;
     const y = GAME_HEIGHT * celestial.y;
 
-    const glow = this.scene.add
+    this.celestialGlow = this.scene.add
       .image(x, y, 'flash')
       .setDepth(DEPTH.glow)
-      .setScrollFactor(0.12)
+      .setScrollFactor(this.celestialFactor)
       .setTint(celestial.glow)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setScale(celestial.radius / 10)
       .setAlpha(0.5);
     this.scene.tweens.add({
-      targets: glow,
+      targets: this.celestialGlow,
       alpha: 0.8,
-      scale: glow.scale * 1.08,
+      scale: this.celestialGlow.scale * 1.08,
       duration: 2600,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.inOut',
     });
 
-    const body = this.scene.add.graphics().setDepth(DEPTH.celestial).setScrollFactor(0.12);
-    body.fillStyle(celestial.color, 1);
-    body.fillCircle(x, y, celestial.radius);
+    // The body draws its disc at the base position; cross-round drift is applied
+    // by translating the graphics object in shiftWorld.
+    this.celestialBody = this.scene.add.graphics().setDepth(DEPTH.celestial).setScrollFactor(this.celestialFactor);
+    this.celestialBody.fillStyle(celestial.color, 1);
+    this.celestialBody.fillCircle(x, y, celestial.radius);
   }
 
-  ridge(color, baseY, amp, depth, scrollFactor) {
-    const g = this.scene.add.graphics().setDepth(depth).setScrollFactor(scrollFactor);
-    g.fillStyle(color, 1);
+  // (Re)draw one mountain ridge. The pattern is phase-shifted by the layer's
+  // share of the baked parallax, so the silhouette always fills the wide span
+  // (no edge ever scrolls into view) while the mountains slide across rounds.
+  drawRidge(r) {
+    const g = r.gfx;
+    g.clear();
+    g.fillStyle(r.color, 1);
     g.beginPath();
     g.moveTo(WIDE_MIN, GAME_HEIGHT);
-    const seed = depth;
+    const seed = r.depth;
+    const shift = r.factor * this.bakedScroll;
     for (let x = WIDE_MIN; x <= WIDE_MAX; x += 8) {
-      const t = x / GAME_WIDTH;
+      const t = (x + shift) / GAME_WIDTH;
       const y =
-        baseY -
-        amp * Math.sin(t * 4 + seed) -
-        amp * 0.5 * Math.sin(t * 9 + seed * 2);
+        r.baseY -
+        r.amp * Math.sin(t * 4 + seed) -
+        r.amp * 0.5 * Math.sin(t * 9 + seed * 2);
       g.lineTo(x, y);
     }
     g.lineTo(WIDE_MAX, GAME_HEIGHT);
@@ -101,8 +116,26 @@ export default class Background {
 
   drawMountains() {
     const [far, near] = this.biome.mountains;
-    this.ridge(far, GAME_HEIGHT * 0.62, 70, DEPTH.mountainFar, 0.25);
-    this.ridge(near, GAME_HEIGHT * 0.72, 50, DEPTH.mountainNear, 0.45);
+    this.ridges = [
+      { color: far, baseY: GAME_HEIGHT * 0.62, amp: 70, depth: DEPTH.mountainFar, factor: 0.25,
+        gfx: this.scene.add.graphics().setDepth(DEPTH.mountainFar).setScrollFactor(0.25) },
+      { color: near, baseY: GAME_HEIGHT * 0.72, amp: 50, depth: DEPTH.mountainNear, factor: 0.45,
+        gfx: this.scene.add.graphics().setDepth(DEPTH.mountainNear).setScrollFactor(0.45) },
+    ];
+    this.ridges.forEach((r) => this.drawRidge(r));
+  }
+
+  // Bake an inter-round camera pan into the scenery: called right after the pan
+  // ends and the camera scroll is reset to 0, so every parallax layer keeps the
+  // position the pan left it at — no snap — and the world scrolls on continuously
+  // for the next round. `camDelta` is the foreground distance just panned.
+  shiftWorld(camDelta) {
+    this.bakedScroll += camDelta;
+    this.ridges.forEach((r) => this.drawRidge(r));
+    if (this.celestialBody) this.celestialBody.x = -this.celestialFactor * this.bakedScroll;
+    if (this.celestialGlow) this.celestialGlow.x = this.celestialBaseX - this.celestialFactor * this.bakedScroll;
+    for (const cloud of this.clouds) cloud.x -= 0.5 * camDelta; // cloud scrollFactor
+    if (this.emitter) this.emitter.x -= 0.8 * camDelta; // ambient scrollFactor
   }
 
   spawnClouds() {

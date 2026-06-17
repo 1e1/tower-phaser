@@ -1,0 +1,75 @@
+    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,30 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>
+        <path d="M0,95 C260,55 520,118 760,90 C1020,58 1240,118 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <!-- ════════ DÉCOUVERTE ════════ -->
+      <section class="sheet">
+        <h2><span class="num">{{d.num}}</span>{{d.h2}}</h2>
+        <p class="lead">{{d.lead}}</p>
+        <p>{{d.p1}}</p>
+        <ul>
+          <li>{{d.li.accueil}}</li>
+          <li>{{d.li.lobby}}</li>
+          <li>{{d.li.command}}</li>
+          <li>{{d.li.cracktro}}</li>
+        </ul>
+        <p>{{d.p2}}</p>
+        <div class="sim">
+          <h4>{{sim2.title}}</h4>
+          <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:10px 0;">
+            <label style="cursor:pointer;"><input type="checkbox" id="p2page1" style="vertical-align:middle"> {{sim2.page1}}</label>
+            <label style="cursor:pointer;"><input type="checkbox" id="p2camp" style="vertical-align:middle"> {{sim2.camp}}</label>
+            <label style="cursor:pointer;"><input type="checkbox" id="p2join" checked style="vertical-align:middle"> {{sim2.join}}</label>
+          </div>
+          <canvas id="persona" width="640" height="220"></canvas>
+          <div class="hint">{{sim2.hint}}</div>
+        </div>
+      </section>
+
+      <!-- ════════ INTERMÉDIAIRE ════════ -->
+      <section class="sheet">
+        <h2><span class="num">{{i.num}}</span>{{i.h2}}</h2>
+        <p>{{i.p1}}</p>
+        <div class="sim">
+          <h4>{{sim3.title}}</h4>
+          <canvas id="walker" width="640" height="300" style="cursor:pointer"></canvas>
+          <div class="hint">{{sim3.hint}}</div>
+        </div>
+        <div class="callout tip">{{i.tip}}</div>
+      </section>
+
+      <!-- ════════ EXPERT ════════ -->
+      <section class="sheet">
+        <h2><span class="num">{{e.num}}</span>{{e.h2}}</h2>
+        <p>{{e.p1}}</p>
+        <div class="sim">
+          <h4>{{sim4.title}}</h4>
+          <canvas id="recon" width="640" height="200"></canvas>
+          <div style="margin:12px 0 4px;"><input type="range" id="reconAt" min="0" max="16" value="6" step="0.5" style="width:100%"></div>
+          <div class="hint">{{sim4.hint}}</div>
+        </div>
+        <p>{{e.p2}}</p>
+        <div class="sim">
+          <h4>{{sim1.title}}</h4>
+          <canvas id="px" width="900" height="220" style="width:100%;height:auto"></canvas>
+          <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:10px 0;">
+            <button id="pxnext" class="pill" style="border:none;cursor:pointer;">{{sim1.next}}</button>
+            <label style="cursor:pointer;"><input type="checkbox" id="pxbake" checked style="vertical-align:middle"> {{sim1.bake}}</label>
+            <span id="pxpos" class="hint"></span>
+          </div>
+          <div class="hint">{{sim1.hint}}</div>
+        </div>
+        <div class="callout nerd">{{e.nerd}}</div>
+        <p style="text-align:center; margin-top:24px;">
+          <a class="pill" href="index.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">{{backHome}}</a>
+        </p>
+      </section>
+    </main>

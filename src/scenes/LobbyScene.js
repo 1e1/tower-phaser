@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
 
+// Build stamp baked in by Vite (see vite.config.js). Shown discreetly so you can
+// confirm a device is actually running the latest deploy (and not a stale PWA).
+// eslint-disable-next-line no-undef
+export const BUILD_ID = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
+
 // Entry screen for the connected (remote) experience. One device hosts as the
 // TV/spectator; phones and tablets join as player controllers with a room code.
 // Rendered as a full-viewport responsive HTML overlay (not inside the scaled
@@ -28,13 +33,14 @@ export default class LobbyScene extends Phaser.Scene {
           <button class="big" id="joinBtn">Join as player<span>phone / tablet</span></button>
         </div>
         <div id="joinForm" hidden>
-          <input id="code" maxlength="4" placeholder="ROOM CODE" autocomplete="off" autocapitalize="characters" />
-          <input id="name" maxlength="12" placeholder="Your name" autocomplete="off" />
+          <input id="code" maxlength="4" placeholder="ROOM CODE" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+          <input id="name" maxlength="14" placeholder="Your name" autocomplete="off" />
           <button class="big" id="connect">Connect</button>
           <button class="link" id="back">Back</button>
           <p id="err"></p>
         </div>
-      </div>`;
+      </div>
+      <p class="tp-build">build ${BUILD_ID}</p>`;
     this.overlay = overlay;
     document.body.appendChild(overlay);
     injectStyles();
@@ -46,33 +52,67 @@ export default class LobbyScene extends Phaser.Scene {
       sfx.blip(740);
       this.client.send('host');
     });
+    // Autofocus the room code: it is the one thing that must be typed, and a
+    // soft keyboard popping straight onto it removes a tap. Guarded behind a
+    // microtask so the field is unhidden first (focus on a hidden input no-ops).
+    const focusCode = () => { const el = $('code'); requestAnimationFrame(() => { el.focus(); el.select?.(); }); };
+
     $('joinBtn').addEventListener('click', () => {
       sfx.blip(620);
       $('choice').hidden = true;
       $('joinForm').hidden = false;
-      $('code').focus();
+      focusCode();
     });
     $('back').addEventListener('click', () => {
       $('joinForm').hidden = true;
       $('choice').hidden = false;
     });
-    $('connect').addEventListener('click', () => {
+    // Pre-fill the name with whatever this device used last time, else a fun
+    // handle (never a real first name) — still editable.
+    $('name').value = loadName() || randomHandle();
+
+    const submit = () => {
       const code = $('code').value.trim().toUpperCase();
       const name = $('name').value.trim();
       if (code.length < 4) {
         $('err').textContent = 'Enter the 4-character room code';
+        focusCode();
         return;
       }
+      saveName(name);
       this.pendingName = name;
+      // Always give feedback: if the socket isn't up yet the join is queued and
+      // flushed on connect, so tell the player it's working instead of leaving
+      // the button looking dead ("Connect does nothing"). 'joined'/'error' from
+      // the server replaces this line.
+      $('err').style.color = '#9fb0c8';
+      $('err').textContent = this.client.connected ? 'Joining…' : 'Connecting to the server…';
       this.client.send('join', { code, name });
-    });
+    };
+    $('connect').addEventListener('click', submit);
+
+    // Enter is the natural "go" on a phone keyboard. With both fields filled
+    // (the name is pre-filled / autocompleted) it connects; with a field still
+    // empty it behaves like Tab — jump to the first empty field — instead of
+    // firing a doomed connect.
+    const onEnter = (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const code = $('code').value.trim();
+      const name = $('name').value.trim();
+      if (code.length >= 4 && name) submit();
+      else if (code.length < 4) focusCode();
+      else $('name').focus();
+    };
+    $('code').addEventListener('keydown', onEnter);
+    $('name').addEventListener('keydown', onEnter);
 
     const codeParam = new URLSearchParams(window.location.search).get('code');
     const showJoin = () => {
       $('choice').hidden = true;
       $('joinForm').hidden = false;
       if (codeParam) $('code').value = codeParam.toUpperCase();
-      $('name').focus();
+      focusCode();
     };
 
     if (this.auto === 'host') {
@@ -88,7 +128,7 @@ export default class LobbyScene extends Phaser.Scene {
 
     this.track(
       this.client.on('hosted', (m) =>
-        this.scene.start('Tv', { code: m.code, lanIp: m.lanIp, publicHost: m.publicHost }),
+        this.scene.start('Tv', { code: m.code, token: m.token, lanIp: m.lanIp, publicHost: m.publicHost }),
       ),
     );
     this.track(
@@ -100,14 +140,20 @@ export default class LobbyScene extends Phaser.Scene {
             player: m.slot,
             code: m.code,
             name: this.pendingName,
-            isBiomeChooser: m.slot === 0,
+            token: m.token,
+            isConfigOwner: !!m.isConfigOwner,
           });
         }
       }),
     );
     this.track(
       this.client.on('error', (m) => {
+        $('err').style.color = ''; // back to the error red (CSS default)
         $('err').textContent = m.msg || 'Connection error';
+        // A failed join (wrong/expired code) wipes the code and puts the cursor
+        // back on it, ready for another try without manual clearing.
+        $('code').value = '';
+        focusCode();
       }),
     );
 
@@ -119,6 +165,40 @@ export default class LobbyScene extends Phaser.Scene {
 
   track(off) {
     this.unsubs.push(off);
+  }
+}
+
+// Fun, anonymous default handles — never a real first name. Used as the editable
+// default on the join form and as a fallback elsewhere.
+const HANDLES = [
+  'Lazy Cat', 'Panda Frileux', 'Grumpy Fox', 'Sleepy Otter', 'Chat Paresseux',
+  'Renard Malin', 'Hibou Ronchon', 'Tortue Pressée', 'Crabe Costaud', 'Loutre Zen',
+  'Koala Grognon', 'Pingouin Punk', 'Castor Malin', 'Yéti Frileux', 'Morse Cool',
+];
+
+export function randomHandle() {
+  return HANDLES[Math.floor(Math.random() * HANDLES.length)];
+}
+
+// The player's name persists on the device between sessions: pre-filled on the
+// join form and on the controller, always editable. localStorage may throw in
+// private-mode browsers, so every access is guarded.
+const NAME_KEY = 'towerduel.name';
+
+export function loadName() {
+  try {
+    return localStorage.getItem(NAME_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function saveName(name) {
+  try {
+    const v = (name || '').trim();
+    if (v) localStorage.setItem(NAME_KEY, v);
+  } catch {
+    /* ignore (private mode / disabled storage) */
   }
 }
 
@@ -148,6 +228,18 @@ export function injectStyles() {
     .tp-overlay .link{background:none;border:none;color:#9fb0c8;font-size:18px;
       cursor:pointer;margin-top:8px;}
     .tp-overlay #err{color:#ff8a7a;min-height:26px;margin:10px 0 0;}
+    .tp-build{position:fixed;left:0;right:0;bottom:6px;text-align:center;margin:0;
+      font-size:11px;letter-spacing:1px;color:#ffffff30;pointer-events:none;}
+    /* Connect: the "stone tablet" treatment — softly chamfered, chunky 3D bevel
+       and a hard base edge it presses into (not a flat rounded rectangle). */
+    #connect{position:relative;border-radius:12px;
+      -webkit-clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%,0 10px);
+      clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%,0 10px);
+      background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(0,0,0,.22)),#3a6df0;
+      box-shadow:inset 0 3px 0 rgba(255,255,255,.5),inset 0 -4px 10px rgba(0,0,0,.4),inset 0 0 0 2px rgba(0,0,0,.18),0 6px 0 rgba(0,0,0,.35),0 12px 22px -10px #000;
+      transition:transform .08s ease,filter .2s ease;}
+    #connect:active{transform:translateY(4px);filter:brightness(1.06);
+      box-shadow:inset 0 3px 0 rgba(255,255,255,.5),inset 0 -4px 10px rgba(0,0,0,.4),inset 0 0 0 2px rgba(0,0,0,.18),0 2px 0 rgba(0,0,0,.35);}
   `;
   document.head.appendChild(style);
 }

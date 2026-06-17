@@ -32,6 +32,7 @@ export const pages = [
   { slug: 'chapter-4-e', kind: 'chapter', chapter: 4, level: 'e', biome: 'volcano' },
 
   { slug: 'annex', kind: 'annex', biome: 'meadow' },
+  { slug: 'annex-lobby', kind: 'annex', biome: 'meadow' },
   { slug: 'annex-math', kind: 'annex', biome: 'volcano' },
   { slug: 'annex-deploy', kind: 'annex', biome: 'tundra' },
   { slug: 'annex-brief', kind: 'annex', biome: 'desert' },

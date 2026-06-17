@@ -1,12 +1,13 @@
 {
   "title": "Anexos — Tower Duel",
   "meta.desc": "Los anexos del cuaderno Tower Duel: despliegue (Docker y alojamiento), mates rápidas, y el brief de partida comentado.",
-
   "hero.badge": "Bonus",
   "hero.kicker": "El cuaderno",
   "hero.title": "Anexos",
   "hero.lead": "Complementos para ir más allá de los 4 capítulos: alojar el juego, un rodeo por las mates, y las bambalinas del brief de partida.",
-
+  "card.lobby.lot": "🎮 Arquitectura",
+  "card.lobby.title": "Ciclo de una partida",
+  "card.lobby.desc": "Lobby, personas Arquitecto/Rival, máquina de estados y reconexión — con 4 simuladores interactivos.",
   "card.deploy.lot": "⚙️ Técnico",
   "card.deploy.title": "Despliegue",
   "card.deploy.desc": "Construir la imagen Docker y alojar el juego en línea (alwaysdata, VPS, plataforma de contenedores, estático).",
@@ -16,9 +17,7 @@
   "card.brief.lot": "📝 Bambalinas",
   "card.brief.title": "El brief de partida",
   "card.brief.desc": "El pliego de condiciones que lo arrancó todo — presentado, comentado y criticado: cómo describir bien un proyecto.",
-
   "pager.prev": "← Inicio",
   "pager.next": "Anexos",
-
   "footer.suffix": "anexos 📎"
 }
