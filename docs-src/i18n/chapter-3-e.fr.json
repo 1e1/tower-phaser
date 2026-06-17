@@ -18,7 +18,7 @@
   "s2.h2": "Modèle autoritatif &amp; validation des intentions",
   "s2.p1": "« Autoritatif » ne veut pas dire « naïf ». Le serveur ne croit jamais un client sur parole : il <b>valide</b> chaque intention avant de l'appliquer. Une intention n'a d'effet que si l'émetteur a le droit et que la valeur est plausible.",
   "s2.code1.cap": "server/Room.js — seul un joueur assis agit, et seulement sur sa simulation",
-  "s2.p2": "La configuration du match est verrouillée encore plus fort : seul le joueur désigné comme <code class=\"inline\">biomeChooser</code> (le premier joueur, puis le perdant) peut la changer, et chaque champ est <b>filtré</b> par type et par domaine.",
+  "s2.p2": "La configuration du match est verrouillée encore plus fort : seul le joueur désigné comme <code class=\"inline\">configOwnerSlot</code> (le premier joueur, puis le perdant) peut la changer, et chaque champ est <b>filtré</b> par type et par domaine.",
   "s2.code2.cap": "server/Room.js — validation stricte des réglages",
   "s2.p3": "Et même les intentions autorisées sont <b>bridées</b> là où ça compte : la simulation force l'angle et la puissance dans leurs bornes légales et n'agit que pendant la phase de visée. Une manette trafiquée qui réclame un tir à 999° n'obtient tout simplement rien.",
   "s2.setaim.cap": "src/sim/Simulation.js — borner &amp; verrouiller chaque intention",

@@ -35,7 +35,6 @@ export default class GameScene extends Phaser.Scene {
     this.winsNeeded = data.winsNeeded;
     this.biome = data.biome || BIOMES[0];
     this.scores = [0, 0];
-    this.roundsPlayed = 0;
     this.currentRound = 1;
   }
 
@@ -313,7 +312,6 @@ export default class GameScene extends Phaser.Scene {
     if (h1) this.scores[0] += 1;
     if (h2) this.scores[1] += 1;
     this.hud.updateScores(this.scores);
-    this.roundsPlayed += 1;
 
     let message;
     if (h1 && h2) message = 'Double hit!';

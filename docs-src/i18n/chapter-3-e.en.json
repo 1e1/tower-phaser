@@ -18,7 +18,7 @@
   "s2.h2": "Authoritative model &amp; intent validation",
   "s2.p1": "“Authoritative” doesn't mean “naive”. The server never takes a client at its word: it <b>validates</b> every intent before applying it. An intent only takes effect if the sender is allowed and the value is plausible.",
   "s2.code1.cap": "server/Room.js — only a seated player acts, and only on its own simulation",
-  "s2.p2": "The match configuration is locked down even harder: only the player designated as <code class=\"inline\">biomeChooser</code> (the first player, then the loser) can change it, and each field is <b>filtered</b> by type and by range.",
+  "s2.p2": "The match configuration is locked down even harder: only the player designated as <code class=\"inline\">configOwnerSlot</code> (the first player, then the loser) can change it, and each field is <b>filtered</b> by type and by range.",
   "s2.code2.cap": "server/Room.js — strict validation of the settings",
   "s2.p3": "Even checked-out intents are clamped where it matters: the simulation forces angle and power into their legal ranges and gates on the phase, so a hacked controller asking for a 999° shot simply can't get one.",
   "s2.setaim.cap": "src/sim/Simulation.js — clamp &amp; gate every intent",

@@ -269,6 +269,20 @@ ul.clean li { margin: 6px 0; }
 .kbd { background: #fff; border: 2px solid rgba(43,37,53,0.15); border-bottom-width: 3px; border-radius: 7px; padding: 1px 8px; font-weight: 800; font-size: 0.85em; }
 footer.foot { text-align: center; color: var(--ink-soft); padding: 30px 20px 50px; font-size: 14px; }
 .pill { display:inline-block; background: var(--accent); color:#fff; border-radius:999px; padding:2px 12px; font-weight:800; font-size:13px;}
+/* A .pill used as a call-to-action button (bigger, no underline). */
+.pill.cta { text-decoration: none; padding: 10px 22px; font-size: 16px; }
+/* The paragraph that holds a CTA button. */
+.cta-row { margin-top: 24px; }
+.cta-row.center { text-align: center; }
+
+/* Pill-shaped chip buttons used inside simulators (wind variants, TV sounds). */
+.chip {
+  cursor: pointer; font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 14px;
+  padding: 9px 11px; border-radius: 9px; color: var(--ink);
+  background: #fff; border: 1px solid #b9d3ff; transition: .12s;
+}
+.chip:hover { border-color: var(--accent); }
+.chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 @media (max-width: 600px) {
   body { font-size: 17px; }

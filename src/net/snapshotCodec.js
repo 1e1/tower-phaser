@@ -16,7 +16,7 @@ import { PHASE } from '../sim/Simulation.js';
 import { SHELLS } from '../config/shells.js';
 import { BIOMES } from '../config/biomes.js';
 
-const MAGIC = 4; // format/version byte; lets the client reject foreign frames
+const MAGIC = 5; // format/version byte; lets the client reject foreign frames
 
 // Enum tables. Index ⇄ id, shared by both ends. Order is the wire contract —
 // only ever append, never reorder.
@@ -187,6 +187,7 @@ export function encodeSnapshot(state, events = []) {
   // Exactly two towers, always.
   for (const t of state.towers) {
     w.bool(t.ready);
+    w.i16(t.x); // tower slides along its platform per round (0..GAME_WIDTH)
     w.f32(t.groundY); w.f32(t.angle); w.f32(t.power);
     w.u8(idx(SELECTION_IDS, t.shell));
     w.f32(t.hp);
@@ -237,6 +238,7 @@ export function decodeSnapshot(arrayBuffer) {
   const towers = [];
   for (let i = 0; i < 2; i += 1) {
     const ready = r.bool();
+    const x = r.i16();
     const groundY = r.f32();
     const angle = r.f32();
     const power = r.f32();
@@ -245,7 +247,7 @@ export function decodeSnapshot(arrayBuffer) {
     const ammo = {};
     for (const k of AMMO_KEYS) ammo[k] = r.u8();
     const shield = r.bool() ? { x: r.i16(), y: r.i16(), ux: r.f32(), uy: r.f32(), open: r.bool() } : null;
-    towers.push({ ready, groundY, angle, power, shell, hp, ammo, shield });
+    towers.push({ ready, x, groundY, angle, power, shell, hp, ammo, shield });
   }
 
   const projCount = r.u16();

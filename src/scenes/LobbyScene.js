@@ -31,6 +31,7 @@ export default class LobbyScene extends Phaser.Scene {
         <div id="choice">
           <button class="big" id="host">Host on this screen<span>TV / spectator</span></button>
           <button class="big" id="joinBtn">Join as player<span>phone / tablet</span></button>
+          <button class="big" id="local2p">2 players · one screen<span>local, no server</span></button>
         </div>
         <div id="joinForm" hidden>
           <input id="code" maxlength="4" placeholder="ROOM CODE" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" />
@@ -51,6 +52,11 @@ export default class LobbyScene extends Phaser.Scene {
     $('host').addEventListener('click', () => {
       sfx.blip(740);
       this.client.send('host');
+    });
+    // Local two-on-one-screen mode runs entirely in-process (no server hop).
+    $('local2p').addEventListener('click', () => {
+      sfx.blip(640);
+      this.scene.start('Local');
     });
     // Autofocus the room code: it is the one thing that must be typed, and a
     // soft keyboard popping straight onto it removes a tap. Guarded behind a

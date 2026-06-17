@@ -286,24 +286,6 @@ export default class Sfx {
     });
   }
 
-  // Falling whistle for a shell passing/approaching.
-  whistle() {
-    if (!this.enabled) return;
-    const ctx = this.ensure();
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1500, now);
-    osc.frequency.exponentialRampToValueAtTime(480, now + 0.55);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.12, now + 0.08);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-    osc.connect(g).connect(this.master);
-    osc.start(now);
-    osc.stop(now + 0.62);
-  }
-
   // Polyphonic "bullet whizz": each in-flight shell is its own band-passed voice,
   // keyed by projectile id, so a triple salvo whistles as three overlapping
   // tones. The caller passes the live set every frame as

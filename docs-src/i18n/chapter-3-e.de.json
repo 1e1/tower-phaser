@@ -18,7 +18,7 @@
   "s2.h2": "Autoritatives Modell &amp; Validierung der Absichten",
   "s2.p1": "„Autoritativ“ heißt nicht „naiv“. Der Server glaubt einem Client nie aufs Wort: Er <b>validiert</b> jede Absicht, bevor er sie anwendet. Eine Absicht wirkt nur, wenn der Absender das Recht hat und der Wert plausibel ist.",
   "s2.code1.cap": "server/Room.js — nur ein sitzender Spieler handelt, und nur auf seiner Simulation",
-  "s2.p2": "Die Match-Konfiguration ist noch stärker verriegelt: Nur der als <code class=\"inline\">biomeChooser</code> bestimmte Spieler (der erste Spieler, dann der Verlierer) darf sie ändern, und jedes Feld wird <b>nach Typ und Wertebereich gefiltert</b>.",
+  "s2.p2": "Die Match-Konfiguration ist noch stärker verriegelt: Nur der als <code class=\"inline\">configOwnerSlot</code> bestimmte Spieler (der erste Spieler, dann der Verlierer) darf sie ändern, und jedes Feld wird <b>nach Typ und Wertebereich gefiltert</b>.",
   "s2.code2.cap": "server/Room.js — strikte Validierung der Einstellungen",
   "s2.p3": "Und selbst erlaubte Absichten werden dort <b>begrenzt</b>, wo es zählt: Die Simulation zwingt Winkel und Stärke in ihre legalen Bereiche und handelt nur während der Zielphase. Ein manipulierter Controller, der einen 999°-Schuss verlangt, bekommt schlicht keinen.",
   "s2.setaim.cap": "src/sim/Simulation.js — jede Absicht begrenzen &amp; absichern",

@@ -19,6 +19,13 @@ export function shade(color, factor) {
   return (r << 16) | (g << 8) | b;
 }
 
+// Tower stone palette derived from the side colour — mortar (dark fill), lit
+// (highlit course) and dark (shadow). Centralised so the battlefield tower, the
+// controller glyph and the shared tower-top renderer all read identically.
+export function towerPalette(color) {
+  return { mortar: shade(color, 0.6), lit: shade(color, 1.16), dark: shade(color, 0.78) };
+}
+
 export function powerRatio(power) {
   return clamp((power - AIM.minPower) / (AIM.maxPower - AIM.minPower), 0, 1);
 }
@@ -34,15 +41,48 @@ export function craterRimColor(edge) {
   return (r << 16) | (g << 8) | b;
 }
 
-// Barrel colour: cool steel at low power, glowing red at full charge.
-export function barrelColor(power) {
+// --- Forge cannon model -----------------------------------------------------
+// The cannon shows charge without ever going red (red is the red camp's colour,
+// so a hot red barrel falsely reads as "this is the red side's gun"). Instead
+// the barrel is cool iron at the muzzle and glows amber→white-hot toward the
+// breech as power rises, and the pivot doubles as a visible "powder reserve".
+
+const FORGE_IRON = 0x8d97a8; // aged neutral barrel metal (muzzle / rest colour)
+const FORGE_AMBER = 0xf0a830;
+const FORGE_WHITE = 0xfff4d6;
+
+// Linear blend of two packed RGB ints.
+export function mixColor(a, b, t) {
+  const r = Math.round(lerp((a >> 16) & 0xff, (b >> 16) & 0xff, t));
+  const g = Math.round(lerp((a >> 8) & 0xff, (b >> 8) & 0xff, t));
+  const bl = Math.round(lerp(a & 0xff, b & 0xff, t));
+  return (r << 16) | (g << 8) | bl;
+}
+
+// The barrel's cool end (muzzle / rest) — constant, so the heat gradient is
+// always weighted toward the breech.
+export const BARREL_COOL = FORGE_IRON;
+
+// Hot colour at the breech for a given power: iron → amber → white-hot.
+export function barrelHeat(power) {
   const t = powerRatio(power);
-  const base = { r: 0xd7, g: 0xdd, b: 0xe8 };
-  const hot = { r: 0xff, g: 0x3b, b: 0x2f };
-  const r = Math.round(lerp(base.r, hot.r, t));
-  const g = Math.round(lerp(base.g, hot.g, t));
-  const b = Math.round(lerp(base.b, hot.b, t));
-  return (r << 16) | (g << 8) | b;
+  return t < 0.5
+    ? mixColor(FORGE_IRON, FORGE_AMBER, t * 2)
+    : mixColor(FORGE_AMBER, FORGE_WHITE, (t - 0.5) * 2);
+}
+
+// Pivot "powder reserve": a relief hub whose core darkens as it packs with
+// powder, plus a gauge ring that fills (amber→white) with charge. `fill` is the
+// 0..1 charge fraction so the Phaser (TV) and canvas (controller) renderers draw
+// the ring identically.
+export function pivotCharge(power) {
+  const t = powerRatio(power);
+  return {
+    fill: t,
+    core: shade(FORGE_IRON, 1 - 0.4 * t), // darker = more tightly packed
+    rim: shade(FORGE_IRON, 1.3), // lit edge for relief
+    gauge: mixColor(FORGE_AMBER, FORGE_WHITE, t),
+  };
 }
 
 export const WINDSOCK_COOL = 0xf4f7ff;

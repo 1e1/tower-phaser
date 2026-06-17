@@ -18,7 +18,7 @@
   "s2.h2": "Modello autoritativo &amp; validazione delle intenzioni",
   "s2.p1": "« Autoritativo » non significa « ingenuo ». Il server non crede mai a un client sulla parola: <b>valida</b> ogni intenzione prima di applicarla. Un'intenzione ha effetto solo se il mittente ne ha diritto e il valore è plausibile.",
   "s2.code1.cap": "server/Room.js — agisce solo un giocatore seduto, e solo sulla sua simulazione",
-  "s2.p2": "La configurazione della partita è bloccata ancora più saldamente: solo il giocatore designato come <code class=\"inline\">biomeChooser</code> (il primo giocatore, poi il perdente) può cambiarla, e ogni campo è <b>filtrato</b> per tipo e per dominio.",
+  "s2.p2": "La configurazione della partita è bloccata ancora più saldamente: solo il giocatore designato come <code class=\"inline\">configOwnerSlot</code> (il primo giocatore, poi il perdente) può cambiarla, e ogni campo è <b>filtrato</b> per tipo e per dominio.",
   "s2.code2.cap": "server/Room.js — validazione stretta delle impostazioni",
   "s2.p3": "E persino le intenzioni autorizzate vengono <b>clampate</b> dove conta: la simulazione forza angolo e potenza nei loro intervalli legali e agisce solo durante la fase di mira. Un controller modificato che chiede un tiro a 999° semplicemente non lo ottiene.",
   "s2.setaim.cap": "src/sim/Simulation.js — clampare &amp; vincolare ogni intenzione",

@@ -1,14 +1,3 @@
-    <header class="hero">
-      <span class="badge">{{hero.badge}}</span>
-      <div class="kicker">{{hero.kicker}}</div>
-      <h1>{{hero.title}}</h1>
-      <p>{{hero.lead}}</p>
-      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#2e3a5a"/>
-        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#5b7fbf"/>
-      </svg>
-    </header>
-
     <main class="wrap">
       <section class="sheet">
         <h2><span class="num">1</span>{{s1.h2}}</h2>
@@ -38,12 +27,12 @@ src.<span class="f">connect</span>(lp).<span class="f">connect</span>(gain).<spa
         <p>{{s3.p1}}</p>
         <div class="sim tvspat">
           <div class="controls tv-snds">
-            <button class="tv-snd active" data-s="boom">{{s3.snd.boom}}</button>
-            <button class="tv-snd" data-s="impact">{{s3.snd.impact}}</button>
-            <button class="tv-snd" data-s="rubble">{{s3.snd.rubble}}</button>
-            <button class="tv-snd" data-s="clang">{{s3.snd.clang}}</button>
-            <button class="tv-snd" data-s="bird">{{s3.snd.bird}}</button>
-            <button class="tv-snd" data-s="wind">{{s3.snd.wind}}</button>
+            <button class="chip tv-snd active" data-s="boom">{{s3.snd.boom}}</button>
+            <button class="chip tv-snd" data-s="impact">{{s3.snd.impact}}</button>
+            <button class="chip tv-snd" data-s="rubble">{{s3.snd.rubble}}</button>
+            <button class="chip tv-snd" data-s="clang">{{s3.snd.clang}}</button>
+            <button class="chip tv-snd" data-s="bird">{{s3.snd.bird}}</button>
+            <button class="chip tv-snd" data-s="wind">{{s3.snd.wind}}</button>
           </div>
           <canvas id="tv-field" width="760" height="320"></canvas>
           <div class="hint" id="tv-read">{{s3.read0}}</div>
@@ -62,9 +51,4 @@ src.<span class="f">connect</span>(lp).<span class="f">connect</span>(gain).<spa
           <figure class="code"><figcaption>{{s3.cfgCap}}</figcaption><pre id="tv-json"></pre></figure>
         </div>
       </section>
-
-      <div class="pager wrap">
-        <a href="chapter-4-i.html">{{pager.prev}}</a>
-        <a class="disabled">{{pager.next}}</a>
-      </div>
     </main>

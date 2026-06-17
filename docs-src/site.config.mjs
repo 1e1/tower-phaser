@@ -35,11 +35,14 @@ export const pages = [
   { slug: 'chapter-5-i', kind: 'chapter', chapter: 5, level: 'i', biome: 'storm' },
   { slug: 'chapter-5-e', kind: 'chapter', chapter: 5, level: 'e', biome: 'storm' },
 
-  { slug: 'annex', kind: 'annex', biome: 'meadow' },
+  // Annexes opt into a prev/next pager via `nav` (chapters derive theirs). A
+  // side with no href renders disabled but keeps its label; omit `nav` entirely
+  // for no pager at all (annex-lobby, annex-math).
+  { slug: 'annex', kind: 'annex', biome: 'meadow', nav: { prev: 'index.html' } },
   { slug: 'annex-lobby', kind: 'annex', biome: 'meadow' },
   { slug: 'annex-math', kind: 'annex', biome: 'volcano' },
-  { slug: 'annex-deploy', kind: 'annex', biome: 'tundra' },
-  { slug: 'annex-brief', kind: 'annex', biome: 'desert' },
+  { slug: 'annex-deploy', kind: 'annex', biome: 'tundra', nav: { prev: 'chapter-4.html' } },
+  { slug: 'annex-brief', kind: 'annex', biome: 'desert', nav: { prev: 'annex.html' } },
 ];
 
 // The three levels of a chapter, in display order, with the alternate slug

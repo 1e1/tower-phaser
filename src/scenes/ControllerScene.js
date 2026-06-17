@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 
-import { COLORS, AIM, MAX_WIND, WIN_OPTIONS, HP_OPTIONS, GAME_MODES, GAME_WIDTH } from '../config/constants.js';
+import { COLORS, AIM, MAX_WIND, WIN_OPTIONS, winsLabel, HP_OPTIONS, GAME_MODES, GAME_WIDTH } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { SHELLS } from '../config/shells.js';
 import { PHASE } from '../sim/Simulation.js';
 import { injectStyles, saveName, randomHandle, BUILD_ID } from './LobbyScene.js';
 import { drawTowerTop } from '../ui/towerTop.js';
-import { intToCss, shade } from '../render/visuals.js';
+import { intToCss, shade, towerPalette } from '../render/visuals.js';
 
 // Each ammo type whistles a little differently (a slight variation): heavier
 // shells sing lower, lighter shells higher. Keyed by shell id.
@@ -18,8 +18,10 @@ const WHISTLE_FREQ = { normal: 1200, heavy: 820, light: 1560, salvo: 1080, explo
 // the chooser, haptic + audio feedback, and an over-the-top end-of-match
 // cracktro. The server runs the match; this only sends intents.
 export default class ControllerScene extends Phaser.Scene {
-  constructor() {
-    super('Controller');
+  // Key is configurable so the local split-screen can run two pad instances
+  // side by side ('LocalPadA'/'LocalPadB'); networked play uses the default.
+  constructor(key) {
+    super(key || 'Controller');
   }
 
   init(data) {
@@ -27,12 +29,16 @@ export default class ControllerScene extends Phaser.Scene {
     this.code = data.code;
     this.name = data.name || randomHandle();
     this.token = data.token || null;
+    // Local two-on-one-screen mode injects its own in-process transport and a
+    // DOM mount/scale; absent these, the pad behaves exactly as the networked one.
+    this.localClient = data.localClient || null;
+    this.localSfx = data.localSfx || null; // local mode gives each pad its own audio (mutable per-pad)
+    this.embed = data.embed || null; // { container: HTMLElement, scale: number }
     // Camp state must exist before applySlot so the colour starts neutral: a side
     // colour is earned by claiming a camp, never handed out by arrival order.
     this.campChooser = -1;
     this.campChosen = false;
     this.applySlot(this.player); // facing / own-tower X / side colour from the slot
-    this.biomeChooser = -1; // post-match biome chooser (the loser); set via roster
     // --- pre-match setup ---
     this.isConfigOwner = !!data.isConfigOwner;
     this.setup = true;
@@ -63,6 +69,8 @@ export default class ControllerScene extends Phaser.Scene {
     this.prevPhase = null;
     this.locked = false;
     this.wind = 0;
+    this.hp = 1;
+    this.maxHp = 1;
     this.flash = 0;
     this.aimAngle = 45;
     this.aimPower = (AIM.minPower + AIM.maxPower) / 2;
@@ -113,9 +121,9 @@ export default class ControllerScene extends Phaser.Scene {
   }
 
   create() {
-    this.client = this.registry.get('client');
-    this.sfx = this.registry.get('sfx');
-    const hex = `#${this.color.toString(16).padStart(6, '0')}`;
+    this.client = this.localClient || this.registry.get('client');
+    this.sfx = this.localSfx || this.registry.get('sfx');
+    const hex = intToCss(this.color);
 
     injectStyles();
     injectControllerStyles();
@@ -130,7 +138,13 @@ export default class ControllerScene extends Phaser.Scene {
           <input id="name" maxlength="14" value="${escapeHtml(this.name)}" />
           <span class="room">Room ${this.code}</span>
         </header>
-        <div id="info"></div>
+        <div id="info" hidden>
+          <div id="hudWind">
+            <span id="hudRound" class="hud-round"></span>
+            <div id="hudBar"><i id="hudFill"></i><b id="hudTick"></b></div>
+            <span id="hudPct" class="hud-pct"></span>
+          </div>
+        </div>
 
         <div id="setup" hidden>
           <div id="setupSync"><span id="syncMe"></span><span id="syncOpp"></span></div>
@@ -171,7 +185,21 @@ export default class ControllerScene extends Phaser.Scene {
       </div>
       <p class="tp-build">build ${BUILD_ID}</p>`;
     this.overlay = overlay;
-    document.body.appendChild(overlay);
+    if (this.embed) {
+      // Split-screen: drop the pad into its half-screen wrapper and scale the
+      // full-viewport design down to fit. The pad keeps its vh/vw layout (which
+      // still resolves to the full window) and is shrunk visually; the wrapper's
+      // overflow:hidden + sizing confine both the picture and the touch area to
+      // this player's region, so the two pads never steal each other's taps.
+      overlay.style.position = 'absolute';
+      overlay.style.width = '100vw';
+      overlay.style.height = '100vh';
+      overlay.style.transformOrigin = 'top left';
+      overlay.style.transform = `scale(${this.embed.scale})`;
+      this.embed.container.appendChild(overlay);
+    } else {
+      document.body.appendChild(overlay);
+    }
     this.$ = (id) => overlay.querySelector(`#${id}`);
 
     this.canvas = this.$('ttv');
@@ -282,11 +310,15 @@ export default class ControllerScene extends Phaser.Scene {
   // Escape on a keyboard device returns to the home screen. A TV closing tears
   // the room down (all players are sent home); a phone simply disconnects.
   installEscape() {
+    if (this.embed) return; // in split-screen the host LocalScene owns the exit key
     this.escHandler = (e) => { if (e.key === 'Escape') this.goHome(); };
     window.addEventListener('keydown', this.escHandler);
   }
 
   goHome(skipSend = false) {
+    // In split-screen the pad doesn't own the screen — hand the exit to the host
+    // LocalScene, which tears down both pads + the arena and returns to the lobby.
+    if (this.embed) { this.scene.get('Local')?.exit(); return; }
     if (!skipSend) this.client.send('goHome');
     this.forgetSession();
     this.token = null;
@@ -666,7 +698,7 @@ export default class ControllerScene extends Phaser.Scene {
     this.roundsIndex = (this.roundsIndex + dir + WIN_OPTIONS.length) % WIN_OPTIONS.length;
     this.sfx.blip(620);
     this.client.send('config', { wins: WIN_OPTIONS[this.roundsIndex] });
-    this.$('roundsName').textContent = `First to ${WIN_OPTIONS[this.roundsIndex]}`;
+    this.$('roundsName').textContent = winsLabel(WIN_OPTIONS[this.roundsIndex]);
   }
 
   cycleHp(dir) {
@@ -698,7 +730,6 @@ export default class ControllerScene extends Phaser.Scene {
   onRoster(m) {
     const wasInMatch = this.inMatch;
     const wasPostmatch = this.postmatch;
-    this.biomeChooser = m.biomeChooser ?? -1;
     this.inMatch = !!m.inMatch;
     this.postmatch = !!m.postmatch;
     this.setup = !!m.setup;
@@ -761,8 +792,14 @@ export default class ControllerScene extends Phaser.Scene {
     const me = s.towers[this.player];
     this.phase = s.phase;
     this.wind = s.wind;
+    // Our tower now slides along its platform per round: track the authoritative
+    // x so proximity audio/haptics fire from the real cannon position.
+    if (me.x != null) this.ownTowerX = me.x;
 
     if (s.round.current !== this.roundCur) { this.roundCur = s.round.current; this.hitsTaken = 0; }
+    // Own tower health drives the damage/ruin look on the controller's tower view.
+    this.maxHp = s.maxHp || 1;
+    this.hp = me.hp == null ? this.maxHp : me.hp;
     if (me.ammo) this.ammo = me.ammo;
     if (me.shell === 'shield') {
       this.shellIndex = 'shield';
@@ -785,10 +822,7 @@ export default class ControllerScene extends Phaser.Scene {
     // The end-of-match cracktro owns the whole screen — keep the gameplay HUD
     // line and status text out of it so no live-match text bleeds through.
     if (s.phase !== PHASE.MATCH_END) {
-      const dir = s.wind === 0 ? 'calm' : s.wind > 0 ? 'east →' : '← west';
-      const strength = Math.round((Math.abs(s.wind) / MAX_WIND) * 100);
-      this.$('info').textContent =
-        `Round ${s.round.current}/${s.round.total}  ·  ${s.scores[0]}–${s.scores[1]}  ·  Wind ${strength}% ${dir}`;
+      this.renderHud(s);
 
       const opponent = s.towers[this.player === 0 ? 1 : 0];
       if (s.phase === PHASE.RESOLVING) this.$('status').textContent = s.banner || '…';
@@ -810,6 +844,31 @@ export default class ControllerScene extends Phaser.Scene {
 
     this.prevPhase = s.phase;
     this.refresh();
+  }
+
+  // The in-match HUD line under the player's name: a centre-anchored wind gauge,
+  // same design as the Battlefield score bar. The score itself is rendered as
+  // spoils around the aiming tower on the canvas (trophies won / rubble lost).
+  renderHud(s) {
+    this.wins = s.scores[this.player] | 0;
+    this.losses = s.scores[this.player === 0 ? 1 : 0] | 0;
+
+    this.$('hudRound').textContent = `${s.round.current}/${s.round.total}`;
+    const ratio = Math.min(Math.abs(s.wind) / MAX_WIND, 1);
+    const pct = Math.round(ratio * 100);
+    this.$('hudPct').textContent = s.wind === 0 ? 'calm' : `${pct}% ${s.wind > 0 ? '→' : '←'}`;
+    const fill = this.$('hudFill');
+    if (ratio < 0.005) {
+      fill.style.width = '0';
+    } else if (s.wind > 0) {
+      fill.style.left = '50%'; fill.style.right = 'auto';
+      fill.style.width = `${ratio * 50}%`;
+      fill.style.borderRadius = '0 4px 4px 0';
+    } else {
+      fill.style.right = '50%'; fill.style.left = 'auto';
+      fill.style.width = `${ratio * 50}%`;
+      fill.style.borderRadius = '4px 0 0 4px';
+    }
   }
 
   vibe(pattern) {
@@ -943,7 +1002,7 @@ export default class ControllerScene extends Phaser.Scene {
   // editability, the one-time entry placement, the scroll hint and status line.
   renderSetup() {
     this.$('biomeName').textContent = BIOMES[this.biomeIndex].name;
-    this.$('roundsName').textContent = `First to ${WIN_OPTIONS[this.roundsIndex]}`;
+    this.$('roundsName').textContent = winsLabel(WIN_OPTIONS[this.roundsIndex]);
     this.$('hpName').textContent = hpLabel(HP_OPTIONS[this.hpIndex]);
     this.$('modeName').textContent = GAME_MODES[this.modeIndex].label;
     this.$('cfg').classList.toggle('locked', !this.canEditConfig());
@@ -1103,6 +1162,8 @@ export default class ControllerScene extends Phaser.Scene {
     drawTowerTop(this.ctx, r.width, r.height, {
       angle: this.aimAngle, power: this.aimPower, facing: this.facing,
       color: this.color, wind: this.wind, time: performance.now(), flash: this.flash,
+      wins: this.wins | 0, losses: this.losses | 0,
+      hp: this.hp, maxHp: this.maxHp,
       // Fuse sparks while our shot is committed and waiting (locked locally or
       // confirmed ready by the server); it goes out the moment the volley fires.
       ready: (this.locked || this.serverReady) && this.phase === PHASE.AIMING,
@@ -1131,7 +1192,7 @@ export default class ControllerScene extends Phaser.Scene {
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#dfe6f2'; ctx.lineWidth = 8;
     ctx.beginPath(); ctx.moveTo(hx + ux * L, hy + uy * L); ctx.lineTo(hx - ux * L, hy - uy * L); ctx.stroke();
-    ctx.strokeStyle = `#${this.color.toString(16).padStart(6, '0')}`; ctx.lineWidth = 3;
+    ctx.strokeStyle = intToCss(this.color); ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(hx + ux * L, hy + uy * L); ctx.lineTo(hx - ux * L, hy - uy * L); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -1141,13 +1202,6 @@ export default class ControllerScene extends Phaser.Scene {
     const ctx = this.ctx;
     const pivot = { x: w / 2, y: h * 0.48 };
     const maxR = h * 0.42;
-    const a0 = AIM.minAngle * Math.PI / 180, a1 = AIM.maxAngle * Math.PI / 180;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(pivot.x, pivot.y, maxR, -a1 * 0 - 0, 0); // placeholder, replaced below
-    ctx.restore();
     // arc of allowed angles
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
@@ -1166,12 +1220,12 @@ export default class ControllerScene extends Phaser.Scene {
     const rad = this.aimAngle * Math.PI / 180;
     const hx = pivot.x + this.facing * Math.cos(rad) * maxR * ratio;
     const hy = pivot.y - Math.sin(rad) * maxR * ratio;
-    ctx.strokeStyle = `#${this.color.toString(16).padStart(6, '0')}`;
+    ctx.strokeStyle = intToCss(this.color);
     ctx.lineWidth = 3; ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(pivot.x, pivot.y); ctx.lineTo(hx, hy); ctx.stroke();
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(hx, hy, 8, 0, 7); ctx.fill();
-    ctx.strokeStyle = `#${this.color.toString(16).padStart(6, '0')}`;
+    ctx.strokeStyle = intToCss(this.color);
     ctx.beginPath(); ctx.arc(hx, hy, 8, 0, 7); ctx.stroke();
   }
 
@@ -1264,9 +1318,10 @@ function drawTowerGlyph(ctx, cx, baseY, w, h, color, facing, o = {}) {
   const by = baseY - h;
   const baseAlpha = o.alpha != null ? o.alpha : 1;
   const bodyCss = intToCss(color);
-  const mortarCss = intToCss(shade(color, 0.6));
-  const litCss = intToCss(shade(color, 1.16));
-  const darkCss = intToCss(shade(color, 0.78));
+  const pal = towerPalette(color);
+  const mortarCss = intToCss(pal.mortar);
+  const litCss = intToCss(pal.lit);
+  const darkCss = intToCss(pal.dark);
   const joint = Math.max(1, w * 0.02);
 
   ctx.save();
@@ -1388,7 +1443,16 @@ function injectControllerStyles() {
     .tp-ctl #name{flex:1;min-width:0;font-size:clamp(22px,6vw,34px);font-weight:bold;color:var(--accent);
       background:transparent;border:none;border-bottom:2px dashed #ffffff55;padding:4px 2px;transition:color .55s ease;}
     .tp-ctl .room{font-size:clamp(13px,3.6vw,20px);color:#cdd6e6;white-space:nowrap;}
-    .tp-ctl #info{font-size:clamp(15px,4.2vw,24px);margin:10px 0 4px;color:#eaf3ff;}
+    .tp-ctl #info{display:flex;flex-direction:column;align-items:center;gap:8px;margin:10px 0 4px;color:#eaf3ff;}
+    /* Wind gauge — the Battlefield score-bar bar, centre-anchored. */
+    .tp-ctl #hudWind{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:320px;}
+    .tp-ctl .hud-round{font-size:clamp(12px,3.4vw,16px);color:#9fb0c8;min-width:38px;text-align:right;}
+    .tp-ctl #hudBar{position:relative;flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.12);}
+    .tp-ctl #hudFill{position:absolute;top:0;height:8px;width:0;background:#f5c451;}
+    .tp-ctl #hudTick{position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:8px;
+      background:rgba(255,255,255,.45);border-radius:1px;}
+    .tp-ctl .hud-pct{font-size:clamp(12px,3.4vw,16px);color:#cdd6e6;min-width:54px;text-align:left;
+      font-variant-numeric:tabular-nums;}
     .tp-ctl #ttv{width:100%;height:34vh;min-height:190px;display:block;margin:4px 0;touch-action:none;cursor:crosshair;}
     .tp-ctl .row{display:flex;align-items:center;justify-content:center;gap:16px;margin:6px 0;}
     .tp-ctl .row button{width:auto;background:transparent;color:#fff;border:none;font-size:30px;cursor:pointer;padding:0 8px;}

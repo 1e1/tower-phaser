@@ -151,6 +151,11 @@ export default class Terrain {
     ctx.beginPath();
     ctx.moveTo(0, GAME_HEIGHT);
     for (let x = 0; x < this.width; x += STEP) ctx.lineTo(x, this.heights[x]);
+    // Carry the surface flush to the image's right boundary at the true edge
+    // height. Without this the polygon stops at the last STEP sample (width-2)
+    // and drops straight to the floor, leaving a one-column notch exactly on the
+    // seam where the next arena's screen joins.
+    ctx.lineTo(this.width, this.heights[this.width - 1]);
     ctx.lineTo(this.width, GAME_HEIGHT);
     ctx.closePath();
     ctx.fill();
@@ -165,6 +170,7 @@ export default class Terrain {
     ctx.beginPath();
     ctx.moveTo(0, this.heights[0]);
     for (let x = STEP; x < this.width; x += STEP) ctx.lineTo(x, this.heights[x]);
+    ctx.lineTo(this.width, this.heights[this.width - 1]); // reach the right edge so the seam line is continuous
     ctx.stroke();
 
     this.drawDecor();

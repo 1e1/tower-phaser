@@ -49,6 +49,72 @@ function render(tpl, dict) {
 const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
 
 // ── generated chrome regions ─────────────────────────────────────────────────
+
+// Hero hills, one silhouette per biome (geometry + the two fills). Single source
+// of truth: each entry is the pair drawn by that biome's chapter, so chapters
+// stay pixel-identical and annexes inherit their biome's hills automatically.
+const HILLS = {
+  meadow: [
+    '<path d="M0,80 C220,20 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>',
+    '<path d="M0,95 C260,55 520,120 760,90 C1020,58 1240,120 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>',
+  ],
+  desert: [
+    '<path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#d9a441"/>',
+    '<path d="M0,95 C260,60 520,115 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#9c6f25"/>',
+  ],
+  tundra: [
+    '<path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#e7eef6"/>',
+    '<path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#c7d6e8"/>',
+  ],
+  volcano: [
+    '<path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#46303f"/>',
+    '<path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#ff6b35"/>',
+  ],
+  storm: [
+    '<path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#2e3a5a"/>',
+    '<path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#5b7fbf"/>',
+  ],
+};
+
+// The hero header (badge/kicker/title/lead + biome hills). Returns a template
+// still carrying {{hero.*}} tokens; the caller renders it through `render` so
+// missing tokens surface in the coverage matrix like any other page region.
+function heroTemplate(page) {
+  const [p1, p2] = HILLS[page.biome] || HILLS.meadow;
+  return `    <header class="hero">
+      <span class="badge">{{hero.badge}}</span>
+      <div class="kicker">{{hero.kicker}}</div>
+      <h1>{{hero.title}}</h1>
+      <p>{{hero.lead}}</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        ${p1}
+        ${p2}
+      </svg>
+    </header>
+`;
+}
+
+// Prev/next pager. Chapters derive it from the level chain (chapter-1 has no
+// prev, chapter-N=last has no next); annexes opt in via a `nav: {prev, next}`
+// entry in site.config. A side with no href renders disabled but keeps its
+// label. Pages with neither get no pager. Labels stay in the per-page catalog.
+function pagerTemplate(page) {
+  let prev = null, next = null, show = false;
+  if (page.kind === 'chapter') {
+    show = true;
+    const { suffix } = levels.find((l) => l.key === page.level);
+    if (page.chapter > 1) prev = `chapter-${page.chapter - 1}${suffix}.html`;
+    if (page.chapter < TOTAL_CHAPTERS) next = `chapter-${page.chapter + 1}${suffix}.html`;
+  } else if (page.nav) {
+    show = true;
+    prev = page.nav.prev || null;
+    next = page.nav.next || null;
+  }
+  if (!show) return '';
+  const side = (href, key) =>
+    href ? `<a href="${href}">{{${key}}}</a>` : `<a class="disabled">{{${key}}}</a>`;
+  return `      <div class="pager wrap">\n        ${side(prev, 'pager.prev')}\n        ${side(next, 'pager.next')}\n      </div>`;
+}
 function crumbs(page, cat) {
   return crumbSetFor(page)
     .map(([href, key]) => `<a class="crumb" href="${href}">${cat[key]}</a>`)
@@ -124,6 +190,8 @@ for (const page of pages) {
 
     const cat = { ...(readJSON(join(i18nDir, `_site.${lang}.json`)) || {}), ...readJSON(join(i18nDir, `${page.slug}.${lang}.json`)) };
     const body = render(readFileSync(join(pagesDir, `${page.slug}.html`), 'utf8'), cat);
+    const hero = render(heroTemplate(page), cat);
+    const pager = render(pagerTemplate(page), cat);
     const scriptPath = join(pagesDir, `${page.slug}.script.html`);
     const script = existsSync(scriptPath) ? render(readFileSync(scriptPath, 'utf8'), cat) : { text: '', missing: [] };
     // Optional per-page <head> extras (e.g. a page-specific <style> block).
@@ -140,12 +208,14 @@ for (const page of pages) {
       crumbs: crumbs(page, cat),
       langbar: langbar(page.slug, lang, available),
       levelbar: levelbar(page, cat),
+      hero: hero.text,
+      pager: pager.text,
       footer: footer(page, cat),
       body: body.text,
       script: script.text,
     });
 
-    const missing = [...new Set([...body.missing, ...script.missing, ...headExtra.missing, ...out.missing])];
+    const missing = [...new Set([...body.missing, ...hero.missing, ...pager.missing, ...script.missing, ...headExtra.missing, ...out.missing])];
     mkdirSync(join(outDir, lang), { recursive: true });
     writeFileSync(join(outDir, lang, `${page.slug}.html`), out.text);
     written++;

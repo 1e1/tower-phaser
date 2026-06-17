@@ -23,7 +23,7 @@ function newToken() {
 // spectators, and the authoritative simulation.
 //
 // Lobby / start sequence. There is NO auto-start. The config owner (the first
-// connected player) sets the match options (biome/rounds/hp/mode) on "page 1"
+// connected player) sets the match options (biome/wins/hp/mode) on "page 1"
 // and validates them; either player may then claim a camp (tower/colour) on
 // "page 2". The match starts as soon as: both seats filled and present + the
 // config owner validated page 1 (configDone) + a camp has been claimed
@@ -326,7 +326,7 @@ export default class Room {
   // --- intents -------------------------------------------------------------
 
   // Only the config owner (first player pre-match, the loser post-match) sets the
-  // match options — biome, rounds, health, mode. The TV has no say.
+  // match options — biome, winning rounds, health, mode. The TV has no say.
   setConfig(socket, cfg = {}) {
     const allowed = socket.role === 'player' && this.players[socket.slot]?.isConfigOwner;
     if (allowed) {
@@ -535,7 +535,7 @@ export default class Room {
       t: 'roster',
       code: this.code,
       config: this.config,
-      biomeChooser: Math.max(0, this.configOwner()), // config owner slot (TV label)
+      configOwnerSlot: Math.max(0, this.configOwner()), // config owner slot (drives the TV rematch label)
       postmatch: this.postmatch,
       inMatch: !!this.sim,
       setup: this.setup,

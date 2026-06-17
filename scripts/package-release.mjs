@@ -15,7 +15,12 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-const name = `tower-duel-${pkg.version}`;
+// On a tag build the tag is the source of truth (GITHUB_REF_NAME=v1.3.1), so the
+// bundle name can never drift from the release it ships with; locally we fall
+// back to package.json. Strip a leading 'v'.
+const tag = (process.env.GITHUB_REF_NAME || '').trim();
+const version = (tag.startsWith('v') ? tag.slice(1) : tag) || pkg.version;
+const name = `tower-duel-${version}`;
 const outDir = join(root, 'release');
 const stage = join(outDir, name);
 
@@ -40,7 +45,7 @@ for (const rel of INCLUDE) {
   cpSync(from, join(stage, rel), { recursive: true });
 }
 
-const DEPLOY = `# Tower Duel — server bundle (v${pkg.version})
+const DEPLOY = `# Tower Duel — server bundle (v${version})
 
 A pre-built, copy-paste deployment. The game is already compiled, so there is
 no build step: copy this folder to any host with **Node.js 18+** and run it.

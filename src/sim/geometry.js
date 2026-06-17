@@ -1,8 +1,13 @@
 // Tower geometry shared by the authoritative server (collision) and the TV
 // renderer (drawing), kept free of Phaser so it can run under plain Node.
 
+// Single source of truth for tower size: used by the authoritative collision
+// box (bounds, below) AND by the TV renderer (objects/Tower.js imports this), so
+// the drawn tower always equals its hit box. bodyWidth is the difficulty knob
+// #6 — a narrower body is a smaller target (kept a modest reduction so misses
+// feel earned, not random; pair with AIM_NOISE if needed).
 export const TOWER = {
-  bodyWidth: 64,
+  bodyWidth: 56,
   bodyHeight: 96,
   barrelLength: 52,
   barrelWidth: 12,

@@ -30,6 +30,45 @@ const DEPTH = {
 const WIDE_MIN = -GAME_WIDTH;
 const WIDE_MAX = 2 * GAME_WIDTH;
 
+// Per-biome ambient particle emitters (the wind-driven curtain / drift). `texture`
+// defaults to 'spark'; the rest is the Phaser emitter config. `sand` doubles as
+// the fallback for any unknown ambient id.
+const AMBIENT = {
+  // Fast vertical streaks; the wind drives the tilt (see update) so the whole
+  // curtain leans the way the wind blows.
+  rain: {
+    texture: 'raindrop',
+    x: { min: WIDE_MIN, max: WIDE_MAX }, y: -20, lifespan: 2400,
+    speedY: { min: 520, max: 760 }, speedX: { min: -10, max: 10 },
+    scale: { min: 0.6, max: 1.1 }, alpha: { min: 0.25, max: 0.6 },
+    frequency: 14, quantity: 2,
+  },
+  snow: {
+    x: { min: WIDE_MIN, max: WIDE_MAX }, y: -10, lifespan: 13000,
+    speedY: { min: 35, max: 75 }, speedX: { min: -20, max: 20 },
+    scale: { min: 0.3, max: 0.8 }, alpha: { min: 0.5, max: 0.95 },
+    frequency: 120, quantity: 1,
+  },
+  leaves: {
+    x: { min: WIDE_MIN, max: WIDE_MAX }, y: -10, lifespan: 11000,
+    speedY: { min: 25, max: 55 }, speedX: { min: -35, max: 35 },
+    rotate: { min: 0, max: 360 }, scale: { min: 0.3, max: 0.7 },
+    alpha: { min: 0.5, max: 0.9 }, frequency: 220, quantity: 1,
+  },
+  embers: {
+    x: { min: WIDE_MIN, max: WIDE_MAX }, y: GAME_HEIGHT + 10, lifespan: 4200,
+    speedY: { min: -110, max: -45 }, speedX: { min: -25, max: 25 },
+    scale: { start: 0.7, end: 0 }, alpha: { start: 0.9, end: 0 },
+    blendMode: 'ADD', frequency: 90, quantity: 1,
+  },
+  sand: {
+    x: WIDE_MIN, y: { min: 0, max: GAME_HEIGHT * 0.8 }, lifespan: 8000,
+    speedX: { min: 70, max: 150 }, speedY: { min: -12, max: 12 },
+    scale: { min: 0.2, max: 0.5 }, alpha: { min: 0.2, max: 0.5 },
+    frequency: 70, quantity: 1,
+  },
+};
+
 // Layered, animated scenery for a biome: sky gradient, sun/moon with glow,
 // two parallax mountain ridges, drifting clouds and an ambient particle effect.
 export default class Background {
@@ -59,6 +98,7 @@ export default class Background {
 
   drawSky() {
     const g = this.scene.add.graphics().setDepth(DEPTH.sky).setScrollFactor(0);
+    this.skyGfx = g;
     const [topInt, bottomInt] = this.biome.sky;
     const top = Phaser.Display.Color.IntegerToColor(topInt);
     const bottom = Phaser.Display.Color.IntegerToColor(bottomInt);
@@ -177,87 +217,10 @@ export default class Background {
     const { ambient, ambientColor } = this.biome;
     if (!ambient) return;
 
-    const common = { tint: ambientColor, depth: DEPTH.ambient };
-    let config;
-    let texture = 'spark';
-
-    switch (ambient) {
-      case 'rain':
-        // Fast vertical streaks; the wind drives gravityX (see update) so the
-        // whole curtain leans the way the wind blows — same value as the SFX.
-        texture = 'raindrop';
-        config = {
-          x: { min: WIDE_MIN, max: WIDE_MAX },
-          y: -20,
-          lifespan: 2400,
-          speedY: { min: 520, max: 760 },
-          speedX: { min: -10, max: 10 },
-          scale: { min: 0.6, max: 1.1 },
-          alpha: { min: 0.25, max: 0.6 },
-          frequency: 14,
-          quantity: 2,
-        };
-        break;
-      case 'snow':
-        config = {
-          x: { min: WIDE_MIN, max: WIDE_MAX },
-          y: -10,
-          lifespan: 13000,
-          speedY: { min: 35, max: 75 },
-          speedX: { min: -20, max: 20 },
-          scale: { min: 0.3, max: 0.8 },
-          alpha: { min: 0.5, max: 0.95 },
-          frequency: 120,
-          quantity: 1,
-        };
-        break;
-      case 'leaves':
-        config = {
-          x: { min: WIDE_MIN, max: WIDE_MAX },
-          y: -10,
-          lifespan: 11000,
-          speedY: { min: 25, max: 55 },
-          speedX: { min: -35, max: 35 },
-          rotate: { min: 0, max: 360 },
-          scale: { min: 0.3, max: 0.7 },
-          alpha: { min: 0.5, max: 0.9 },
-          frequency: 220,
-          quantity: 1,
-        };
-        break;
-      case 'embers':
-        config = {
-          x: { min: WIDE_MIN, max: WIDE_MAX },
-          y: GAME_HEIGHT + 10,
-          lifespan: 4200,
-          speedY: { min: -110, max: -45 },
-          speedX: { min: -25, max: 25 },
-          scale: { start: 0.7, end: 0 },
-          alpha: { start: 0.9, end: 0 },
-          blendMode: 'ADD',
-          frequency: 90,
-          quantity: 1,
-        };
-        break;
-      case 'sand':
-      default:
-        config = {
-          x: WIDE_MIN,
-          y: { min: 0, max: GAME_HEIGHT * 0.8 },
-          lifespan: 8000,
-          speedX: { min: 70, max: 150 },
-          speedY: { min: -12, max: 12 },
-          scale: { min: 0.2, max: 0.5 },
-          alpha: { min: 0.2, max: 0.5 },
-          frequency: 70,
-          quantity: 1,
-        };
-        break;
-    }
-
+    const { texture = 'spark', ...config } = AMBIENT[ambient] || AMBIENT.sand;
     this.emitter = this.scene.add
-      .particles(0, 0, texture, { ...config, tint: common.tint })
-      .setDepth(common.depth)
+      .particles(0, 0, texture, { ...config, tint: ambientColor })
+      .setDepth(DEPTH.ambient)
       .setScrollFactor(0.8);
   }
 
@@ -369,5 +332,28 @@ export default class Background {
       L.flash.setAlpha(L.energy * L.peak);
       L.bolt.setAlpha(Math.min(1, L.energy * 2.2));
     }
+  }
+
+  // Every display object this background owns, for bulk show/hide/teardown.
+  objects() {
+    const objs = [this.skyGfx, this.celestialGlow, this.celestialBody, ...this.ridges.map((r) => r.gfx), ...this.clouds];
+    if (this.emitter) objs.push(this.emitter);
+    if (this.lightning) objs.push(this.lightning.flash, this.lightning.bolt);
+    return objs.filter(Boolean);
+  }
+
+  // Hide the whole scenery while it is pre-built in the lobby, then reveal it on
+  // match entry (see TvScene/LocalScene lobby prewarm).
+  setVisible(v) {
+    this.objects().forEach((o) => o.setVisible(v));
+    return this;
+  }
+
+  destroy() {
+    this.objects().forEach((o) => o.destroy());
+    this.clouds = [];
+    this.ridges = [];
+    this.emitter = null;
+    this.lightning = null;
   }
 }

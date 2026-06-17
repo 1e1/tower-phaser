@@ -1,5 +1,5 @@
 import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS, AIM_NOISE, SHIELD } from '../config/constants.js';
-import { generateHeights, heightAt, pointSolid } from './terrain.js';
+import { generateHeights, heightAt, pointSolid, TERRAIN } from './terrain.js';
 import { aimVector, muzzle, pivot, bounds, rectContains } from './geometry.js';
 import { getShell } from '../config/shells.js';
 
@@ -52,7 +52,6 @@ export default class Simulation {
     this.roughness = biome.roughness ?? 1;
 
     this.scores = [0, 0];
-    this.roundsPlayed = 0;
     this.currentRound = 1;
     this.phase = PHASE.LOBBY;
     this.projectileSeq = 0;
@@ -71,6 +70,13 @@ export default class Simulation {
     this.seed = 0;
     this.heights = new Float32Array(GAME_WIDTH);
     this.wind = 0;
+
+    // Inter-round arena continuity: the next arena's seam-side platform inherits
+    // the height of the platform under the just-destroyed tower, so the camera
+    // pan slides across a continuous ground line (no vertical step). seamY holds
+    // that carried height; lastDestroyed which side the pan moves toward.
+    this.seamY = null;
+    this.lastDestroyed = null;
 
     // Turbo wind is *continuous*: instead of snapping to a fresh value each
     // turn, it eases between random keypoints generated every WIND_KEY_SECONDS,
@@ -100,8 +106,39 @@ export default class Simulation {
 
   newTerrain() {
     this.seed = this.randInt(1, 2 ** 31 - 1);
-    this.heights = generateHeights(this.seed, this.roughness);
+    const { platformY } = TERRAIN;
+    const hv = this.biome.heightVariance ?? 0;
+    const freeHeight = () => platformY + (this.random() * 2 - 1) * hv;
+
+    // One platform is free; the seam-side one is carried from the previous arena
+    // for a continuous pan (see seamY). We pan toward the destroyed tower, so the
+    // new arena's seam side is the opposite index (1 - lastDestroyed):
+    //   lastDestroyed 1 → pan right → new LEFT platform meets the old seam.
+    //   lastDestroyed 0 → pan left  → new RIGHT platform meets the old seam.
+    let leftY;
+    let rightY;
+    if (this.seamY == null || this.lastDestroyed == null) {
+      leftY = freeHeight(); // first round (or no prior pan): both free
+      rightY = freeHeight();
+    } else if (this.lastDestroyed === 1) {
+      leftY = this.seamY;
+      rightY = freeHeight();
+    } else {
+      rightY = this.seamY;
+      leftY = freeHeight();
+    }
+
+    const centralRise = this.biome.centralRise ?? 0;
+    this.heights = generateHeights(this.seed, this.roughness, { leftY, rightY, centralRise });
     this.craters = [];
+
+    // Slide each tower along its (flat) platform so the gap varies per round.
+    // Clamped inside the flat platform zone so groundY stays exactly leftY/rightY.
+    const jit = 60 * (this.biome.distanceVariance ?? 0);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    this.towers[0].x = Math.round(clamp(120 + (this.random() * 2 - 1) * jit, 90, 200));
+    this.towers[1].x = Math.round(clamp((GAME_WIDTH - 120) + (this.random() * 2 - 1) * jit, GAME_WIDTH - 200, GAME_WIDTH - 90));
+
     for (const t of this.towers) {
       t.groundY = heightAt(this.heights, t.x);
       t.damage = 0; // full health each new round
@@ -110,9 +147,10 @@ export default class Simulation {
   }
 
   randomizeWind() {
+    const ws = this.biome.windScale ?? 1;
     const magnitude = this.randInt(0, MAX_WIND);
     const sign = this.random() < 0.5 ? -1 : 1;
-    this.wind = magnitude * sign;
+    this.wind = Math.max(-MAX_WIND, Math.min(MAX_WIND, magnitude * sign * ws));
   }
 
   // --- turbo continuous wind ----------------------------------------------
@@ -120,9 +158,10 @@ export default class Simulation {
   // A signed base-wind keypoint, kept under 80% of MAX so the gust wave has
   // headroom to add on top without slamming into the clamp.
   windKeypoint() {
+    const ws = this.biome.windScale ?? 1;
     const magnitude = this.randInt(0, Math.round(MAX_WIND * 0.8));
     const sign = this.random() < 0.5 ? -1 : 1;
-    return magnitude * sign;
+    return magnitude * sign * ws; // updateTurboWind clamps base+gust to ±MAX_WIND
   }
 
   initTurboWind() {
@@ -422,7 +461,7 @@ export default class Simulation {
         // tower's HP is depleted, even mid-flight of other shells.
         if (this.phase === PHASE.AIMING) {
           opponent.damage += p.dmg ?? 1;
-          if (opponent.damage >= this.maxHp) this.decideRound();
+          if (this.isDead(opponent)) this.decideRound();
         }
       } else {
         this.volleyDamage[p.owner] += p.dmg ?? 1;
@@ -438,13 +477,19 @@ export default class Simulation {
     }
   }
 
+  // A tower is out once its accumulated damage reaches the match HP.
+  isDead(tower) { return tower.damage >= this.maxHp; }
+
+  // The match is decided once a player reaches the agreed winning-round count.
+  matchOver() { return Math.max(this.scores[0], this.scores[1]) >= this.winsNeeded; }
+
   // Classic: settle a volley once all shells have landed.
   enterResolve() {
     const [d1, d2] = this.volleyDamage; // d1: damage dealt by player 0 to tower 1
     this.towers[1].damage += d1;
     this.towers[0].damage += d2;
 
-    if (this.towers[0].damage >= this.maxHp || this.towers[1].damage >= this.maxHp) {
+    if (this.isDead(this.towers[0]) || this.isDead(this.towers[1])) {
       this.decideRound();
       return;
     }
@@ -458,14 +503,18 @@ export default class Simulation {
   // A tower has fallen: award the round and pause before the next one. Shared
   // by classic (at volley resolve) and turbo (the instant a tower's HP hits 0).
   decideRound() {
-    const dead0 = this.towers[0].damage >= this.maxHp;
-    const dead1 = this.towers[1].damage >= this.maxHp;
+    const dead0 = this.isDead(this.towers[0]);
+    const dead1 = this.isDead(this.towers[1]);
+    // Carry the seam height for the next arena's pan: the platform under the
+    // tower that just fell. If both fell, match the TV pan, whose event order
+    // ends on tower 1.
+    this.lastDestroyed = dead1 ? 1 : 0;
+    this.seamY = this.towers[this.lastDestroyed].groundY;
     if (dead1) this.scores[0] += 1;
     if (dead0) this.scores[1] += 1;
     // The loser of the round earns a shield (the underdog's consolation/clutch).
     if (dead0) this.towers[0].ammo.shield += 1;
     if (dead1) this.towers[1].ammo.shield += 1;
-    this.roundsPlayed += 1;
     if (dead0) this.pushEvent('destroyed', { tower: 0 });
     if (dead1) this.pushEvent('destroyed', { tower: 1 });
     if (dead0 && dead1) this.banner = 'Both towers fall!';
@@ -480,7 +529,7 @@ export default class Simulation {
   }
 
   applyResolution() {
-    const decided = this.towers.some((t) => t.damage >= this.maxHp);
+    const decided = this.towers.some((t) => this.isDead(t));
     this.banner = '';
 
     if (!decided) {
@@ -488,7 +537,7 @@ export default class Simulation {
       return;
     }
 
-    if (Math.max(this.scores[0], this.scores[1]) >= this.winsNeeded) {
+    if (this.matchOver()) {
       this.phase = PHASE.MATCH_END;
       this.projectiles = [];
       this.pushEvent('matchEnd', { scores: this.scores.slice() });
@@ -553,6 +602,7 @@ export default class Simulation {
       // renderers; the exact numbers are never displayed on the TV.
       towers: this.towers.map((t) => ({
         ready: t.ready,
+        x: Math.round(t.x),
         groundY: t.groundY,
         angle: t.angle,
         power: t.power,

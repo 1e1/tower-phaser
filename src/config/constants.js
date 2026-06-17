@@ -26,7 +26,12 @@ export const COLORS = {
 // Projectile ballistics, expressed in pixels and seconds.
 export const PHYSICS = {
   gravity: 520, // downward acceleration (px/s^2)
-  speedScale: 7, // initial speed = power * speedScale (px/s)
+  // initial speed = power * speedScale (px/s). This is the difficulty knob for
+  // "100% shouldn't be a gift": lowering it makes full power fall short on the
+  // farther/uphill arenas, so power becomes a managed resource. Kept at 7 so the
+  // default spacing stays reachable at full charge — drop toward ~6.7 only after
+  // checking the widest/uphill arenas remain hittable at an optimal angle.
+  speedScale: 7,
   maxFlightTime: 12, // safety cap for a single shot (s)
 };
 
@@ -60,7 +65,10 @@ export const AIM_NOISE = { angle: 2.5, power: 3 };
 
 // "Winning rounds" choices offered on the setup screen: the match goes to the
 // first player to win this many rounds (first to 1 = sudden death).
-export const WIN_OPTIONS = [1, 2, 3, 4];
+export const WIN_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
+
+// Canonical label for the win target, so the wording lives in exactly one place.
+export const winsLabel = (n) => `First to ${n}`;
 
 // Hit-point choices per tower (a tower falls when its HP reaches 0).
 export const HP_OPTIONS = [1, 2, 3];

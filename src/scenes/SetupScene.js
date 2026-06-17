@@ -5,8 +5,10 @@ import {
   GAME_HEIGHT,
   COLORS,
   WIN_OPTIONS,
+  winsLabel,
 } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
+import { intToCss } from '../render/visuals.js';
 
 const MAX_NAME_LENGTH = 12;
 
@@ -159,9 +161,9 @@ export default class SetupScene extends Phaser.Scene {
       if (field.type === 'name') {
         const caret = active ? '_' : '';
         row.value.setText(`${field.value || ''}${caret}`);
-        row.value.setColor(`#${field.color.toString(16).padStart(6, '0')}`);
+        row.value.setColor(intToCss(field.color));
       } else if (field.type === 'rounds') {
-        row.value.setText(`< First to ${WIN_OPTIONS[field.index]} >`);
+        row.value.setText(`< ${winsLabel(WIN_OPTIONS[field.index])} >`);
         row.value.setColor(active ? COLORS.hud : COLORS.hudDim);
       } else {
         row.value.setText(`< ${BIOMES[field.index].name} >`);

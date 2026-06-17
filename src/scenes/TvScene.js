@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
 
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, WIN_OPTIONS, turboBars, SHIELD } from '../config/constants.js';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS, turboBars, SHIELD } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { generateHeights } from '../sim/terrain.js';
 import { PHASE } from '../sim/Simulation.js';
@@ -10,8 +10,15 @@ import Background from '../objects/Background.js';
 import Terrain from '../objects/Terrain.js';
 import Tower from '../objects/Tower.js';
 import Hud from '../objects/Hud.js';
-import { computeWindsock } from '../render/visuals.js';
+import { computeWindsock, shade, towerPalette } from '../render/visuals.js';
 import { runBenchmark } from '../systems/benchmark.js';
+
+// Deterministic [0,1) hash for the collapse debris, so brick layout and throw
+// vectors are stable across a resume/replay of the same destruction.
+function frag(n) {
+  const v = Math.sin(n * 91.7) * 43758.5453;
+  return v - Math.floor(v);
+}
 
 // Render projectiles this many ms behind the latest snapshot. Snapshots land at
 // ~30 Hz (33 ms apart); holding a small buffer lets us interpolate positions at
@@ -37,9 +44,9 @@ export default class TvScene extends Phaser.Scene {
     this.spectator = !!data.spectator;
     this.queuePos = data.queue || 0;
     this.mode = this.spectator ? 'spectating' : 'lobby';
-    this.roundsIndex = 1;
-    this.biomeIndex = 0;
-    this.biomeChooser = 0;
+    this.cfgWins = 3;
+    this.cfgBiomeId = BIOMES[0].id;
+    this.configOwnerSlot = 0;
     this.roster = [
       { name: null, connected: false },
       { name: null, connected: false },
@@ -49,12 +56,14 @@ export default class TvScene extends Phaser.Scene {
     this.wind = 0;
     this.endShown = false;
     this.unsubs = [];
+    this._warmBiomeId = null;   // biome the lobby has pre-built the battlefield for
+    this._warmBackground = null;
+    this._warmTerrain = null;
   }
 
   create() {
     this.client = this.registry.get('client');
     this.sfx = this.registry.get('sfx');
-    this.events.once('shutdown', () => this.sfx.windStop());
     this.input.keyboard.on('keydown-M', () => {
       const on = this.sfx.toggle();
       if (this.hud) this.hud.showBanner(on ? 'Sound on' : 'Sound off', 700);
@@ -100,6 +109,8 @@ export default class TvScene extends Phaser.Scene {
     this.client.send('sync');
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.sfx.windStop();
+      this.discardPrewarm(); // drop an unconsumed lobby prewarm (frees its canvas texture)
       this.unsubs.forEach((off) => off());
       window.removeEventListener('keydown', this.escHandler);
       if (this.badge) this.badge.remove();
@@ -165,6 +176,30 @@ export default class TvScene extends Phaser.Scene {
     if (this.mode !== 'lobby' || !this.cfgBar) return;
     this.drawConfigBar();
     this.drawPlayersBar();
+    this.prewarmArena();
+  }
+
+  // The TV idles in the lobby while players connect — use that window to pre-build
+  // the two expensive renderers (parallax background + terrain texture) for the
+  // configured biome, hidden, so starting the match doesn't stall a TV-class CPU.
+  // Rebuilt if the configured biome changes; adopted (or discarded) in enterMatch.
+  prewarmArena() {
+    if (this.spectator || this._warmBiomeId === this.cfgBiomeId) return;
+    this.discardPrewarm();
+    const biome = BIOMES.find((b) => b.id === this.cfgBiomeId) || BIOMES[0];
+    this._warmBiomeId = biome.id;
+    this._warmBackground = new Background(this, biome, this.quality).setVisible(false);
+    this._warmTerrain = new Terrain(this, biome.terrain);
+    // Draw a placeholder surface so the canvas allocation + texture upload happen
+    // now; the real seeded heightfield is a cheap redraw on match entry.
+    this._warmTerrain.setHeights(generateHeights(0, biome.roughness ?? 1, { centralRise: biome.centralRise ?? 0 }));
+    this._warmTerrain.image.setVisible(false);
+  }
+
+  discardPrewarm() {
+    if (this._warmBackground) { this._warmBackground.destroy(); this._warmBackground = null; }
+    if (this._warmTerrain) { this._warmTerrain.destroy(); this._warmTerrain = null; }
+    this._warmBiomeId = null;
   }
 
   // The configured match, read at a glance, fully dressed in the biome: a
@@ -172,9 +207,9 @@ export default class TvScene extends Phaser.Scene {
   // a biome medallion, HP hearts, the cadence gauge (a turn-by-turn glyph in
   // Classic, or 1–3 lit bars in Turbo: 8s→1, 5s→2, 2s→3) and one pip per round.
   drawConfigBar() {
-    const biome = BIOMES[this.biomeIndex] || BIOMES[0];
+    const biome = BIOMES.find((b) => b.id === this.cfgBiomeId) || BIOMES[0];
     const hp = this.cfgHp || 1;
-    const rounds = WIN_OPTIONS[this.roundsIndex] || 3;
+    const rounds = this.cfgWins || 3;
     const g = this.cfgBar;
     g.clear();
 
@@ -274,7 +309,7 @@ export default class TvScene extends Phaser.Scene {
     const W = 300; const H = 44; const gap = 40; const y = 646;
     const total = W * 2 + gap; const x0 = (GAME_WIDTH - total) / 2;
     const sideColor = [COLORS.towerP1, COLORS.towerP2];
-    const neutral = 0x6f7d96;
+    const neutral = COLORS.towerNeutral;
 
     for (let i = 0; i < 2; i += 1) {
       const p = this.roster[i] || {};
@@ -405,13 +440,15 @@ export default class TvScene extends Phaser.Scene {
 
   onRoster(m) {
     this.roster = m.players;
-    this.biomeChooser = m.biomeChooser ?? 0;
+    this.configOwnerSlot = m.configOwnerSlot ?? 0;
     this.setup = !!m.setup;
     this.configDone = !!m.configDone;
     this.campChooser = m.campChooser ?? -1;
     if (m.config) {
-      this.biomeIndex = Math.max(0, BIOMES.findIndex((b) => b.id === m.config.biomeId));
-      this.roundsIndex = Math.max(0, WIN_OPTIONS.indexOf(m.config.wins));
+      // The TV only displays the config, so it keeps the raw values (not the
+      // setup-screen indices the controller needs to cycle the options).
+      this.cfgBiomeId = m.config.biomeId;
+      this.cfgWins = m.config.wins;
       this.cfgHp = m.config.hp || 1;
       this.cfgTurbo = !!m.config.turbo;
       this.cfgCadence = m.config.cadence ?? 0;
@@ -477,10 +514,23 @@ export default class TvScene extends Phaser.Scene {
 
     const biome = BIOMES.find((b) => b.id === state.biomeId) || BIOMES[0];
     this.biome = biome;
-    this.background = new Background(this, biome, this.quality);
 
-    this.terrain = new Terrain(this, biome.terrain);
-    this.loadTerrain(state.seed);
+    // Adopt the lobby-prewarmed renderers when the biome still matches; otherwise
+    // (spectator, or the biome changed since the prewarm) build them fresh now.
+    if (this._warmBiomeId === biome.id && this._warmBackground && this._warmTerrain) {
+      this.background = this._warmBackground;
+      this.terrain = this._warmTerrain;
+      this.background.setVisible(true);
+      this.terrain.image.setVisible(true);
+      this._warmBackground = null;
+      this._warmTerrain = null;
+      this._warmBiomeId = null;
+    } else {
+      this.discardPrewarm();
+      this.background = new Background(this, biome, this.quality);
+      this.terrain = new Terrain(this, biome.terrain);
+    }
+    this.loadTerrain(state.seed, this.terrainOpts(state));
 
     this.towers = this.buildTowers(state, 0);
     this.windsockGfx = this.add.graphics().setDepth(2);
@@ -500,6 +550,7 @@ export default class TvScene extends Phaser.Scene {
     this.roundNo = state.round.current;
     this.lastDestroyed = 1;
     this.panActive = false;
+    this.fragments = []; // tumbling brick graphics from the last collapse
     this.cameras.main.setScroll(0, 0);
 
     this.sfx.windStart();
@@ -514,10 +565,11 @@ export default class TvScene extends Phaser.Scene {
   }
 
   // Create the two towers at a world offset (used by the camera-pan transition).
+  // x and groundY come from the authoritative state (both vary per round).
   buildTowers(state, ox) {
     const towers = [
-      new Tower(this, 120 + ox, state.towers[0].groundY, COLORS.towerP1, 1),
-      new Tower(this, GAME_WIDTH - 120 + ox, state.towers[1].groundY, COLORS.towerP2, -1),
+      new Tower(this, state.towers[0].x + ox, state.towers[0].groundY, COLORS.towerP1, 1),
+      new Tower(this, state.towers[1].x + ox, state.towers[1].groundY, COLORS.towerP2, -1),
     ];
     towers.forEach((t, i) => {
       t.gfx.setDepth(1);
@@ -528,9 +580,21 @@ export default class TvScene extends Phaser.Scene {
     return towers;
   }
 
-  loadTerrain(seed) {
+  // Per-round arena shape, reconstructed from the authoritative state so the
+  // rendered terrain matches the server's collisions exactly: platform heights
+  // ride on the transmitted tower groundY (towers stand on the flat platforms),
+  // the central massif is a deterministic per-biome knob.
+  terrainOpts(state) {
+    return {
+      leftY: state.towers[0].groundY,
+      rightY: state.towers[1].groundY,
+      centralRise: this.biome.centralRise ?? 0,
+    };
+  }
+
+  loadTerrain(seed, opts) {
     this.seed = seed;
-    this.terrain.setHeights(generateHeights(seed, this.biome.roughness ?? 1));
+    this.terrain.setHeights(generateHeights(seed, this.biome.roughness ?? 1, opts));
   }
 
   createEmitters() {
@@ -722,12 +786,15 @@ export default class TvScene extends Phaser.Scene {
         this.startPan(state);
         return;
       }
-      this.loadTerrain(state.seed);
+      this.loadTerrain(state.seed, this.terrainOpts(state));
     }
     this.terrain.applyCraters(state.craters);
 
     this.towers.forEach((t, i) => {
       const ts = state.towers[i];
+      // x is constant within a round (the sim only moves towers at newTerrain);
+      // syncing it here keeps a non-pan terrain reload (resync) in step.
+      if (ts.x != null) { t.x = ts.x; t.pivotX = ts.x; }
       t.groundY = ts.groundY;
       t.pivotY = ts.groundY - 96;
       t.angle = ts.angle;
@@ -763,6 +830,7 @@ export default class TvScene extends Phaser.Scene {
   // Inter-round camera pan toward the destroyed tower, advancing one screen.
   startPan(state) {
     this.panActive = true;
+    this.clearFragments(); // collapse debris from this round must not ride along
     // Crossfade the music (volume + tempo) across the same 1.1 s camera slide.
     this.sfx.musicTransition(this.biome.id, state.round.current, this.isDecider(state), 1.1);
     const dir = this.lastDestroyed === 0 ? -1 : 1;
@@ -772,7 +840,7 @@ export default class TvScene extends Phaser.Scene {
     const oldTowers = this.towers;
 
     const nextTerrain = new Terrain(this, this.biome.terrain);
-    nextTerrain.setHeights(generateHeights(state.seed, this.biome.roughness ?? 1));
+    nextTerrain.setHeights(generateHeights(state.seed, this.biome.roughness ?? 1, this.terrainOpts(state)));
     nextTerrain.setX(ox);
     const nextTowers = this.buildTowers(state, ox);
 
@@ -890,8 +958,10 @@ export default class TvScene extends Phaser.Scene {
     }
   }
 
-  // Crumble the destroyed tower (#10): a burst of stone debris, hard shake, and
-  // the tower sinking and fading. It is removed shortly after by the round pan.
+  // Crumble the destroyed tower (#10): a burst of stone debris and a hard shake,
+  // then the body fractures into textured stone bricks that tumble and settle.
+  // The standing tower collapses to a persistent rubble mound (Tower.draw renders
+  // the ruin once hp hits 0); the ruin is carried away later by the round pan.
   explodeTower(i) {
     const t = this.towers[i];
     if (!t || this.panActive) return;
@@ -906,7 +976,82 @@ export default class TvScene extends Phaser.Scene {
     this.sparkEmitter.emitParticleAt(cx, cy, lite ? 8 : 20);
     this.sfx.rubble(true);
     this.shake(420, lite ? 0.01 : 0.02);
-    this.tweens.add({ targets: t.gfx, y: 26, alpha: 0.25, duration: 600, ease: 'Quad.easeIn' });
+    this.spawnBrickFragments(t, lite);
+    t.hp = 0; // collapse the standing body to a ruin under the flying bricks
+    t.draw();
+  }
+
+  // Shatter a tower body into stone bricks that tumble out and settle on the
+  // ground. Each brick carries the masonry texture so it reads as stone in
+  // flight; ~a third clump into a taller two-course block for a mix of small
+  // bricks and bigger chunks. The graphics are tracked so the pan can clear them.
+  spawnBrickFragments(t, lite) {
+    const b = t.bounds;
+    const groundY = b.y + b.height;
+    const pal = towerPalette(t.color);
+    const cols = lite ? 3 : 4;
+    const ubw = b.width / cols;
+    const ubh = ubw / 1.35; // stone-brick proportion
+    const usable = b.height * 0.82; // upper body that fractures
+    const rows = Math.max(4, Math.round(usable / ubh));
+    const consumed = {};
+    let idx = 0;
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        if (consumed[`${r}_${c}`]) continue;
+        let span = 1;
+        if (r < rows - 1 && frag(r * 5 + c * 3 + 1) > 0.64) {
+          span = 2;
+          consumed[`${r + 1}_${c}`] = true;
+        }
+        const w = ubw - 1.5;
+        const h = ubh * span - 1.5;
+        const g = this.add.graphics().setDepth(6);
+        this.drawBrick(g, w, h, ubh, idx, t.color, pal);
+        g.x = b.x + c * ubw + ubw / 2;
+        g.y = b.y + r * ubh + (ubh * span) / 2;
+        const driftX = (c - (cols - 1) / 2) * 26 + (frag(idx * 7) - 0.5) * 60;
+        this.fragments.push(g);
+        this.tweens.add({
+          targets: g,
+          x: g.x + driftX,
+          y: groundY - h / 2 - frag(idx * 9) * 10,
+          rotation: (frag(idx * 5 + 2) - 0.5) * 2.4,
+          duration: 620 + frag(idx * 3) * 520,
+          ease: 'Quad.easeIn',
+        });
+        idx += 1;
+      }
+    }
+  }
+
+  // A single masonry brick centred on the graphics origin: tinted stone, internal
+  // mortar courses in running bond, a lit top edge and a shadowed base.
+  drawBrick(g, w, h, brickH, seed, color, pal) {
+    const x0 = -w / 2;
+    const y0 = -h / 2;
+    g.fillStyle(shade(color, 0.9 + frag(seed) * 0.16), 1);
+    g.fillRect(x0, y0, w, h);
+    g.lineStyle(1.5, pal.mortar, 1);
+    for (let yy = y0 + brickH; yy < y0 + h - 1; yy += brickH) {
+      g.beginPath(); g.moveTo(x0, yy); g.lineTo(x0 + w, yy); g.strokePath();
+    }
+    let course = 0;
+    for (let yy = y0; yy < y0 + h; yy += brickH, course += 1) {
+      const off = (course % 2) * (brickH * 0.7);
+      for (let xx = x0 + off; xx < x0 + w - 1; xx += brickH * 1.35) {
+        if (xx <= x0) continue;
+        g.beginPath(); g.moveTo(xx, yy); g.lineTo(xx, Math.min(yy + brickH, y0 + h)); g.strokePath();
+      }
+    }
+    g.fillStyle(pal.lit, 0.4); g.fillRect(x0, y0, w, 3);
+    g.fillStyle(0x000000, 0.22); g.fillRect(x0, y0 + h - 3, w, 3);
+    g.lineStyle(1.5, pal.mortar, 1); g.strokeRect(x0, y0, w, h);
+  }
+
+  clearFragments() {
+    if (this.fragments) this.fragments.forEach((g) => g.destroy());
+    this.fragments = [];
   }
 
   showEnd(state) {
@@ -920,7 +1065,7 @@ export default class TvScene extends Phaser.Scene {
     else if (s2 > s1) title = `${state.names[1]} wins!`;
     else title = "It's a draw!";
 
-    const loserName = this.roster?.[this.biomeChooser]?.name || 'The loser';
+    const loserName = this.roster?.[this.configOwnerSlot]?.name || 'The loser';
     this.endGroup = [
       this.add.text(cx, GAME_HEIGHT * 0.42, title, { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '78px', color: COLORS.hud, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5).setDepth(1001),
       this.add.text(cx, GAME_HEIGHT * 0.56, `${s1} — ${s2}`, { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '48px', color: COLORS.hud }).setOrigin(0.5).setDepth(1001),

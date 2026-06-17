@@ -40,6 +40,7 @@ export default class BootScene extends Phaser.Scene {
     window.addEventListener('keydown', () => sfx.unlock(), { once: true });
 
     const role = detectRole();
+    if (role === 'local') { this.scene.start('Local'); return; } // ?local / #local direct entry
     const auto = role === 'tv' ? 'host' : role === 'phone' ? 'join' : null;
     this.scene.start('Lobby', { auto });
   }

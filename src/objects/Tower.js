@@ -1,12 +1,22 @@
 import Phaser from 'phaser';
 
-import { COLORS, AIM } from '../config/constants.js';
-import { barrelColor, shade } from '../render/visuals.js';
+import { AIM } from '../config/constants.js';
+import { TOWER } from '../sim/geometry.js';
+import { barrelHeat, BARREL_COOL, pivotCharge, shade, towerPalette } from '../render/visuals.js';
 
-const BODY_WIDTH = 64;
-const BODY_HEIGHT = 96;
-const BARREL_LENGTH = 52;
-const BARREL_WIDTH = 8; // slimmer cannon
+// Deterministic [0,1) hash so rubble and broken stubs stay put across frames
+// (the tower is redrawn every frame; jittered debris must not twitch).
+function hash(n) {
+  const v = Math.sin(n * 12.9898) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+// Body size mirrors the authoritative collision box so the drawing matches the
+// hit test exactly (geometry.js is the single source — see TOWER there).
+const BODY_WIDTH = TOWER.bodyWidth;
+const BODY_HEIGHT = TOWER.bodyHeight;
+const BARREL_LENGTH = TOWER.barrelLength;
+const BARREL_WIDTH = 8; // slimmer cannon (render-only; collision ignores the barrel)
 const ROW_H = 16; // stone course height
 const BLOCK_W = 22; // stone block width
 
@@ -85,9 +95,12 @@ export default class Tower {
     const g = this.gfx;
     g.clear();
     const b = this.bounds;
-    const mortar = shade(this.color, 0.6);
-    const lit = shade(this.color, 1.16);
-    const dark = shade(this.color, 0.78);
+    const { mortar, lit, dark } = towerPalette(this.color);
+
+    // A toppled tower reads as a heap of stone on the ground — no body, no
+    // cannon. Drawn as a ruin so a destroyed tower leaves rubble behind instead
+    // of sinking and fading out of existence.
+    if (this.hp <= 0) { this.drawRuin(g, b, mortar); return; }
 
     // Stone body.
     g.fillStyle(this.color, 1);
@@ -122,33 +135,72 @@ export default class Tower {
     // Damage fraction (only meaningful when maxHp > 1).
     const dmg = this.maxHp > 1 ? 1 - this.hp / this.maxHp : 0;
 
-    // Crenellated top (merlons) — knocked off as damage rises.
+    // Crenellated top (merlons). Spaced like the controller view (a full merlon
+    // width between each) so every merlon reads as distinct on the battlefield
+    // instead of merging into one solid band. A merlon knocked off by damage
+    // leaves a jagged broken stub rather than a clean gap, so the parapet
+    // visibly crumbles from the very first hit.
     const knocked = Math.round(dmg * 3);
+    const merlonW = (b.width - 10) / 5;
     for (let i = 0; i < 3; i += 1) {
-      if (i < knocked) continue; // this merlon is rubble
+      const mx = b.x + 5 + i * merlonW * 2;
+      const mh = i < knocked ? 4 + hash(i * 7 + 1) * 4 : 16;
       g.fillStyle(dark, 1);
-      g.fillRect(b.x + 3 + i * 22, b.y - 13, 15, 15);
+      g.fillRect(mx, b.y - mh, merlonW, mh + 2);
       g.lineStyle(2, mortar, 1);
-      g.strokeRect(b.x + 3 + i * 22, b.y - 13, 15, 15);
+      g.strokeRect(mx, b.y - mh, merlonW, mh + 2);
     }
 
-    if (dmg > 0) this.drawDamage(g, b, dmg, mortar);
+    if (dmg > 0) {
+      this.drawBreaches(g, b, dmg);
+      this.drawBaseRubble(g, b, dmg, mortar);
+      this.drawDamage(g, b, dmg, mortar);
+    }
 
-    // Slim barrel.
+    // Slim barrel: cool iron at the muzzle easing to a heat-glow at the breech
+    // (amber→white-hot at full charge). Camp-neutral — never red.
     const v = this.aimVector;
     const angle = Math.atan2(v.y, v.x);
     g.save();
     g.translateCanvas(this.pivotX, this.pivotY);
     g.rotateCanvas(angle);
-    g.fillStyle(barrelColor(this.power), 1);
+    const breech = barrelHeat(this.power);
+    // Horizontal gradient along the barrel: hot at x=0 (breech), cool at muzzle.
+    g.fillGradientStyle(breech, BARREL_COOL, breech, BARREL_COOL, 1);
     g.fillRoundedRect(0, -BARREL_WIDTH / 2, BARREL_LENGTH, BARREL_WIDTH, 3);
-    g.fillStyle(0x000000, 0.16); // muzzle opening
+    g.fillStyle(0x000000, 0.16); // muzzle opening (unchanged)
     g.fillCircle(BARREL_LENGTH, 0, BARREL_WIDTH / 2);
     g.restore();
 
-    // Pivot hub (a darker stone mount).
-    g.fillStyle(shade(COLORS.barrel, 0.9), 1);
-    g.fillCircle(this.pivotX, this.pivotY, 9);
+    // Pivot = powder reserve: a relief hub whose core darkens as it packs with
+    // powder, ringed by a gauge that fills (amber→white) with charge.
+    const pc = pivotCharge(this.power);
+    const px = this.pivotX;
+    const py = this.pivotY;
+    // Breech heat glow — soft alpha discs (Graphics has no radial gradient).
+    if (pc.fill > 0.02) {
+      g.fillStyle(pc.gauge, 0.22 * pc.fill);
+      g.fillCircle(px, py, 9 + 8 * pc.fill);
+      g.fillStyle(pc.gauge, 0.18 * pc.fill);
+      g.fillCircle(px, py, 9 + 4 * pc.fill);
+    }
+    // Hub: lit rim then a darkening packed core for relief.
+    g.fillStyle(pc.rim, 1);
+    g.fillCircle(px, py, 9);
+    g.fillStyle(pc.core, 1);
+    g.fillCircle(px, py, 7.5);
+    // Powder gauge ring, filling clockwise from the top.
+    g.lineStyle(3, 0x000000, 0.35);
+    g.beginPath();
+    g.arc(px, py, 12, 0, Math.PI * 2);
+    g.strokePath();
+    if (pc.fill > 0.01) {
+      g.lineStyle(3, pc.gauge, 1);
+      g.beginPath();
+      const start = -Math.PI / 2;
+      g.arc(px, py, 12, start, start + pc.fill * Math.PI * 2);
+      g.strokePath();
+    }
 
     // Fuse (wick) at the breech, lit when the player is ready.
     const ft = this.fuseTip;
@@ -191,6 +243,60 @@ export default class Tower {
       const cx = this.facing > 0 ? b.x + b.width - 12 : b.x;
       g.fillTriangle(cx, b.y, cx + 12, b.y, cx + (this.facing > 0 ? 12 : 0), b.y + 14);
     }
+  }
+
+  // Dark missing-block holes punched into the upper body, growing with damage.
+  drawBreaches(g, b, dmg) {
+    const n = Math.floor(dmg * 4);
+    g.fillStyle(0x0a0810, 0.82);
+    for (let i = 0; i < n; i += 1) {
+      const hx = b.x + 8 + ((i * 27 + 6) % Math.max(1, b.width - 24));
+      const hy = b.y + 4 + hash(i * 5 + 2) * (b.height * 0.4);
+      g.fillRect(hx, hy, 16, 12);
+    }
+  }
+
+  // Fallen stones heaping at the foot as the tower takes damage — the rubble
+  // grows wider and denser the closer it is to collapse.
+  drawBaseRubble(g, b, dmg, mortar) {
+    const cx = b.x + b.width / 2;
+    const baseY = b.y + b.height;
+    const n = Math.round(dmg * 5);
+    for (let i = 0; i < n; i += 1) {
+      const dx = (hash(i * 5 + 3) - 0.5) * b.width * (0.9 + dmg);
+      const s = 6 + hash(i * 3 + 1) * 8;
+      this.rock(g, cx + dx, baseY - s * 0.3, s, (hash(i * 7) - 0.5) * 0.8, i + 40, mortar);
+    }
+  }
+
+  // The destroyed tower: a low, irregular mound of stone across the foot, heaped
+  // higher in the middle. Deterministic so the ruin sits still.
+  drawRuin(g, b, mortar) {
+    const cx = b.x + b.width / 2;
+    const baseY = b.y + b.height;
+    const spread = b.width * 1.5;
+    for (let i = 0; i < 18; i += 1) {
+      const dx = (hash(i * 5 + 1) - 0.5) * spread;
+      const s = 8 + hash(i * 3 + 2) * 12;
+      const heap = Math.max(0, 1 - Math.abs(dx) / (spread * 0.55));
+      const y = baseY - heap * 30 * hash(i * 9 + 3) - s * 0.3;
+      this.rock(g, cx + dx, y, s, (hash(i * 11) - 0.5) * 0.9, i, mortar);
+    }
+  }
+
+  // An irregular stone chunk (pentagon), tinted from the camp colour and outlined
+  // in mortar so it reads as masonry rubble.
+  rock(g, x, y, s, rot, seed, mortar) {
+    const pts = [];
+    for (let k = 0; k < 5; k += 1) {
+      const ang = (k / 5) * Math.PI * 2 + rot;
+      const rr = s * (0.55 + hash(seed * 9 + k * 3.1) * 0.5);
+      pts.push({ x: x + Math.cos(ang) * rr, y: y + Math.sin(ang) * rr * 0.78 });
+    }
+    g.fillStyle(shade(this.color, 0.62 + hash(seed * 3) * 0.26), 1);
+    g.fillPoints(pts, true);
+    g.lineStyle(1.5, mortar, 0.9);
+    g.strokePoints(pts, true);
   }
 
   destroy() {

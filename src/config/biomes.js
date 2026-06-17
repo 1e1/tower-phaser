@@ -14,6 +14,15 @@ export const BIOMES = [
     ambient: 'leaves',
     ambientColor: 0x9be36b,
     roughness: 1,
+    // Difficulty knobs (see Simulation.newTerrain / generateHeights / wind).
+    // heightVariance: ± px the flat platforms wander from the base height.
+    // distanceVariance: 0..1 scale of how far the towers slide along their
+    // platforms (changes the gap). centralRise: height of a central massif that
+    // blocks low shots. windScale: per-biome wind multiplier.
+    heightVariance: 55,
+    distanceVariance: 0.5,
+    centralRise: 0,
+    windScale: 0.85,
   },
   {
     id: 'desert',
@@ -26,6 +35,10 @@ export const BIOMES = [
     ambient: 'sand',
     ambientColor: 0xe9cf9a,
     roughness: 1.25,
+    heightVariance: 80,
+    distanceVariance: 0.8,
+    centralRise: 45,
+    windScale: 1.0,
   },
   {
     id: 'tundra',
@@ -38,6 +51,10 @@ export const BIOMES = [
     ambient: 'snow',
     ambientColor: 0xffffff,
     roughness: 0.85,
+    heightVariance: 65,
+    distanceVariance: 0.6,
+    centralRise: 20,
+    windScale: 0.9,
   },
   {
     id: 'volcano',
@@ -50,6 +67,10 @@ export const BIOMES = [
     ambient: 'embers',
     ambientColor: 0xff7a33,
     roughness: 1.4,
+    heightVariance: 95,
+    distanceVariance: 1.0,
+    centralRise: 90,
+    windScale: 1.3,
   },
   {
     id: 'storm',
@@ -62,8 +83,12 @@ export const BIOMES = [
     ambient: 'rain',
     ambientColor: 0x9fb4e0,
     roughness: 1.1,
+    heightVariance: 80,
+    distanceVariance: 0.85,
+    centralRise: 55,
+    windScale: 1.25,
     // Parallax lightning: distant strikes flash the far layers far more than the
     // near ones, so depth reads from light. every:[min,max] seconds between bolts.
-    lightning: { every: [4, 11], farResponse: 0.9, nearResponse: 0.18, thunderDelay: 1.1 },
+    lightning: { every: [4, 11], farResponse: 0.9, thunderDelay: 1.1 },
   },
 ];

@@ -8,6 +8,7 @@ import ControllerScene from './scenes/ControllerScene.js';
 import SetupScene from './scenes/SetupScene.js';
 import GameScene from './scenes/GameScene.js';
 import ResultScene from './scenes/ResultScene.js';
+import LocalScene from './scenes/LocalScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -31,6 +32,7 @@ const config = {
     SetupScene,
     GameScene,
     ResultScene,
+    LocalScene,
   ],
 };
 
