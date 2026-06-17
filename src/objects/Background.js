@@ -15,16 +15,20 @@ const DEPTH = {
 // Layered, animated scenery for a biome: sky gradient, sun/moon with glow,
 // two parallax mountain ridges, drifting clouds and an ambient particle effect.
 export default class Background {
-  constructor(scene, biome) {
+  constructor(scene, biome, quality = 'full') {
     this.scene = scene;
     this.biome = biome;
+    this.quality = quality;
     this.clouds = [];
+    this.windValue = 0;
+    this.gustTime = 0;
 
     this.drawSky();
     this.drawCelestial();
     this.drawMountains();
     this.spawnClouds();
-    this.spawnAmbient();
+    // The ambient particle layer is the cheapest thing to drop on weak devices.
+    if (quality !== 'lite') this.spawnAmbient();
   }
 
   drawSky() {
@@ -96,7 +100,7 @@ export default class Background {
   spawnClouds() {
     const { cloud } = this.biome;
     if (!cloud) return;
-    const count = 5;
+    const count = this.quality === 'lite' ? 2 : 5;
     for (let i = 0; i < count; i += 1) {
       const scale = Phaser.Math.FloatBetween(0.5, 1.1);
       const sprite = this.scene.add
@@ -184,14 +188,32 @@ export default class Background {
       .setDepth(common.depth);
   }
 
+  // Current wind (px/s^2, positive blows right) drives the ambient particles
+  // and nudges the clouds.
+  setWind(value) {
+    this.windValue = value;
+  }
+
   update(dt) {
+    this.gustTime += dt;
+    // Gusty multiplier oscillating between lulls and stronger blows.
+    const gust = 0.8 + 0.5 * Math.sin(this.gustTime * 1.6) + 0.3 * Math.sin(this.gustTime * 0.7 + 1);
+    const windFx = this.windValue * gust;
+
     for (const cloud of this.clouds) {
-      cloud.x += cloud.driftSpeed * dt;
+      cloud.x += (cloud.driftSpeed + this.windValue * 0.16) * dt;
       const halfWidth = (cloud.displayWidth || 220) / 2;
       if (cloud.x - halfWidth > GAME_WIDTH) {
         cloud.x = -halfWidth;
         cloud.y = Phaser.Math.Between(40, GAME_HEIGHT * 0.32);
+      } else if (cloud.x + halfWidth < 0) {
+        cloud.x = GAME_WIDTH + halfWidth;
+        cloud.y = Phaser.Math.Between(40, GAME_HEIGHT * 0.32);
       }
+    }
+
+    if (this.emitter) {
+      this.emitter.gravityX = Phaser.Math.Clamp(windFx, -220, 220);
     }
   }
 }

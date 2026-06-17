@@ -1,5 +1,3 @@
-import Phaser from 'phaser';
-
 import { GAME_WIDTH, COLORS, MAX_WIND, AIM } from '../config/constants.js';
 
 // Top status bar (names, scores, round counter, wind gauge) plus the per-player
@@ -131,6 +129,15 @@ export default class Hud {
         )}%\n${status}`,
       );
       text.setColor(tower.ready ? COLORS.ready : COLORS.hud);
+    });
+  }
+
+  // Spectator status: ready/aiming only, never the actual angle or power.
+  updateStatus(towers) {
+    towers.forEach((tower, i) => {
+      const text = this.aimTexts[i];
+      text.setText(tower.ready ? 'READY' : 'aiming…');
+      text.setColor(tower.ready ? COLORS.ready : COLORS.hudDim);
     });
   }
 

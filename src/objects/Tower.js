@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 
 import { COLORS, AIM } from '../config/constants.js';
+import { barrelColor } from '../render/visuals.js';
 
 const BODY_WIDTH = 64;
 const BODY_HEIGHT = 96;
@@ -95,7 +96,7 @@ export default class Tower {
     g.save();
     g.translateCanvas(this.pivotX, this.pivotY);
     g.rotateCanvas(angle);
-    g.fillStyle(COLORS.barrel, 1);
+    g.fillStyle(barrelColor(this.power), 1);
     g.fillRoundedRect(0, -BARREL_WIDTH / 2, BARREL_LENGTH, BARREL_WIDTH, 4);
     g.restore();
 

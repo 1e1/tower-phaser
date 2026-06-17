@@ -3,6 +3,9 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/constants.js';
 import { generateTextures } from '../systems/textures.js';
 import Sfx from '../systems/Sfx.js';
+import Client from '../net/Client.js';
+import { detectRole } from '../net/device.js';
+import { runBenchmark } from '../systems/benchmark.js';
 
 // Boot scene. Everything is drawn procedurally, so instead of loading assets it
 // generates the reusable particle textures and prepares the shared audio
@@ -16,6 +19,29 @@ export default class BootScene extends Phaser.Scene {
     generateTextures(this);
     if (!this.registry.get('sfx')) {
       this.registry.set('sfx', new Sfx());
+    }
+    if (!this.registry.get('client')) {
+      const client = new Client();
+      client.connect();
+      this.registry.set('client', client);
+    }
+    // Probe rendering performance and pick a quality tier (helps weak TVs).
+    // Defaults to full and may downgrade to lite once the sample completes.
+    if (!this.registry.get('quality')) {
+      this.registry.set('quality', 'full');
+      runBenchmark(this);
+    }
+
+    const role = detectRole();
+
+    // A TV is just a display: skip the title card entirely and host straight
+    // away. (A one-shot listener still unlocks audio if anyone interacts.)
+    if (role === 'tv') {
+      const sfx = this.registry.get('sfx');
+      window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
+      window.addEventListener('keydown', () => sfx.unlock(), { once: true });
+      this.scene.start('Lobby', { auto: 'host' });
+      return;
     }
 
     const cx = GAME_WIDTH / 2;
@@ -53,11 +79,19 @@ export default class BootScene extends Phaser.Scene {
       repeat: -1,
     });
 
+    let started = false;
     const go = () => {
+      if (started) return;
+      started = true;
+      window.removeEventListener('pointerdown', go);
+      window.removeEventListener('keydown', go);
       this.registry.get('sfx').unlock();
-      this.scene.start('Setup');
+      // A phone is always a player: jump straight to the join form.
+      this.scene.start('Lobby', { auto: role === 'phone' ? 'join' : null });
     };
-    this.input.keyboard.once('keydown', go);
-    this.input.once('pointerdown', go);
+    // Window-level listeners so a tap anywhere works even where the canvas is
+    // letterboxed (e.g. a phone in portrait).
+    window.addEventListener('pointerdown', go);
+    window.addEventListener('keydown', go);
   }
 }

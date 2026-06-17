@@ -51,6 +51,14 @@ export default class Terrain {
     this.draw();
   }
 
+  // Load an externally computed heightfield (used by the spectator TV, which
+  // rebuilds the server's terrain from a shared seed instead of generating its
+  // own) and redraw.
+  setHeights(heights) {
+    this.heights.set(heights);
+    this.draw();
+  }
+
   // Surface height (top of the ground) at a given column.
   heightAt(x) {
     const clamped = Phaser.Math.Clamp(Math.round(x), 0, this.width - 1);

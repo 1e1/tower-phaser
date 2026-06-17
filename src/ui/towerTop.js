@@ -1,0 +1,94 @@
+import { barrelColor, intToCss, computeWindsock } from '../render/visuals.js';
+
+// Draw the player's own tower top onto a 2D canvas: body, cannon oriented by the
+// current aim and tinted by charge, an animated windsock, and a firing flash.
+// Mirrors the look of the TV so the phone feels like a window onto the duel.
+export function drawTowerTop(ctx, w, h, o) {
+  ctx.clearRect(0, 0, w, h);
+
+  const groundY = h * 0.9;
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(0, groundY, w, h - groundY);
+
+  const bw = Math.max(50, w * 0.16);
+  const bh = h * 0.42;
+  const bx = w / 2 - bw / 2;
+  const by = groundY - bh;
+  const bodyCss = intToCss(o.color);
+
+  // Body + battlements.
+  roundRect(ctx, bx, by, bw, bh, 8);
+  ctx.fillStyle = bodyCss;
+  ctx.fill();
+  const merlon = (bw - 12) / 5;
+  for (let i = 0; i < 3; i += 1) {
+    ctx.fillRect(bx + 4 + i * merlon * 2, by - 10, merlon, 10);
+  }
+
+  const px = w / 2;
+  const py = by;
+  const rad = (o.angle * Math.PI) / 180;
+  const dirx = o.facing * Math.cos(rad);
+  const diry = -Math.sin(rad);
+
+  // Barrel (charge-tinted).
+  const blen = h * 0.26;
+  const bwid = Math.max(9, h * 0.035);
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(Math.atan2(diry, dirx));
+  ctx.fillStyle = intToCss(barrelColor(o.power));
+  roundRect(ctx, 0, -bwid / 2, blen, bwid, 4);
+  ctx.fill();
+  ctx.restore();
+
+  // Hub.
+  ctx.fillStyle = '#d7dde8';
+  ctx.beginPath();
+  ctx.arc(px, py, Math.max(7, h * 0.022), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Muzzle flash on firing.
+  if (o.flash > 0) {
+    const mx = px + dirx * blen;
+    const my = py + diry * blen;
+    const r = 12 + o.flash * 34;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const grad = ctx.createRadialGradient(mx, my, 0, mx, my, r);
+    grad.addColorStop(0, `rgba(255,240,180,${0.9 * o.flash})`);
+    grad.addColorStop(1, 'rgba(255,200,80,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(mx, my, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Windsock on the outer side of the tower.
+  const wsBaseX = px - o.facing * (bw / 2 + 20);
+  const ws = computeWindsock(wsBaseX, by + 6, o.wind, o.time, Math.max(26, h * 0.13));
+  ctx.strokeStyle = '#8a8f99';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ws.pole.x1, ws.pole.y1);
+  ctx.lineTo(ws.pole.x2, ws.pole.y2);
+  ctx.stroke();
+  for (const seg of ws.segments) {
+    ctx.fillStyle = intToCss(seg.color);
+    ctx.beginPath();
+    ctx.moveTo(seg.quad[0].x, seg.quad[0].y);
+    for (let k = 1; k < seg.quad.length; k += 1) ctx.lineTo(seg.quad[k].x, seg.quad[k].y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.rect(x, y, w, h);
+  }
+}
