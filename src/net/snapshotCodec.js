@@ -16,7 +16,7 @@ import { PHASE } from '../sim/Simulation.js';
 import { SHELLS } from '../config/shells.js';
 import { BIOMES } from '../config/biomes.js';
 
-const MAGIC = 5; // format/version byte; lets the client reject foreign frames
+const MAGIC = 6; // format/version byte; lets the client reject foreign frames
 
 // Enum tables. Index ⇄ id, shared by both ends. Order is the wire contract —
 // only ever append, never reorder.
@@ -29,7 +29,7 @@ const BIOME_IDS = BIOMES.map((b) => b.id);
 // Special-shell ammo + the deployable shield, in the fixed order the simulation
 // seeds it (see initAmmo). Append-only — never reorder.
 const AMMO_KEYS = ['heavy', 'light', 'salvo', 'explosive', 'shield'];
-const EVENT_TYPES = ['roundStart', 'fire', 'hit', 'impact', 'turnEnd', 'destroyed', 'matchEnd', 'shield', 'shieldHit'];
+const EVENT_TYPES = ['roundStart', 'fire', 'hit', 'impact', 'turnEnd', 'destroyed', 'matchEnd', 'shield', 'shieldHit', 'windsockDown'];
 
 const idx = (arr, v, fallback = 0) => {
   const i = arr.indexOf(v);
@@ -129,6 +129,9 @@ function writeEvent(w, e) {
     case 'shieldHit':
       w.i16(e.x); w.i16(e.y); w.u8(e.owner);
       break;
+    case 'windsockDown':
+      w.i16(e.x); w.i16(e.y); w.u8(e.owner);
+      break;
     default:
       break;
   }
@@ -157,6 +160,8 @@ function readEvent(r) {
       return { type, owner: r.u8(), x: r.i16(), y: r.i16() };
     case 'shieldHit':
       return { type, x: r.i16(), y: r.i16(), owner: r.u8() };
+    case 'windsockDown':
+      return { type, x: r.i16(), y: r.i16(), owner: r.u8() };
     default:
       return { type };
   }
@@ -184,6 +189,11 @@ export function encodeSnapshot(state, events = []) {
   w.u16(state.craters.length);
   for (const c of state.craters) { w.i16(c.x); w.i16(c.y); w.u8(c.r); }
 
+  // Central windsock: alive flag + anchor (the pole top). x/y depend on the
+  // round's terrain, so they ride the wire rather than being recomputed.
+  const ws = state.windsock || { x: 0, y: 0, alive: true };
+  w.bool(ws.alive); w.i16(ws.x); w.i16(ws.y);
+
   // Exactly two towers, always.
   for (const t of state.towers) {
     w.bool(t.ready);
@@ -192,13 +202,11 @@ export function encodeSnapshot(state, events = []) {
     w.u8(idx(SELECTION_IDS, t.shell));
     w.f32(t.hp);
     for (const k of AMMO_KEYS) w.u8(t.ammo[k] || 0);
-    // Deployed shield: present flag, then centre, plate-axis unit vector, and the
-    // open flag (true while its owner is firing through it).
-    if (t.shield) {
-      w.bool(true); w.i16(t.shield.x); w.i16(t.shield.y); w.f32(t.shield.ux); w.f32(t.shield.uy); w.bool(t.shield.open);
-    } else {
-      w.bool(false);
-    }
+    // Deployed shields stack: a count, then one record each — centre, plate-axis
+    // unit vector, and the open flag (true while its owner is firing through it).
+    const shields = t.shields || [];
+    w.u8(shields.length);
+    for (const s of shields) { w.i16(s.x); w.i16(s.y); w.f32(s.ux); w.f32(s.uy); w.bool(s.open); }
   }
 
   w.u16(state.projectiles.length);
@@ -235,6 +243,8 @@ export function decodeSnapshot(arrayBuffer) {
   const craters = [];
   for (let i = 0; i < craterCount; i += 1) craters.push({ x: r.i16(), y: r.i16(), r: r.u8() });
 
+  const windsock = { alive: r.bool(), x: r.i16(), y: r.i16() };
+
   const towers = [];
   for (let i = 0; i < 2; i += 1) {
     const ready = r.bool();
@@ -246,8 +256,10 @@ export function decodeSnapshot(arrayBuffer) {
     const hp = r.f32();
     const ammo = {};
     for (const k of AMMO_KEYS) ammo[k] = r.u8();
-    const shield = r.bool() ? { x: r.i16(), y: r.i16(), ux: r.f32(), uy: r.f32(), open: r.bool() } : null;
-    towers.push({ ready, x, groundY, angle, power, shell, hp, ammo, shield });
+    const shieldCount = r.u8();
+    const shields = [];
+    for (let s = 0; s < shieldCount; s += 1) shields.push({ x: r.i16(), y: r.i16(), ux: r.f32(), uy: r.f32(), open: r.bool() });
+    towers.push({ ready, x, groundY, angle, power, shell, hp, ammo, shields });
   }
 
   const projCount = r.u16();
@@ -262,7 +274,7 @@ export function decodeSnapshot(arrayBuffer) {
 
   const state = {
     phase, round, wind, scores, seed, biomeId, banner,
-    maxHp, turbo, shotClock, names, craters, towers, projectiles,
+    maxHp, turbo, shotClock, names, craters, windsock, towers, projectiles,
   };
   return { state, events };
 }

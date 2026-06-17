@@ -1,4 +1,4 @@
-import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS, AIM_NOISE, SHIELD } from '../config/constants.js';
+import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS, AIM_NOISE, SHIELD, WINDSOCK } from '../config/constants.js';
 import { generateHeights, heightAt, pointSolid, TERRAIN } from './terrain.js';
 import { aimVector, muzzle, pivot, bounds, rectContains } from './geometry.js';
 import { getShell } from '../config/shells.js';
@@ -57,14 +57,17 @@ export default class Simulation {
     this.projectileSeq = 0;
     this.projectiles = [];
     this.craters = [];
+    // Central windsock: a 1-HP mid-field target, repositioned/revived each round
+    // (spawnWindsock). Downing it awards the firing player a shield.
+    this.windsock = { x: Math.round(GAME_WIDTH / 2), y: 0, alive: true };
     this.volleyDamage = [0, 0]; // damage dealt BY each player this volley
     this.events = [];
     this.resolveTimer = 0;
     this.banner = '';
 
     this.towers = [
-      { x: 120, facing: 1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo(), shield: null },
-      { x: GAME_WIDTH - 120, facing: -1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo(), shield: null },
+      { x: 120, facing: 1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo(), shields: [] },
+      { x: GAME_WIDTH - 120, facing: -1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo(), shields: [] },
     ];
 
     this.seed = 0;
@@ -142,8 +145,17 @@ export default class Simulation {
     for (const t of this.towers) {
       t.groundY = heightAt(this.heights, t.x);
       t.damage = 0; // full health each new round
-      t.shield = null; // shields do not carry across rounds
+      t.shields = []; // shields do not carry across rounds
     }
+    this.spawnWindsock();
+  }
+
+  // Plant the central windsock on the fresh terrain: alive again, anchored to the
+  // top of its pole at mid-field. y is the pole TOP (heightAt - poleH) so the
+  // renderers and the collision test share one authoritative anchor.
+  spawnWindsock() {
+    const x = Math.round(GAME_WIDTH / 2);
+    this.windsock = { x, y: Math.round(heightAt(this.heights, x) - WINDSOCK.poleH), alive: true };
   }
 
   randomizeWind() {
@@ -255,8 +267,10 @@ export default class Simulation {
     if (!this.turbo) this.projectiles = [];
     this.towers.forEach((tower, i) => {
       // Shield deploy takes the place of this tower's shot: no projectile leaves.
+      // It is refused (and the turn wasted on nothing) if out of stock or already
+      // at the active-plate cap — at most SHIELD.maxActive may stand at once.
       if (tower.shell === 'shield') {
-        if ((tower.ammo.shield || 0) > 0) {
+        if ((tower.ammo.shield || 0) > 0 && tower.shields.length < SHIELD.maxActive) {
           tower.ammo.shield -= 1;
           this.deployShield(i);
         }
@@ -306,9 +320,10 @@ export default class Simulation {
         tower.shell = 'normal';
       }
 
-      // We just fired through our own barrier: open it so our shell passes. It
-      // re-seals once that shell has cleared the plate (updateShieldGates).
-      if (tower.shield && tower.shield.alive) tower.shield.open = true;
+      // We just fired through our own barriers: open them all so our shell
+      // passes any of our own plates. They re-seal once that shell has cleared
+      // the plate (updateShieldGates).
+      for (const sh of tower.shields) { if (sh.alive) sh.open = true; }
     });
     this.volleyDamage = [0, 0];
     if (this.turbo) {
@@ -335,8 +350,9 @@ export default class Simulation {
     const cy = p.y + d.y * dst;
     // open=false: a freshly raised shield is solid. It is a physical barrier that
     // stops ANY shell crossing it — so it briefly opens when its OWNER fires, to
-    // let their own shell out (see fire + updateShieldGates).
-    tower.shield = { x: cx, y: cy, ux: -d.y, uy: d.x, alive: true, open: false };
+    // let their own shell out (see fire + updateShieldGates). Plates stack: each
+    // deploy adds another to the tower's array (capped in fire()).
+    tower.shields.push({ x: cx, y: cy, ux: -d.y, uy: d.x, alive: true, open: false });
     this.pushEvent('shield', { owner: i, x: Math.round(cx), y: Math.round(cy) });
   }
 
@@ -396,14 +412,15 @@ export default class Simulation {
   // then the barrier stays open so it never blocks the shot that opened it.
   updateShieldGates() {
     for (let i = 0; i < 2; i += 1) {
-      const sh = this.towers[i].shield;
-      if (!sh || !sh.alive || !sh.open) continue;
       const piv = pivot(this.towers[i]);
-      const clear = Math.hypot(sh.x - piv.x, sh.y - piv.y) + SHIELD.plateHalf + SHIELD.hitRadius;
-      const stillCrossing = this.projectiles.some(
-        (p) => p.alive && p.owner === i && Math.hypot(p.x - piv.x, p.y - piv.y) <= clear,
-      );
-      if (!stillCrossing) sh.open = false;
+      for (const sh of this.towers[i].shields) {
+        if (!sh.alive || !sh.open) continue;
+        const clear = Math.hypot(sh.x - piv.x, sh.y - piv.y) + SHIELD.plateHalf + SHIELD.hitRadius;
+        const stillCrossing = this.projectiles.some(
+          (p) => p.alive && p.owner === i && Math.hypot(p.x - piv.x, p.y - piv.y) <= clear,
+        );
+        if (!stillCrossing) sh.open = false;
+      }
     }
   }
 
@@ -429,22 +446,44 @@ export default class Simulation {
     const x0 = p.px ?? p.x;
     const y0 = p.py ?? p.y;
     for (let ti = 0; ti < 2; ti += 1) {
-      const sh = this.towers[ti].shield;
-      if (!sh || !sh.alive || sh.open) continue;
-      const a1x = sh.x + sh.ux * SHIELD.plateHalf;
-      const a1y = sh.y + sh.uy * SHIELD.plateHalf;
-      const a2x = sh.x - sh.ux * SHIELD.plateHalf;
-      const a2y = sh.y - sh.uy * SHIELD.plateHalf;
-      let blocked = false;
+      const shields = this.towers[ti].shields;
+      for (let si = 0; si < shields.length; si += 1) {
+        const sh = shields[si];
+        if (!sh.alive || sh.open) continue;
+        const a1x = sh.x + sh.ux * SHIELD.plateHalf;
+        const a1y = sh.y + sh.uy * SHIELD.plateHalf;
+        const a2x = sh.x - sh.ux * SHIELD.plateHalf;
+        const a2y = sh.y - sh.uy * SHIELD.plateHalf;
+        let blocked = false;
+        for (let t = 0; t <= 1; t += 0.25) {
+          const sx = x0 + (p.x - x0) * t;
+          const sy = y0 + (p.y - y0) * t;
+          if (segDist(sx, sy, a1x, a1y, a2x, a2y) < SHIELD.hitRadius) { blocked = true; break; }
+        }
+        if (blocked) {
+          p.alive = false;
+          shields.splice(si, 1); // 1 HP: this plate is spent (the others stand)
+          this.pushEvent('shieldHit', { x: Math.round(p.x), y: Math.round(p.y), owner: ti });
+          return;
+        }
+      }
+    }
+
+    // The central windsock is a 1-HP bounty: the shell that fells it is spent,
+    // and its firing player banks a shield. Sampled along the path (like the
+    // shield) so a fast shell can't tunnel the small target. Only hittable alive.
+    if (this.windsock.alive) {
+      let struck = false;
       for (let t = 0; t <= 1; t += 0.25) {
         const sx = x0 + (p.x - x0) * t;
         const sy = y0 + (p.y - y0) * t;
-        if (segDist(sx, sy, a1x, a1y, a2x, a2y) < SHIELD.hitRadius) { blocked = true; break; }
+        if (Math.hypot(sx - this.windsock.x, sy - this.windsock.y) < WINDSOCK.hitRadius) { struck = true; break; }
       }
-      if (blocked) {
+      if (struck) {
         p.alive = false;
-        this.towers[ti].shield = null; // 1 HP: the plate is spent
-        this.pushEvent('shieldHit', { x: Math.round(p.x), y: Math.round(p.y), owner: ti });
+        this.windsock.alive = false;
+        this.towers[p.owner].ammo.shield += 1; // the bounty: a free shield
+        this.pushEvent('windsockDown', { x: this.windsock.x, y: this.windsock.y, owner: p.owner });
         return;
       }
     }
@@ -594,6 +633,7 @@ export default class Simulation {
       biomeId: this.biome.id,
       banner: this.banner,
       craters: this.craters,
+      windsock: { x: this.windsock.x, y: this.windsock.y, alive: this.windsock.alive },
       maxHp: this.maxHp,
       turbo: this.turbo,
       shotClock: this.shotClock == null ? null : Math.max(0, Math.round(this.shotClock * 10) / 10),
@@ -609,9 +649,7 @@ export default class Simulation {
         shell: t.shell,
         hp: Math.max(0, this.maxHp - t.damage),
         ammo: { ...t.ammo },
-        shield: t.shield
-          ? { x: Math.round(t.shield.x), y: Math.round(t.shield.y), ux: t.shield.ux, uy: t.shield.uy, open: !!t.shield.open }
-          : null,
+        shields: t.shields.map((s) => ({ x: Math.round(s.x), y: Math.round(s.y), ux: s.ux, uy: s.uy, open: !!s.open })),
       })),
       projectiles: this.projectiles
         .filter((p) => p.alive)

@@ -5,6 +5,9 @@ import Phaser from 'phaser';
 // eslint-disable-next-line no-undef
 export const BUILD_ID = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
 
+// Project home. The build stamp links here so anyone can jump to the source.
+export const REPO_URL = 'https://github.com/1e1/tower-phaser';
+
 // Entry screen for the connected (remote) experience. One device hosts as the
 // TV/spectator; phones and tablets join as player controllers with a room code.
 // Rendered as a full-viewport responsive HTML overlay (not inside the scaled
@@ -41,7 +44,7 @@ export default class LobbyScene extends Phaser.Scene {
           <p id="err"></p>
         </div>
       </div>
-      <p class="tp-build">build ${BUILD_ID}</p>`;
+      <p class="tp-build"><a class="tp-build-link" href="${REPO_URL}" target="_blank" rel="noopener noreferrer">build ${BUILD_ID}</a></p>`;
     this.overlay = overlay;
     document.body.appendChild(overlay);
     injectStyles();
@@ -97,23 +100,42 @@ export default class LobbyScene extends Phaser.Scene {
     };
     $('connect').addEventListener('click', submit);
 
-    // Enter is the natural "go" on a phone keyboard. With both fields filled
-    // (the name is pre-filled / autocompleted) it connects; with a field still
-    // empty it behaves like Tab — jump to the first empty field — instead of
-    // firing a doomed connect.
-    const onEnter = (e) => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
+    const codeParam = new URLSearchParams(window.location.search).get('code');
+    // The "default" a tap on the code field restores: the URL/QR-provided code
+    // if one was supplied, else empty.
+    const codeDefault = codeParam ? codeParam.toUpperCase() : '';
+
+    // With both fields filled connect; otherwise jump to the first empty field
+    // (Tab-like) instead of firing a doomed connect. Shared by Enter and the
+    // auto-advance when the 4th code character lands.
+    const advance = () => {
       const code = $('code').value.trim();
       const name = $('name').value.trim();
       if (code.length >= 4 && name) submit();
       else if (code.length < 4) focusCode();
       else $('name').focus();
     };
+
+    // Enter is the natural "go" on a phone keyboard.
+    const onEnter = (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      advance();
+    };
     $('code').addEventListener('keydown', onEnter);
     $('name').addEventListener('keydown', onEnter);
 
-    const codeParam = new URLSearchParams(window.location.search).get('code');
+    // The 4-char code is a token, not free text — so make it cheap to (re)type:
+    // tapping the field starts from the default; deleting any character wipes
+    // the whole code (no fiddly mid-string edits); and the 4th character acts
+    // like Enter (advance to the name, or connect if the name is already set).
+    const codeEl = $('code');
+    codeEl.addEventListener('focus', () => { codeEl.value = codeDefault; });
+    codeEl.addEventListener('input', (e) => {
+      if (e.inputType && e.inputType.startsWith('delete')) { codeEl.value = ''; return; }
+      if (codeEl.value.trim().length >= 4) advance();
+    });
+
     const showJoin = () => {
       $('choice').hidden = true;
       $('joinForm').hidden = false;
@@ -241,6 +263,9 @@ export function injectStyles() {
     .tp-overlay #err{color:#ff8a7a;min-height:26px;margin:10px 0 0;}
     .tp-build{position:fixed;left:0;right:0;bottom:6px;text-align:center;margin:0;
       font-size:11px;letter-spacing:1px;color:#ffffff30;pointer-events:none;}
+    /* Only the text itself is tappable; the rest of the bar stays click-through.
+       Inherit colour and drop the underline so the link is visually invisible. */
+    .tp-build-link{color:inherit;text-decoration:none;pointer-events:auto;}
     /* Connect: the "stone tablet" treatment — softly chamfered, chunky 3D bevel
        and a hard base edge it presses into (not a flat rounded rectangle). */
     /* Connect: neutral stone tablet with balanced blue-left / red-right inner

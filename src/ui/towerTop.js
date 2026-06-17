@@ -1,4 +1,5 @@
-import { barrelHeat, BARREL_COOL, pivotCharge, intToCss, computeWindsock, shade, towerPalette } from '../render/visuals.js';
+import { barrelHeat, BARREL_COOL, pivotCharge, intToCss, shade, towerPalette } from '../render/visuals.js';
+import { MAX_WIND } from '../config/constants.js';
 
 // Draw the player's own tower top onto a 2D canvas: body, cannon oriented by the
 // current aim and tinted by charge, an animated windsock, and a firing flash.
@@ -206,24 +207,159 @@ export function drawTowerTop(ctx, w, h, o) {
     ctx.restore();
   }
 
-  // Windsock, set back from the tower and darkened to read as a distant prop.
-  const wsBaseX = px - o.facing * (bw / 2 + h * 0.14 + 18);
-  const ws = computeWindsock(wsBaseX, by + 10, o.wind, o.time, Math.max(24, h * 0.12));
+  // Camp banner where the windsock used to stand, set back from the tower on the
+  // far side. It flies/leans with the wind, so it keeps the windsock's read of
+  // direction and strength. The seat decides the shape (see drawView): the first
+  // flies an étendard, the second a gonfalon.
+  if (o.banner === 'gonfalon') drawGonfalonBanner(ctx, px, by, bw, h, o);
+  else drawStandardBanner(ctx, px, by, bw, h, o);
+}
+
+// --- Camp banners -----------------------------------------------------------
+// Drawn in place of the old windsock, tinted to the side colour (o.color) but
+// not monochrome: gold trim and chevron over the camp field, an éclairci hoist
+// band, and a fluttering swallowtail. Both keep the windsock's anchor:
+//   baseX = px - facing * (bw/2 + h*0.14 + 18),  base at by + 14.
+
+const BANNER_GOLD = 0xf5c451;
+const BANNER_GOLD_DK = 0xc08f2c;
+const blerp = (a, b, t) => a + (b - a) * t;
+const bclamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Heraldic pattern for the étendard, by pole-axis u (0 top .. 1 bottom) and
+// flight-axis v (0 hoist .. 1 fly). `fold` is a per-quad light factor so the
+// cloth reads as billowing rather than flat.
+function flagPatternColor(u, v, base, light, fold) {
+  let c;
+  if (u < 0.10 || u > 0.90) c = BANNER_GOLD_DK;                              // top / bottom trim
+  else if (v > 0.86) c = BANNER_GOLD;                                        // flying-edge liséré
+  else if (v < 0.16) c = light;                                             // hoist band, éclairci
+  else if (Math.abs(v - (0.58 - Math.abs(u - 0.5) * 0.5)) < 0.07) c = BANNER_GOLD; // chevron
+  else c = base;
+  return intToCss(shade(c, fold));
+}
+
+// The étendard: a flag flying downwind. The cloth keeps a CONSTANT length and
+// reorients with the wind like real fabric — near-vertical and drooping when
+// calm, near-horizontal in a gale, the tail curling under its own weight.
+function drawStandardBanner(ctx, px, by, bw, h, o) {
+  const poleH = Math.max(34, h * 0.20);
+  const baseX = px - o.facing * (bw / 2 + h * 0.14 + 18);
+  const baseY = by + 14;
+  const topX = baseX, topY = baseY - poleH;
+
   ctx.save();
-  ctx.globalAlpha = 0.82;
-  ctx.strokeStyle = '#54585f';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(ws.pole.x1, ws.pole.y1);
-  ctx.lineTo(ws.pole.x2, ws.pole.y2);
-  ctx.stroke();
-  for (const seg of ws.segments) {
-    ctx.fillStyle = intToCss(shade(seg.color, 0.62));
-    ctx.beginPath();
-    ctx.moveTo(seg.quad[0].x, seg.quad[0].y);
-    for (let k = 1; k < seg.quad.length; k += 1) ctx.lineTo(seg.quad[k].x, seg.quad[k].y);
-    ctx.closePath();
-    ctx.fill();
+  ctx.strokeStyle = '#4a4f58';
+  ctx.lineWidth = 3.2;
+  ctx.beginPath(); ctx.moveTo(baseX, baseY); ctx.lineTo(topX, topY); ctx.stroke();
+  ctx.fillStyle = intToCss(BANNER_GOLD);
+  ctx.beginPath(); ctx.arc(topX, topY - 2, 3.4, 0, Math.PI * 2); ctx.fill();
+
+  const k = bclamp(Math.abs(o.wind) / MAX_WIND, 0, 1);
+  const dir = o.wind === 0 ? 1 : Math.sign(o.wind);
+  const flagH = poleH * 0.5, attachTop = topY + poleH * 0.07;
+  const length = poleH * 0.9;
+  const NU = 6, NV = 11, seg = length / NV;
+  const easedK = Math.pow(k, 0.62);
+  const baseAngle = blerp(1.16, 0.10, easedK); // calm ~66°, gale ~6° off horizontal
+  const sag = (1 - easedK) * 0.9;              // extra droop accumulated toward the tail
+
+  // Shared fly-curve (identical for every row) + per-node surface normal.
+  const fx = [0], fy = [0], nx = [], ny = [];
+  let cx = 0, cy = 0;
+  for (let j = 0; j < NV; j += 1) {
+    const ang = Math.min(baseAngle + sag * (j / (NV - 1)), 1.52);
+    const tx = dir * Math.cos(ang), ty = Math.sin(ang);
+    nx.push(-ty); ny.push(tx);
+    cx += tx * seg; cy += ty * seg;
+    fx.push(cx); fy.push(cy);
+  }
+  nx.push(nx[NV - 1]); ny.push(ny[NV - 1]);
+
+  const idle = poleH * 0.016, gust = poleH * 0.13; // a breath of life + wind flutter
+  const waveAt = (i, j) => Math.sin(o.time * 0.005 + j * 0.62 + (i / NU) * 2.6) * (idle + gust * k) * (j / NV);
+  const node = (i, j) => {
+    const paY = attachTop + flagH * (i / NU);
+    const wv = waveAt(i, j);
+    return { x: baseX + fx[j] + nx[j] * wv, y: paY + fy[j] + ny[j] * wv, w: wv };
+  };
+
+  const base = o.color, light = shade(o.color, 1.28);
+  ctx.globalAlpha = 0.96;
+  for (let i = 0; i < NU; i += 1) {
+    for (let j = 0; j < NV; j += 1) {
+      const u = (i + 0.5) / NU, v = (j + 0.5) / NV;
+      if (v > 0.74 && Math.abs(u - 0.5) < 0.17) continue; // swallowtail notch
+      const a = node(i, j), b = node(i + 1, j), c = node(i + 1, j + 1), d = node(i, j + 1);
+      const fold = bclamp(1 + ((a.w + c.w) * 0.5) / (poleH * 0.5) * 0.55, 0.78, 1.16);
+      ctx.fillStyle = flagPatternColor(u, v, base, light, fold);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+// The gonfalon: a banner hung from a crossbar, swaying and leaning with the
+// wind, forked at the foot.
+function drawGonfalonBanner(ctx, px, by, bw, h, o) {
+  const poleH = Math.max(34, h * 0.20);
+  const baseX = px - o.facing * (bw / 2 + h * 0.14 + 18);
+  const baseY = by + 14;
+  const topY = baseY - poleH;
+  const W = poleH * 0.42, L = poleH * 0.80;
+
+  ctx.save();
+  ctx.strokeStyle = '#4a4f58';
+  ctx.lineWidth = 3.2;
+  ctx.beginPath(); ctx.moveTo(baseX, baseY); ctx.lineTo(baseX, topY); ctx.stroke();
+  ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.moveTo(baseX - W / 2 - 4, topY); ctx.lineTo(baseX + W / 2 + 4, topY); ctx.stroke();
+  ctx.fillStyle = intToCss(BANNER_GOLD);
+  ctx.beginPath(); ctx.arc(baseX - W / 2 - 4, topY, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(baseX + W / 2 + 4, topY, 3, 0, Math.PI * 2); ctx.fill();
+
+  const lean = (o.wind / MAX_WIND) * poleH * 0.26;
+  const NU = 5, NV = 8;
+  const node = (i, j) => {
+    const fy = j / NV;
+    const sway = Math.sin(o.time * 0.0045 + fy * 2.2) * poleH * 0.05 * fy;
+    const fork = fy > 0.7 ? (fy - 0.7) / 0.3 : 0;       // pull toward the centre at the foot
+    const ci = blerp(i / NU, 0.5, fork * 0.55);
+    return { x: baseX - W / 2 + W * ci + (lean + sway) * fy, y: topY + L * fy, w: sway };
+  };
+
+  const base = o.color, light = shade(o.color, 1.28);
+  const gColor = (u, v, fold) => {
+    let c;
+    if (v < 0.12) c = BANNER_GOLD;                                          // valance
+    else if (u < 0.16 || u > 0.84) c = light;                               // side bands
+    else if (Math.abs(v - 0.5) < 0.07) c = BANNER_GOLD;                     // mid bend
+    else if (v > 0.72 && Math.abs(u - 0.5) < 0.30 - (v - 0.72)) c = BANNER_GOLD_DK; // tip
+    else c = base;
+    return intToCss(shade(c, fold));
+  };
+
+  ctx.globalAlpha = 0.96;
+  for (let i = 0; i < NU; i += 1) {
+    for (let j = 0; j < NV; j += 1) {
+      const u = (i + 0.5) / NU, v = (j + 0.5) / NV;
+      if (v > 0.88 && Math.abs(u - 0.5) < 0.16) continue; // swallowtail foot
+      const a = node(i, j), b = node(i + 1, j), c = node(i + 1, j + 1), d = node(i, j + 1);
+      const fold = bclamp(1 + ((a.w + c.w) * 0.5) / (poleH * 0.5) * 0.5, 0.8, 1.14);
+      ctx.fillStyle = gColor(u, v, fold);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  ctx.strokeStyle = intToCss(BANNER_GOLD);
+  ctx.lineWidth = 1.4;
+  for (const tx of [-W / 2, W / 2]) {
+    const n = node(tx < 0 ? 0 : NU, NV);
+    ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(n.x, n.y + poleH * 0.07); ctx.stroke();
   }
   ctx.restore();
 }

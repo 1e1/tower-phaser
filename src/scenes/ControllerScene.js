@@ -4,7 +4,7 @@ import { COLORS, AIM, MAX_WIND, WIN_OPTIONS, winsLabel, HP_OPTIONS, GAME_MODES, 
 import { BIOMES } from '../config/biomes.js';
 import { SHELLS } from '../config/shells.js';
 import { PHASE } from '../sim/Simulation.js';
-import { injectStyles, saveName, randomHandle, BUILD_ID } from './LobbyScene.js';
+import { injectStyles, saveName, randomHandle, BUILD_ID, REPO_URL } from './LobbyScene.js';
 import { drawTowerTop } from '../ui/towerTop.js';
 import { intToCss, shade, towerPalette } from '../render/visuals.js';
 
@@ -183,7 +183,7 @@ export default class ControllerScene extends Phaser.Scene {
           </button>
         </div>
       </div>
-      <p class="tp-build">build ${BUILD_ID}</p>`;
+      <p class="tp-build"><a class="tp-build-link" href="${REPO_URL}" target="_blank" rel="noopener noreferrer">build ${BUILD_ID}</a></p>`;
     this.overlay = overlay;
     if (this.embed) {
       // Split-screen: drop the pad into its half-screen wrapper and scale the
@@ -1164,6 +1164,9 @@ export default class ControllerScene extends Phaser.Scene {
       color: this.color, wind: this.wind, time: performance.now(), flash: this.flash,
       wins: this.wins | 0, losses: this.losses | 0,
       hp: this.hp, maxHp: this.maxHp,
+      // Camp banner standing where the windsock used to: the first seat
+      // (players[0]) flies an étendard, the second a gonfalon.
+      banner: this.player === 0 ? 'standard' : 'gonfalon',
       // Fuse sparks while our shot is committed and waiting (locked locally or
       // confirmed ready by the server); it goes out the moment the volley fires.
       ready: (this.locked || this.serverReady) && this.phase === PHASE.AIMING,

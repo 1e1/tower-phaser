@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 
-import { COLORS, SHIELD, MAX_WIND, GAME_WIDTH, GAME_HEIGHT } from '../config/constants.js';
+import { COLORS, SHIELD, WINDSOCK, MAX_WIND, GAME_WIDTH, GAME_HEIGHT } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { PHASE } from '../sim/Simulation.js';
 import { generateHeights } from '../sim/terrain.js';
-import { intToCss } from '../render/visuals.js';
+import { computeWindsock, intToCss } from '../render/visuals.js';
 import Background from '../objects/Background.js';
 import Terrain from '../objects/Terrain.js';
 import Tower from '../objects/Tower.js';
@@ -58,15 +58,20 @@ export default class LocalScene extends Phaser.Scene {
     // Three independent audio sources (this is a dev/test harness): each pad gets
     // its OWN Sfx instance so P1/P2 can be muted separately, plus a battlefield
     // bus reserved for any shared-screen audio. AudioContexts are lazy + need a
-    // gesture, so unlock all three on the first interaction.
+    // gesture, and re-suspend when the page backgrounds — so re-arm all three on
+    // every gesture and on returning to the foreground, not just the first tap.
     this.bfSfx = new Sfx();
     this.padSfx = [new Sfx(), new Sfx()];
     this.audioUnlock = () => [this.bfSfx, ...this.padSfx].forEach((s) => s.unlock());
-    window.addEventListener('pointerdown', this.audioUnlock, { once: true });
+    this.audioWake = () => { if (!document.hidden) this.audioUnlock(); };
+    window.addEventListener('pointerdown', this.audioUnlock);
+    window.addEventListener('keydown', this.audioUnlock);
+    document.addEventListener('visibilitychange', this.audioWake);
 
+    this.windsockGfx = this.add.graphics().setDepth(2);
     this.shieldGfx = this.add.graphics().setDepth(3);
-    this.shieldFx = [null, null];     // per-tower eased render state {x,y,ux,uy,appear,open}
-    this.shieldTarget = [null, null]; // latest authoritative shield (or null)
+    this.shieldFx = [[], []];     // per-tower LIST of eased render states {x,y,ux,uy,appear,open}
+    this.shieldTarget = [[], []]; // per-tower LIST of latest authoritative shields
     this.projGfx = this.add.graphics().setDepth(5);
 
     this.layoutDom();
@@ -333,7 +338,8 @@ export default class LocalScene extends Phaser.Scene {
       t.draw();
     });
 
-    this.shieldTarget = state.towers.map((t) => t.shield); // eased + drawn in update()
+    this.shieldTarget = state.towers.map((t) => t.shields || []); // eased + drawn in update()
+    this.windsockState = state.windsock; // authoritative alive + anchor; drawn in update()
 
     const g = this.projGfx;
     g.clear();
@@ -467,6 +473,16 @@ export default class LocalScene extends Phaser.Scene {
         this.flashEmitter.emitParticleAt(e.x, e.y, 1);
         this.sparkEmitter.emitParticleAt(e.x, e.y, 14);
         this.cameras.main.shake(150, 0.006);
+      } else if (e.type === 'windsockDown') {
+        // Bounty downed: a small burst where the windsock stood (it stops being
+        // drawn next snapshot). The firer banks a shield (awarded server-side).
+        const col = e.owner === 0 ? COLORS.towerP1 : COLORS.towerP2;
+        const ring = this.add.circle(e.x, e.y, 6, col, 0.9).setDepth(7);
+        this.tweens.add({ targets: ring, radius: 40, alpha: 0, duration: 360, onComplete: () => ring.destroy() });
+        this.flashEmitter.emitParticleAt(e.x, e.y, 1);
+        this.sparkEmitter.emitParticleAt(e.x, e.y, 12);
+        this.bfSfx.shieldUp();
+        this.cameras.main.shake(140, 0.005);
       }
     }
   }
@@ -515,9 +531,10 @@ export default class LocalScene extends Phaser.Scene {
     nextTerrain.setX(ox);
     const nextTowers = this.buildTowers(state, ox);
 
-    // Clear transient layers so stale shots/shields don't ride along the slide.
+    // Clear transient layers so stale shots/shields/windsock don't ride along the slide.
     this.projGfx.clear();
-    this.shieldTarget = [null, null];
+    this.windsockGfx.clear();
+    this.shieldTarget = [[], []];
 
     this.cameras.main.pan(
       GAME_WIDTH / 2 + ox, GAME_HEIGHT / 2, 1100, 'Sine.easeInOut', true,
@@ -554,44 +571,78 @@ export default class LocalScene extends Phaser.Scene {
 
     const renderDt = Math.min(frameDt, 0.05);
     if (this.background) this.background.update(renderDt);
+    if (!this.panActive) this.drawMidWindsock(_time);
     this.animateShields(renderDt);
   }
 
-  // Eased deflector-plate render, mirrored from the TV: each tower's shield grows
-  // in on deploy, opens a centre gap when its owner fires through it, and fades on
-  // shatter / round end.
+  // Central windsock, mirrored from the TV: an authoritative 1-HP target whose
+  // alive flag + anchor come from the snapshot (windsockState), driven by the
+  // eased wind. The wire y is the pole TOP, so the pole base is y + poleH.
+  drawMidWindsock(time) {
+    const g = this.windsockGfx;
+    if (!g) return;
+    g.clear();
+    const ws0 = this.windsockState;
+    if (!ws0 || !ws0.alive || !this.background) return;
+    const x = ws0.x;
+    const baseY = ws0.y + WINDSOCK.poleH;
+    const ws = computeWindsock(x, baseY, this.background.windValue, time, WINDSOCK.poleH);
+    g.lineStyle(4, 0x6b7180, 1);
+    g.beginPath();
+    g.moveTo(ws.pole.x1, ws.pole.y1);
+    g.lineTo(ws.pole.x2, ws.pole.y2);
+    g.strokePath();
+    for (const seg of ws.segments) {
+      g.fillStyle(seg.color, 1);
+      g.beginPath();
+      g.moveTo(seg.quad[0].x, seg.quad[0].y);
+      for (let k = 1; k < seg.quad.length; k += 1) g.lineTo(seg.quad[k].x, seg.quad[k].y);
+      g.closePath();
+      g.fillPath();
+    }
+  }
+
+  // Eased deflector-plate render, mirrored from the TV: each tower's shields grow
+  // in on deploy, open a centre gap when their owner fires through them, and fade
+  // on shatter / round end. Plates stack: the fx list is matched to the snapshot
+  // shields by array index (see TvScene.animateShields).
   animateShields(dt) {
     const g = this.shieldGfx;
     if (!g) return;
     g.clear();
     const k = Math.min(1, dt * 12);
     for (let i = 0; i < 2; i += 1) {
-      const target = this.shieldTarget?.[i] || null;
-      let fx = this.shieldFx[i];
-      if (target) {
-        if (!fx) fx = this.shieldFx[i] = { x: target.x, y: target.y, ux: target.ux, uy: target.uy, appear: 0, open: target.open ? 1 : 0 };
-        fx.x = target.x; fx.y = target.y; fx.ux = target.ux; fx.uy = target.uy;
-        fx.appear += (1 - fx.appear) * k;
-        fx.open += ((target.open ? 1 : 0) - fx.open) * Math.min(1, dt * 16);
-      } else if (fx) {
-        fx.appear += (0 - fx.appear) * k;
-        if (fx.appear < 0.03) { this.shieldFx[i] = null; continue; }
-      } else {
-        continue;
-      }
+      const targets = this.shieldTarget?.[i] || [];
+      const list = this.shieldFx[i];
       const col = i === 0 ? COLORS.towerP1 : COLORS.towerP2;
-      const half = SHIELD.plateHalf * fx.appear;
-      const gap = fx.open * 13;
-      const alpha = Math.max(0, fx.appear) * (1 - 0.45 * fx.open);
-      const ux = fx.ux; const uy = fx.uy;
-      const segs = [[gap, half], [-gap, -half]];
-      for (const [from, to] of segs) {
-        const bx = fx.x + ux * from; const by = fx.y + uy * from;
-        const ex = fx.x + ux * to; const ey = fx.y + uy * to;
-        g.lineStyle(10, 0xdfe6f2, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
-        g.lineStyle(4, col, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
+      const n = Math.max(list.length, targets.length);
+      for (let s = n - 1; s >= 0; s -= 1) {
+        const target = targets[s] || null;
+        let fx = list[s];
+        if (target) {
+          if (!fx) fx = list[s] = { x: target.x, y: target.y, ux: target.ux, uy: target.uy, appear: 0, open: target.open ? 1 : 0 };
+          fx.x = target.x; fx.y = target.y; fx.ux = target.ux; fx.uy = target.uy;
+          fx.appear += (1 - fx.appear) * k;
+          fx.open += ((target.open ? 1 : 0) - fx.open) * Math.min(1, dt * 16);
+        } else if (fx) {
+          fx.appear += (0 - fx.appear) * k;
+          if (fx.appear < 0.03) { list.splice(s, 1); continue; }
+        } else {
+          continue;
+        }
+        const half = SHIELD.plateHalf * fx.appear;
+        const gap = fx.open * 13;
+        const alpha = Math.max(0, fx.appear) * (1 - 0.45 * fx.open);
+        const ux = fx.ux; const uy = fx.uy;
+        const segs = [[gap, half], [-gap, -half]];
+        for (const [from, to] of segs) {
+          const bx = fx.x + ux * from; const by = fx.y + uy * from;
+          const ex = fx.x + ux * to; const ey = fx.y + uy * to;
+          g.lineStyle(10, 0xdfe6f2, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
+          g.lineStyle(4, col, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
+        }
+        g.fillStyle(0xffffff, alpha * (1 - fx.open)); g.fillCircle(fx.x, fx.y, 4 * fx.appear);
       }
-      g.fillStyle(0xffffff, alpha * (1 - fx.open)); g.fillCircle(fx.x, fx.y, 4 * fx.appear);
     }
   }
 
@@ -604,7 +655,11 @@ export default class LocalScene extends Phaser.Scene {
     this.discardPrewarm(); // drop an unconsumed setup-phase prewarm (frees its canvas texture)
     this.unsubs?.forEach((off) => off());
     if (this.escHandler) window.removeEventListener('keydown', this.escHandler);
-    if (this.audioUnlock) window.removeEventListener('pointerdown', this.audioUnlock);
+    if (this.audioUnlock) {
+      window.removeEventListener('pointerdown', this.audioUnlock);
+      window.removeEventListener('keydown', this.audioUnlock);
+    }
+    if (this.audioWake) document.removeEventListener('visibilitychange', this.audioWake);
     if (this.onDragMove) window.removeEventListener('pointermove', this.onDragMove);
     if (this.onDragEnd) window.removeEventListener('pointerup', this.onDragEnd);
     PAD_KEYS.forEach((k) => { if (this.scene.get(k)) this.game.scene.remove(k); });

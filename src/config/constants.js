@@ -28,10 +28,14 @@ export const PHYSICS = {
   gravity: 520, // downward acceleration (px/s^2)
   // initial speed = power * speedScale (px/s). This is the difficulty knob for
   // "100% shouldn't be a gift": lowering it makes full power fall short on the
-  // farther/uphill arenas, so power becomes a managed resource. Kept at 7 so the
-  // default spacing stays reachable at full charge — drop toward ~6.7 only after
-  // checking the widest/uphill arenas remain hittable at an optimal angle.
-  speedScale: 7,
+  // farther/uphill arenas, so power becomes a managed resource. Raised 7 → 7.7
+  // (range ∝ v², so +10% speed ≈ +21% range) to restore headroom: at 7 full
+  // charge only just reached the default spacing, leaving no margin against a
+  // headwind (±MAX_WIND shaves ~170px at 45°), making some shots impossible.
+  // 7.7 clears the default arena into a full headwind and the widest arena
+  // (Volcano, ~1100px gap) with a moderate margin. Don't push past ~8 without
+  // re-checking that close arenas don't turn floaty.
+  speedScale: 7.7,
   maxFlightTime: 12, // safety cap for a single shot (s)
 };
 
@@ -56,8 +60,15 @@ export const CRATER_RADIUS = 38;
 // angle sets its direction, the cannon power its distance from the tower (mapped
 // minPower→maxPower onto minDist→maxDist). It has 1 HP — it absorbs a single
 // incoming shell, then shatters. `plateHalf` is half the deflecting plate's
-// length; `hitRadius` the shell/plate contact tolerance.
-export const SHIELD = { minDist: 45, maxDist: 165, plateHalf: 39, hitRadius: 9 };
+// length; `hitRadius` the shell/plate contact tolerance; `maxActive` caps how
+// many plates a tower may keep standing at once (deploying past it is refused).
+export const SHIELD = { minDist: 45, maxDist: 165, plateHalf: 39, hitRadius: 9, maxActive: 3 };
+
+// The central windsock is an authoritative entity (not just TV decor): a 1-HP
+// target standing on the mid-field terrain. `poleH` is its pole height (the
+// flag sits at the top); `hitRadius` the contact tolerance around that top. A
+// shell that downs it awards the firing player a shield (a mid-field bounty).
+export const WINDSOCK = { poleH: 46, hitRadius: 14 };
 
 // Hidden jitter added to a shot at fire time (never shown to the player), so
 // over-precise aiming is rewarded a little less and every shot has tension.

@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
 
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, turboBars, SHIELD } from '../config/constants.js';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS, turboBars, SHIELD, WINDSOCK } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { generateHeights } from '../sim/terrain.js';
 import { PHASE } from '../sim/Simulation.js';
-import { BUILD_ID } from './LobbyScene.js';
+import { BUILD_ID, REPO_URL } from './LobbyScene.js';
 import Background from '../objects/Background.js';
 import Terrain from '../objects/Terrain.js';
 import Tower from '../objects/Tower.js';
@@ -165,7 +165,10 @@ export default class TvScene extends Phaser.Scene {
 
     // Discreet build stamp, so you can confirm the TV and the phones are running
     // the same deploy (and not a cached one).
-    add(this.text(cx, GAME_HEIGHT - 16, `build ${BUILD_ID}`, 14, '#5a6478'));
+    // Clickable (no visible affordance): jumps to the project home on GitHub.
+    add(this.text(cx, GAME_HEIGHT - 16, `build ${BUILD_ID}`, 14, '#5a6478')
+      .setInteractive({ useHandCursor: false })
+      .on('pointerdown', () => window.open(REPO_URL, '_blank', 'noopener,noreferrer')));
 
     this.refreshLobby();
   }
@@ -535,8 +538,8 @@ export default class TvScene extends Phaser.Scene {
     this.towers = this.buildTowers(state, 0);
     this.windsockGfx = this.add.graphics().setDepth(2);
     this.shieldGfx = this.add.graphics().setDepth(3);
-    this.shieldFx = [null, null];     // per-tower eased render state {x,y,ux,uy,appear,open}
-    this.shieldTarget = [null, null]; // latest authoritative shield (or null)
+    this.shieldFx = [[], []];     // per-tower LIST of eased render states {x,y,ux,uy,appear,open}
+    this.shieldTarget = [[], []]; // per-tower LIST of latest authoritative shields
 
     this.createEmitters();
     this.shotGfx = this.add.graphics().setDepth(5);
@@ -703,14 +706,19 @@ export default class TvScene extends Phaser.Scene {
   }
 
   // A windsock planted in the middle of the battlefield (#1), driven by the
-  // eased wind so it matches the particles.
+  // eased wind so it matches the particles. It is now an authoritative 1-HP
+  // target: its alive flag + anchor come from the snapshot (windsockState), and
+  // it vanishes once shot down. The wire y is the pole TOP, so the pole base is
+  // y + WINDSOCK.poleH.
   drawMidWindsock(time) {
     const g = this.windsockGfx;
     if (!g) return;
     g.clear();
-    const x = GAME_WIDTH / 2;
-    const baseY = this.terrain.heightAt(x);
-    const ws = computeWindsock(x, baseY, this.background.windValue, time, 46);
+    const ws0 = this.windsockState;
+    if (!ws0 || !ws0.alive) return;
+    const x = ws0.x;
+    const baseY = ws0.y + WINDSOCK.poleH;
+    const ws = computeWindsock(x, baseY, this.background.windValue, time, WINDSOCK.poleH);
     g.lineStyle(4, 0x6b7180, 1);
     g.beginPath();
     g.moveTo(ws.pole.x1, ws.pole.y1);
@@ -729,39 +737,49 @@ export default class TvScene extends Phaser.Scene {
   // Deployed shields, drawn each frame with eased transitions: a plate that
   // scales in on deploy (appear), splits open down the middle while its owner
   // fires through it (open), and fades out when it shatters or the round ends.
+  // Each tower may stack several plates: its fx list is matched to the snapshot
+  // shields by array index — an index present in the snapshot eases toward it; a
+  // trailing fx entry past the snapshot length fades out then drops.
   animateShields(dt) {
     const g = this.shieldGfx;
     if (!g) return;
     g.clear();
     const k = Math.min(1, dt * 12); // easing rate
     for (let i = 0; i < 2; i += 1) {
-      const target = this.shieldTarget?.[i] || null;
-      let fx = this.shieldFx[i];
-      if (target) {
-        if (!fx) fx = this.shieldFx[i] = { x: target.x, y: target.y, ux: target.ux, uy: target.uy, appear: 0, open: target.open ? 1 : 0 };
-        fx.x = target.x; fx.y = target.y; fx.ux = target.ux; fx.uy = target.uy;
-        fx.appear += (1 - fx.appear) * k;
-        fx.open += ((target.open ? 1 : 0) - fx.open) * Math.min(1, dt * 16);
-      } else if (fx) {
-        fx.appear += (0 - fx.appear) * k; // shatter / round-end fade-out
-        if (fx.appear < 0.03) { this.shieldFx[i] = null; continue; }
-      } else {
-        continue;
-      }
+      const targets = this.shieldTarget?.[i] || [];
+      const list = this.shieldFx[i];
       const col = i === 0 ? COLORS.towerP1 : COLORS.towerP2;
-      const half = SHIELD.plateHalf * fx.appear;
-      const gap = fx.open * 13; // middle opening when the owner fires through it
-      const alpha = Math.max(0, fx.appear) * (1 - 0.45 * fx.open);
-      const ux = fx.ux; const uy = fx.uy;
-      // Two half-plates with a gap in the centre (gap 0 = solid).
-      const segs = [[gap, half], [-gap, -half]];
-      for (const [from, to] of segs) {
-        const bx = fx.x + ux * from; const by = fx.y + uy * from;
-        const ex = fx.x + ux * to; const ey = fx.y + uy * to;
-        g.lineStyle(10, 0xdfe6f2, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
-        g.lineStyle(4, col, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
+      // Walk the longer of the two so we both spawn new plates and fade dropped
+      // ones; iterate backwards so splicing a faded entry doesn't skip indices.
+      const n = Math.max(list.length, targets.length);
+      for (let s = n - 1; s >= 0; s -= 1) {
+        const target = targets[s] || null;
+        let fx = list[s];
+        if (target) {
+          if (!fx) fx = list[s] = { x: target.x, y: target.y, ux: target.ux, uy: target.uy, appear: 0, open: target.open ? 1 : 0 };
+          fx.x = target.x; fx.y = target.y; fx.ux = target.ux; fx.uy = target.uy;
+          fx.appear += (1 - fx.appear) * k;
+          fx.open += ((target.open ? 1 : 0) - fx.open) * Math.min(1, dt * 16);
+        } else if (fx) {
+          fx.appear += (0 - fx.appear) * k; // shatter / round-end fade-out
+          if (fx.appear < 0.03) { list.splice(s, 1); continue; }
+        } else {
+          continue;
+        }
+        const half = SHIELD.plateHalf * fx.appear;
+        const gap = fx.open * 13; // middle opening when the owner fires through it
+        const alpha = Math.max(0, fx.appear) * (1 - 0.45 * fx.open);
+        const ux = fx.ux; const uy = fx.uy;
+        // Two half-plates with a gap in the centre (gap 0 = solid).
+        const segs = [[gap, half], [-gap, -half]];
+        for (const [from, to] of segs) {
+          const bx = fx.x + ux * from; const by = fx.y + uy * from;
+          const ex = fx.x + ux * to; const ey = fx.y + uy * to;
+          g.lineStyle(10, 0xdfe6f2, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
+          g.lineStyle(4, col, alpha); g.beginPath(); g.moveTo(bx, by); g.lineTo(ex, ey); g.strokePath();
+        }
+        g.fillStyle(0xffffff, alpha * (1 - fx.open)); g.fillCircle(fx.x, fx.y, 4 * fx.appear);
       }
-      g.fillStyle(0xffffff, alpha * (1 - fx.open)); g.fillCircle(fx.x, fx.y, 4 * fx.appear);
     }
   }
 
@@ -806,7 +824,8 @@ export default class TvScene extends Phaser.Scene {
       t.draw();
     });
 
-    this.shieldTarget = state.towers.map((t) => t.shield); // eased + drawn in update()
+    this.shieldTarget = state.towers.map((t) => t.shields || []); // eased + drawn in update()
+    this.windsockState = state.windsock; // authoritative alive + anchor; drawn in update()
 
     // Projectiles aren't drawn here: their positions are buffered and rendered,
     // interpolated, from update() at the display refresh rate.
@@ -927,6 +946,16 @@ export default class TvScene extends Phaser.Scene {
         this.flashEmitter.emitParticleAt(e.x, e.y, 1);
         this.sparkEmitter.emitParticleAt(e.x, e.y, this.quality === 'lite' ? 6 : 14);
         this.shake(150, 0.006);
+      } else if (e.type === 'windsockDown') {
+        // Bounty downed: a small burst where the windsock stood (it stops being
+        // drawn next snapshot). The firer banks a shield (awarded server-side).
+        const col = e.owner === 0 ? COLORS.towerP1 : COLORS.towerP2;
+        const ring = this.add.circle(e.x, e.y, 6, col, 0.9).setDepth(7);
+        this.tweens.add({ targets: ring, radius: 40, alpha: 0, duration: 360, onComplete: () => ring.destroy() });
+        this.flashEmitter.emitParticleAt(e.x, e.y, 1);
+        this.sparkEmitter.emitParticleAt(e.x, e.y, this.quality === 'lite' ? 5 : 12);
+        this.sfx.shieldUp();
+        this.shake(140, 0.005);
       }
     }
   }

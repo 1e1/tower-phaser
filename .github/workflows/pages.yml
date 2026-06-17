@@ -1,9 +1,19 @@
-name: Deploy tutorial to GitHub Pages
+name: Deploy tutorial + playable game to GitHub Pages
 
-# Publishes the static tutorial to GitHub Pages on every commit to main that
-# touches the tutorial source. The site is GENERATED from docs-src/ by
-# scripts/build-docs.mjs (docs/ is a build artifact, not committed). Tutorial
-# deploys per-commit on main — game versioning uses tags, the docs do not.
+# Publishes the static site to GitHub Pages on every commit to main that
+# touches the tutorial OR the game source. Two things ship in one artifact —
+# GitHub Pages allows only one site per repo, so a single deploy owns it:
+#   /        -> the tutorial, GENERATED from docs-src/ by scripts/build-docs.mjs
+#   /play/   -> the LOCAL (two-players-on-one-screen) game, built by Vite
+#
+# Only the local mode is playable here: it runs entirely in the browser
+# (src/net/LocalServer.js — no socket). The TV+phones multiplayer needs the
+# Node/ws server on /ws, which static Pages can't host, so it's intentionally
+# absent. Force local mode with the ?local flag: link to  …/play/?local .
+#
+# docs/ and dist/ are build artifacts (not committed). build:docs wipes docs/
+# before regenerating, so the game MUST be copied into docs/play/ afterwards.
+# Deploys per-commit on main — game versioning uses tags, the site does not.
 # One-time setup: repo Settings → Pages → Source = "GitHub Actions".
 
 on:
@@ -12,6 +22,11 @@ on:
     paths:
       - 'docs-src/**'
       - 'scripts/build-docs.mjs'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'vite.config.js'
+      - 'package-lock.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -35,7 +50,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+      - run: npm ci
       - run: npm run build:docs -- --strict   # generates docs/; fails on any coverage gap
+      - run: npm run build                     # builds the game into dist/
+      - run: cp -r dist docs/play              # served at /play/ (enter with ?local)
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

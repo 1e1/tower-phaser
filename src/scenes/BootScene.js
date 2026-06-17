@@ -34,10 +34,18 @@ export default class BootScene extends Phaser.Scene {
     }
     if (!this.registry.get('quality')) this.registry.set('quality', 'full');
 
-    // Audio can only start after a gesture; unlock on the first interaction.
+    // Audio can only start after a gesture; the context starts suspended. We keep
+    // re-arming rather than unlocking once: phones (the controllers) re-suspend
+    // the context whenever the page backgrounds — lock screen, app switch,
+    // incoming call, notification shade — and a one-shot listener would never
+    // wake it again, leaving the phone silent for the rest of the session. So
+    // resume on every gesture (a cheap no-op once running) and whenever the page
+    // returns to the foreground.
     const sfx = this.registry.get('sfx');
-    window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
-    window.addEventListener('keydown', () => sfx.unlock(), { once: true });
+    const wake = () => sfx.unlock();
+    window.addEventListener('pointerdown', wake);
+    window.addEventListener('keydown', wake);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
 
     const role = detectRole();
     if (role === 'local') { this.scene.start('Local'); return; } // ?local / #local direct entry
