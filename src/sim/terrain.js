@@ -46,7 +46,21 @@ export function heightAt(heights, x) {
   return heights[i];
 }
 
-export function collides(heights, x, y) {
+// True when (x, y) sits inside any carved crater.
+export function inCrater(craters, x, y) {
+  for (const c of craters) {
+    const dx = x - c.x;
+    const dy = y - c.y;
+    if (dx * dx + dy * dy <= c.r * c.r) return true;
+  }
+  return false;
+}
+
+// Worms-style solidity: ground exists below the surface, minus any craters.
+// A crater fully below the surface leaves the material above it intact, so
+// caverns and overhangs are possible.
+export function pointSolid(heights, craters, x, y) {
   if (x < 0 || x >= heights.length) return false;
-  return y >= heightAt(heights, x);
+  if (y < heightAt(heights, x)) return false;
+  return !inCrater(craters, x, y);
 }

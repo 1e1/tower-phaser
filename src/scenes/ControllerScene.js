@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-import { COLORS, AIM, MAX_WIND } from '../config/constants.js';
+import { COLORS, AIM, MAX_WIND, ROUND_OPTIONS } from '../config/constants.js';
 import { BIOMES } from '../config/biomes.js';
 import { PHASE } from '../sim/Simulation.js';
 import { injectStyles } from './LobbyScene.js';
@@ -24,6 +24,7 @@ export default class ControllerScene extends Phaser.Scene {
     this.color = this.player === 0 ? COLORS.towerP1 : COLORS.towerP2;
     this.biomeChooser = data.isBiomeChooser ? this.player : -1;
     this.biomeIndex = 0;
+    this.roundsIndex = 1;
     this.inMatch = false;
     this.postmatch = false;
     this.phase = null;
@@ -55,7 +56,8 @@ export default class ControllerScene extends Phaser.Scene {
 
         <div id="biome" hidden>
           <div class="row"><button id="biomeL">◀</button><span id="biomeName"></span><button id="biomeR">▶</button></div>
-          <div class="hint">You choose the biome</div>
+          <div class="row"><button id="roundsL">◀</button><span id="roundsName"></span><button id="roundsR">▶</button></div>
+          <div class="hint">You set the biome and rounds</div>
         </div>
 
         <canvas id="ttv"></canvas>
@@ -137,6 +139,8 @@ export default class ControllerScene extends Phaser.Scene {
 
     this.$('biomeL').addEventListener('click', () => this.cycleBiome(-1));
     this.$('biomeR').addEventListener('click', () => this.cycleBiome(1));
+    this.$('roundsL').addEventListener('click', () => this.cycleRounds(-1));
+    this.$('roundsR').addEventListener('click', () => this.cycleRounds(1));
     this.$('again').addEventListener('click', () => this.playAgain());
     this.$('leave').addEventListener('click', () => this.client.send('leave'));
   }
@@ -197,6 +201,13 @@ export default class ControllerScene extends Phaser.Scene {
     this.$('biomeName').textContent = BIOMES[this.biomeIndex].name;
   }
 
+  cycleRounds(dir) {
+    this.roundsIndex = (this.roundsIndex + dir + ROUND_OPTIONS.length) % ROUND_OPTIONS.length;
+    this.sfx.blip(620);
+    this.client.send('config', { rounds: ROUND_OPTIONS[this.roundsIndex] });
+    this.$('roundsName').textContent = `${ROUND_OPTIONS[this.roundsIndex]} rounds`;
+  }
+
   playAgain() {
     this.client.send('playAgain');
     this.$('again').disabled = true;
@@ -212,6 +223,8 @@ export default class ControllerScene extends Phaser.Scene {
     if (m.config) {
       const idx = BIOMES.findIndex((b) => b.id === m.config.biomeId);
       if (idx !== -1) this.biomeIndex = idx;
+      const ri = ROUND_OPTIONS.indexOf(m.config.rounds);
+      if (ri !== -1) this.roundsIndex = ri;
     }
     this.refresh();
   }
@@ -276,7 +289,10 @@ export default class ControllerScene extends Phaser.Scene {
 
     const showBiome = this.isChooser();
     this.$('biome').hidden = !showBiome;
-    if (showBiome) this.$('biomeName').textContent = BIOMES[this.biomeIndex].name;
+    if (showBiome) {
+      this.$('biomeName').textContent = BIOMES[this.biomeIndex].name;
+      this.$('roundsName').textContent = `${ROUND_OPTIONS[this.roundsIndex]} rounds`;
+    }
 
     if (preMatch) {
       this.$('info').textContent = showBiome

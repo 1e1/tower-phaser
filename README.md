@@ -26,17 +26,22 @@ server that runs the authoritative simulation.
    Open it on the host's LAN address (e.g. `http://192.168.1.20:3000`) rather
    than `localhost` so phones on the same network can reach it. The QR code
    already points at the LAN address.
-2. The TV shows a 4-character room code and a QR code, and lets the host set the
-   round count. It never needs a keyboard.
+2. The TV shows a 4-character room code and a QR code. It never needs input.
 3. Players open the app on their phone/tablet (scan the QR or enter the code),
-   type a name and join. The first player to join picks the biome.
+   type a name and join. The first player to join picks the biome and the round
+   count.
 4. As soon as the second player joins, the match **starts automatically**.
 5. Each player sets angle and power on their device — their tower top animates
    live (cannon orientation, charge tint, windsock) — then validates. When both
    have validated, the volley fires. The TV renders the match; it shows the
    cannons moving but never the exact numbers, and has no firing controls.
 6. At the end, each player chooses **Play again** or **Disconnect**. When both
-   choose to play again the match restarts; the **loser picks the next biome**.
+   choose to play again the match restarts; the **loser picks the next biome and
+   round count**.
+
+The terrain is **destructible**: every shell carves a crater out of the
+landscape (relief and surface decor alike), so holes, caverns and overhangs
+build up over the round — Worms-style. The terrain resets each round.
 
 Extra people who join beyond the two slots wait in an ordered queue and
 spectate the match (like the TV); when a slot frees up, the next in line takes
@@ -85,7 +90,7 @@ Then open http://localhost:8088 (or the host's LAN address for phone players).
 - **Lot 1** — Dockerized single-page game. *(done)*
 - **Lot 2** — Selectable biome themes, modernized graphics and sound. *(done)*
 - **Lot 3** — TV spectator view plus phone/tablet controllers. *(done)*
-- **Lot 4** — Worms-style destructible terrain.
+- **Lot 4** — Worms-style destructible terrain. *(done)*
 
 ## Project layout
 

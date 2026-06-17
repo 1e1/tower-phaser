@@ -1,5 +1,5 @@
-import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND } from '../config/constants.js';
-import { generateHeights, heightAt, collides } from './terrain.js';
+import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS } from '../config/constants.js';
+import { generateHeights, heightAt, pointSolid } from './terrain.js';
 import { aimVector, muzzle, bounds, rectContains } from './geometry.js';
 
 // Authoritative, framework-free game simulation. It runs on the server (the
@@ -31,6 +31,7 @@ export default class Simulation {
     this.phase = PHASE.LOBBY;
     this.projectileSeq = 0;
     this.projectiles = [];
+    this.craters = [];
     this.turnHits = [false, false];
     this.events = [];
     this.resolveTimer = 0;
@@ -63,6 +64,7 @@ export default class Simulation {
   newTerrain() {
     this.seed = this.randInt(1, 2 ** 31 - 1);
     this.heights = generateHeights(this.seed, this.roughness);
+    this.craters = [];
     for (const t of this.towers) {
       t.groundY = heightAt(this.heights, t.x);
     }
@@ -173,9 +175,10 @@ export default class Simulation {
       return;
     }
 
-    if (p.y > 0 && collides(this.heights, p.x, p.y)) {
+    if (p.y > 0 && pointSolid(this.heights, this.craters, p.x, p.y)) {
       p.alive = false;
-      this.pushEvent('impact', { x: p.x, y: p.y });
+      this.craters.push({ x: Math.round(p.x), y: Math.round(p.y), r: CRATER_RADIUS });
+      this.pushEvent('impact', { x: p.x, y: p.y, r: CRATER_RADIUS });
     }
   }
 
@@ -274,6 +277,7 @@ export default class Simulation {
       seed: this.seed,
       biomeId: this.biome.id,
       banner: this.banner,
+      craters: this.craters,
       names: this.names.slice(),
       // angle/power drive the live cannon orientation and charge tint on the
       // renderers; the exact numbers are never displayed on the TV.

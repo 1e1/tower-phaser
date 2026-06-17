@@ -1,13 +1,21 @@
 import Phaser from 'phaser';
 
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/constants.js';
+import { intToCss, craterRimColor } from '../render/visuals.js';
 
-const STEP = 2; // sampling step in pixels for drawing the surface polygon
+const STEP = 2; // sampling step in pixels for the surface polygon
+let uid = 0;
 
-// Procedural mid-screen landscape with flat edge platforms for the towers.
-// Heights are stored per pixel column so collision queries stay simple and so
-// Lot 4 can later carve craters into the same array. Colours come from the
-// active biome theme.
+// Deterministic 0..1 value from an integer, for stable decor placement.
+function hash(n) {
+  return ((Math.imul(n, 2654435761) >>> 0) % 100000) / 100000;
+}
+
+// Destructible landscape (Worms-style). The base surface plus baked-in surface
+// decor is painted onto an offscreen 2D canvas (uploaded as a Phaser texture);
+// impacts erase circular craters out of it with destination-out, removing both
+// the relief and the decor. Collisions test "below the surface and outside
+// every crater", so holes, caverns and overhangs appear.
 export default class Terrain {
   constructor(scene, theme) {
     this.scene = scene;
@@ -16,91 +24,177 @@ export default class Terrain {
     this.heights = new Float32Array(GAME_WIDTH);
     this.platformWidth = 220;
     this.platformY = GAME_HEIGHT - 150;
-    this.gfx = scene.add.graphics();
+    this.craters = [];
+    this.appliedCraters = 0;
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = GAME_WIDTH;
+    this.canvas.height = GAME_HEIGHT;
+    this.ctx = this.canvas.getContext('2d');
+
+    this.key = `terrain-${uid += 1}`;
+    this.tex = scene.textures.addCanvas(this.key, this.canvas);
+    this.image = scene.add.image(0, 0, this.key).setOrigin(0, 0);
+
+    this.css = {
+      fill: intToCss(theme.fill),
+      edge: intToCss(theme.edge),
+      dark: intToCss(theme.dark),
+      rim: intToCss(craterRimColor(theme.edge)),
+    };
   }
 
-  // Build a fresh landscape. Called once per round so each round looks new.
+  // Local (lots 1-2) procedural generation.
   generate() {
     const { platformWidth, platformY } = this;
     const baseY = GAME_HEIGHT * 0.62;
     const rough = this.theme.roughness ?? 1;
-
-    // A few sine components plus jitter make rolling, varied hills. The biome
-    // roughness scales the amplitudes so deserts/volcanoes feel craggier.
     const waves = [
       { amp: Phaser.Math.Between(40, 90) * rough, freq: Phaser.Math.FloatBetween(1.2, 2.4), phase: Phaser.Math.FloatBetween(0, Math.PI * 2) },
       { amp: Phaser.Math.Between(20, 50) * rough, freq: Phaser.Math.FloatBetween(3.0, 5.5), phase: Phaser.Math.FloatBetween(0, Math.PI * 2) },
       { amp: Phaser.Math.Between(8, 22) * rough, freq: Phaser.Math.FloatBetween(6.0, 9.0), phase: Phaser.Math.FloatBetween(0, Math.PI * 2) },
     ];
-
     for (let x = 0; x < this.width; x += 1) {
       if (x <= platformWidth || x >= this.width - platformWidth) {
         this.heights[x] = platformY;
         continue;
       }
-      const t = (x - platformWidth) / (this.width - 2 * platformWidth); // 0..1
+      const t = (x - platformWidth) / (this.width - 2 * platformWidth);
       let y = baseY;
-      for (const w of waves) {
-        y -= w.amp * Math.sin(w.freq * Math.PI * t + w.phase);
-      }
-      // Blend smoothly into the platforms at both edges.
+      for (const w of waves) y -= w.amp * Math.sin(w.freq * Math.PI * t + w.phase);
       const edgeBlend = Math.min(1, Math.min(t, 1 - t) * 6);
       this.heights[x] = Phaser.Math.Linear(platformY, y, edgeBlend);
     }
-
-    this.draw();
+    this.craters = [];
+    this.appliedCraters = 0;
+    this.drawBase();
   }
 
-  // Load an externally computed heightfield (used by the spectator TV, which
-  // rebuilds the server's terrain from a shared seed instead of generating its
-  // own) and redraw.
+  // Spectator/TV: adopt the server's seeded heightfield and redraw.
   setHeights(heights) {
     this.heights.set(heights);
-    this.draw();
+    this.craters = [];
+    this.appliedCraters = 0;
+    this.drawBase();
   }
 
-  // Surface height (top of the ground) at a given column.
   heightAt(x) {
-    const clamped = Phaser.Math.Clamp(Math.round(x), 0, this.width - 1);
-    return this.heights[clamped];
+    const i = Phaser.Math.Clamp(Math.round(x), 0, this.width - 1);
+    return this.heights[i];
   }
 
-  // True when a point sits at or below the ground surface.
+  inCrater(x, y) {
+    for (const c of this.craters) {
+      const dx = x - c.x;
+      const dy = y - c.y;
+      if (dx * dx + dy * dy <= c.r * c.r) return true;
+    }
+    return false;
+  }
+
   collides(x, y) {
     if (x < 0 || x >= this.width) return false;
-    return y >= this.heightAt(x);
+    return y >= this.heightAt(x) && !this.inCrater(x, y);
   }
 
-  draw() {
-    const g = this.gfx;
-    g.clear();
+  // Carve a crater (local play: also feeds collision).
+  carve(x, y, r) {
+    this.craters.push({ x, y, r });
+    this.appliedCraters = this.craters.length;
+    this.eraseCrater(x, y, r);
+    this.tex.refresh();
+  }
 
-    g.fillStyle(this.theme.fill, 1);
-    g.beginPath();
-    g.moveTo(0, GAME_HEIGHT);
-    for (let x = 0; x < this.width; x += STEP) {
-      g.lineTo(x, this.heights[x]);
+  // TV: replay the authoritative crater list, erasing any not yet drawn.
+  applyCraters(list) {
+    if (!list || list.length === this.appliedCraters) return;
+    for (let i = this.appliedCraters; i < list.length; i += 1) {
+      this.craters.push(list[i]);
+      this.eraseCrater(list[i].x, list[i].y, list[i].r);
     }
-    g.lineTo(this.width - 1, this.heights[this.width - 1]);
-    g.lineTo(this.width, GAME_HEIGHT);
-    g.closePath();
-    g.fillPath();
+    this.appliedCraters = list.length;
+    this.tex.refresh();
+  }
 
-    // Darker band beneath the surface for a bit of depth.
-    g.fillStyle(this.theme.dark, 0.35);
-    g.fillRect(0, GAME_HEIGHT - 40, this.width, 40);
+  eraseCrater(x, y, r) {
+    const ctx = this.ctx;
+    // Darken the rim only where terrain already exists (source-atop), so the
+    // scorched edge appears solely where the crater meets the ground — never as
+    // a full ring floating in the open sky.
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = this.css.rim;
+    ctx.beginPath();
+    ctx.arc(x, y, r + 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
-    // Bright surface line (grass/snow/sand crest).
-    g.lineStyle(4, this.theme.edge, 1);
-    g.beginPath();
-    g.moveTo(0, this.heights[0]);
-    for (let x = STEP; x < this.width; x += STEP) {
-      g.lineTo(x, this.heights[x]);
+    // Punch the hole through the terrain.
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawBase() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.width, GAME_HEIGHT);
+
+    ctx.fillStyle = this.css.fill;
+    ctx.beginPath();
+    ctx.moveTo(0, GAME_HEIGHT);
+    for (let x = 0; x < this.width; x += STEP) ctx.lineTo(x, this.heights[x]);
+    ctx.lineTo(this.width, GAME_HEIGHT);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = this.css.dark;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(0, GAME_HEIGHT - 40, this.width, 40);
+    ctx.globalAlpha = 1;
+
+    ctx.strokeStyle = this.css.edge;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, this.heights[0]);
+    for (let x = STEP; x < this.width; x += STEP) ctx.lineTo(x, this.heights[x]);
+    ctx.stroke();
+
+    this.drawDecor();
+    this.tex.refresh();
+  }
+
+  // Surface foliage/rocks, baked into the terrain so craters erase them too.
+  drawDecor() {
+    const ctx = this.ctx;
+    const from = this.platformWidth + 12;
+    const to = this.width - this.platformWidth - 12;
+    for (let x = from; x < to; x += 26) {
+      const h = hash(x);
+      if (h < 0.45) continue;
+      const sy = this.heights[x];
+      const size = 5 + h * 9;
+      ctx.strokeStyle = this.css.edge;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let b = -1; b <= 1; b += 1) {
+        ctx.moveTo(x + b * 3, sy);
+        ctx.lineTo(x + b * 2, sy - size);
+      }
+      ctx.stroke();
+      if (h > 0.82) {
+        ctx.fillStyle = this.css.dark;
+        ctx.beginPath();
+        ctx.arc(x, sy - 3, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
-    g.strokePath();
   }
 
   destroy() {
-    this.gfx.destroy();
+    this.image.destroy();
+    this.scene.textures.remove(this.key);
   }
 }

@@ -6,6 +6,7 @@ import {
   COLORS,
   AIM,
   PHYSICS,
+  CRATER_RADIUS,
 } from '../config/constants.js';
 import Terrain from '../objects/Terrain.js';
 import Tower from '../objects/Tower.js';
@@ -249,6 +250,7 @@ export default class GameScene extends Phaser.Scene {
     // Ground hit (only once the shell is on screen, to avoid edge artefacts).
     if (p.y > 0 && this.terrain.collides(p.x, p.y)) {
       p.alive = false;
+      this.terrain.carve(p.x, p.y, CRATER_RADIUS);
       this.explodeAt(p.x, p.y, this.biome.terrain.edge, false);
     }
   }

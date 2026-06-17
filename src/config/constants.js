@@ -40,5 +40,8 @@ export const AIM = {
 // Wind acceleration applied horizontally to projectiles (px/s^2).
 export const MAX_WIND = 95;
 
+// Radius (px) of the crater a shell carves out of the terrain on impact.
+export const CRATER_RADIUS = 38;
+
 // Round-count choices offered on the setup screen.
 export const ROUND_OPTIONS = [1, 3, 5, 7];

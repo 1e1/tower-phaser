@@ -88,16 +88,9 @@ export default class TvScene extends Phaser.Scene {
 
     this.buildQr(cx, 400);
 
-    this.biomeInfo = add(this.text(cx, 540, '', 26, COLORS.hudDim));
-    this.roundsText = add(
-      this.add
-        .text(cx, 584, '', { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '28px', color: COLORS.hud })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.cycleRounds()),
-    );
-    this.rosterText = add(this.text(cx, 632, '', 24, COLORS.hudDim));
-    this.statusText = add(this.text(cx, 678, 'Waiting for players…', 26, COLORS.hudDim));
+    this.biomeInfo = add(this.text(cx, 556, '', 26, COLORS.hudDim));
+    this.rosterText = add(this.text(cx, 614, '', 24, COLORS.hudDim));
+    this.statusText = add(this.text(cx, 668, 'Waiting for players…', 26, COLORS.hudDim));
 
     this.refreshLobby();
   }
@@ -135,19 +128,12 @@ export default class TvScene extends Phaser.Scene {
     });
   }
 
-  cycleRounds() {
-    this.roundsIndex = (this.roundsIndex + 1) % ROUND_OPTIONS.length;
-    this.sfx.blip(620);
-    this.client.send('config', { rounds: ROUND_OPTIONS[this.roundsIndex] });
-    this.refreshLobby();
-  }
-
   refreshLobby() {
     if (this.mode !== 'lobby') return;
     const biome = BIOMES[this.biomeIndex] || BIOMES[0];
+    const rounds = ROUND_OPTIONS[this.roundsIndex];
     const chooser = this.roster[this.biomeChooser]?.name || `Player ${this.biomeChooser + 1}`;
-    this.biomeInfo.setText(`Biome: ${biome.name}  (chosen by ${chooser})`);
-    this.roundsText.setText(`◀ ${ROUND_OPTIONS[this.roundsIndex]} rounds ▶`);
+    this.biomeInfo.setText(`${biome.name} · ${rounds} rounds  (set by ${chooser})`);
 
     const slot = (p, i) => (p.connected ? `P${i + 1}: ${p.name}` : `P${i + 1}: waiting…`);
     this.rosterText.setText(`${slot(this.roster[0], 0)}     ${slot(this.roster[1], 1)}`);
@@ -255,6 +241,32 @@ export default class TvScene extends Phaser.Scene {
     this.sparkEmitter = this.add.particles(0, 0, 'spark', opts({ lifespan: { min: 250, max: 650 }, speed: { min: 90, max: 340 }, scale: { start: 1, end: 0 }, alpha: { start: 1, end: 0 }, gravityY: 420, blendMode: 'ADD' })).setDepth(6);
     this.debrisEmitter = this.add.particles(0, 0, 'spark', opts({ lifespan: { min: 400, max: 950 }, speed: { min: 60, max: 280 }, angle: { min: 190, max: 350 }, scale: { start: 1.3, end: 0 }, alpha: { start: 1, end: 0 }, gravityY: 700, tint: this.biome.terrain.dark })).setDepth(6);
     this.smokeEmitter = this.add.particles(0, 0, 'smoke', opts({ lifespan: { min: 500, max: 1100 }, speed: { min: 10, max: 60 }, scale: { start: 0.6, end: 2.4 }, alpha: { start: 0.45, end: 0 } })).setDepth(6);
+
+    // Ground-impact dust lives BEHIND the terrain (negative depth) so the relief
+    // masks it: soft earthy clouds billow up out of the crater while grit sprays
+    // and falls back into the ground.
+    this.dustEmitter = this.add
+      .particles(0, 0, 'smoke', opts({
+        lifespan: { min: 700, max: 1500 },
+        speedX: { min: -45, max: 45 },
+        speedY: { min: -70, max: -18 },
+        gravityY: 50,
+        scale: { start: 0.5, end: 2.8 },
+        alpha: { start: 0.55, end: 0 },
+        tint: this.biome.terrain.edge,
+      }))
+      .setDepth(-1);
+    this.gritEmitter = this.add
+      .particles(0, 0, 'spark', opts({
+        lifespan: { min: 350, max: 800 },
+        speed: { min: 40, max: 170 },
+        angle: { min: 200, max: 340 },
+        gravityY: 640,
+        scale: { start: 0.9, end: 0 },
+        alpha: { start: 0.85, end: 0 },
+        tint: this.biome.terrain.dark,
+      }))
+      .setDepth(-1);
   }
 
   update(_time, delta) {
@@ -268,6 +280,7 @@ export default class TvScene extends Phaser.Scene {
     this.background.setWind(state.wind);
 
     if (state.seed !== this.seed) this.loadTerrain(state.seed);
+    this.terrain.applyCraters(state.craters);
 
     this.towers.forEach((t, i) => {
       const ts = state.towers[i];
@@ -341,11 +354,20 @@ export default class TvScene extends Phaser.Scene {
         this.sfx.boom();
         this.shake(110, 0.004);
       } else if (e.type === 'impact') {
-        this.explode(e.x, e.y, this.biome.terrain.edge, false);
+        this.dustExplosion(e.x, e.y);
       } else if (e.type === 'hit') {
         this.explode(e.x, e.y, e.target === 0 ? COLORS.towerP1 : COLORS.towerP2, true);
       }
     }
+  }
+
+  // Dusty ground impact, rendered behind the terrain so the relief occludes it.
+  dustExplosion(x, y) {
+    const lite = this.quality === 'lite';
+    this.dustEmitter.emitParticleAt(x, y, lite ? 4 : 9);
+    this.gritEmitter.emitParticleAt(x, y, lite ? 4 : 11);
+    this.sfx.explosion();
+    this.shake(140, 0.005);
   }
 
   explode(x, y, ringColor, isTowerHit) {

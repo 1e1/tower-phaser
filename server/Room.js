@@ -121,16 +121,12 @@ export default class Room {
 
   // --- intents -------------------------------------------------------------
 
+  // Only the current chooser (first player, then the loser) sets the match
+  // options — both the biome and the round count. The TV has no say.
   setConfig(socket, rounds, biomeId) {
-    if (socket.role === 'tv' && Number.isFinite(rounds)) {
-      this.config.rounds = rounds;
-    }
-    if (
-      socket.role === 'player' &&
-      socket.slot === this.biomeChooser &&
-      BIOMES.some((b) => b.id === biomeId)
-    ) {
-      this.config.biomeId = biomeId;
+    if (socket.role === 'player' && socket.slot === this.biomeChooser) {
+      if (Number.isFinite(rounds)) this.config.rounds = rounds;
+      if (BIOMES.some((b) => b.id === biomeId)) this.config.biomeId = biomeId;
     }
     this.sendRoster();
   }

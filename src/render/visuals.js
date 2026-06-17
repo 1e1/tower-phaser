@@ -15,6 +15,17 @@ export function powerRatio(power) {
   return clamp((power - AIM.minPower) / (AIM.maxPower - AIM.minPower), 0, 1);
 }
 
+// Crater edge colour: the biome's relief line shifted toward dark brown, so the
+// scorched rim reads as disturbed earth rather than a hard black ring.
+const DARK_BROWN = { r: 0x3a, g: 0x29, b: 0x18 };
+export function craterRimColor(edge) {
+  const t = 0.6;
+  const r = Math.round(lerp((edge >> 16) & 0xff, DARK_BROWN.r, t));
+  const g = Math.round(lerp((edge >> 8) & 0xff, DARK_BROWN.g, t));
+  const b = Math.round(lerp(edge & 0xff, DARK_BROWN.b, t));
+  return (r << 16) | (g << 8) | b;
+}
+
 // Barrel colour: cool steel at low power, glowing red at full charge.
 export function barrelColor(power) {
   const t = powerRatio(power);
