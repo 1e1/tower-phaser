@@ -85,6 +85,19 @@ docker run --rm -p 8088:3000 tower-duel
 
 Then open http://localhost:8088 (or the host's LAN address for phone players).
 
+## Tutorial
+
+An illustrated, kid-friendly tutorial that walks through the four lots (with SVG
+diagrams and interactive mini-simulators) lives in [`docs/`](docs/) and is
+published to GitHub Pages: **https://1e1.github.io/tower-phaser/**. Enable it
+once via *Settings → Pages → Source: GitHub Actions*.
+
+The tutorial is available in five languages — English, French, German, Spanish
+and Italian — under `docs/en/`, `docs/fr/`, `docs/de/`, `docs/es/` and
+`docs/it/`. The site root redirects to the reader's language (defaulting to
+English), and a language switcher in the page header links the matching page
+across all five.
+
 ## Roadmap
 
 - **Lot 1** — Dockerized single-page game. *(done)*

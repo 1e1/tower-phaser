@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Construis ton propre jeu web — le carnet de Tower Duel</title>
+    <meta name="description" content="Un tutoriel illustré pour comprendre comment se construit un jeu vidéo qui tourne dans un navigateur, à travers le jeu Tower Duel." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body data-biome="meadow">
+    <nav class="nav">
+      <a class="brand" href="index.html">Tower Duel<span class="dot">.</span> <span style="font-weight:400;color:var(--ink-soft)">le carnet</span></a>
+      <span class="spacer"></span>
+      <a class="crumb" href="#chapters">Chapitres</a>
+      <span class="langs">
+        <a href="../en/index.html">EN</a>
+        <a href="../fr/index.html" class="active">FR</a>
+        <a href="../de/index.html">DE</a>
+        <a href="../es/index.html">ES</a>
+        <a href="../it/index.html">IT</a>
+      </span>
+    </nav>
+
+    <header class="hero">
+      <span class="badge">Carnet du créateur</span>
+      <div class="kicker">Comment on construit…</div>
+      <h1>…un vrai jeu vidéo dans un navigateur</h1>
+      <p>Suis la fabrication de <strong>Tower Duel</strong>, un duel de canons à deux joueurs, étape par étape. Avec des schémas, du vrai code, et de petits jeux avec lesquels t'amuser pour comprendre.</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,20 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>
+        <path d="M0,95 C260,55 520,120 760,90 C1020,58 1240,120 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">?</span>C'est quoi un « jeu web » ?</h2>
+        <p class="lead">Un jeu web est un jeu qui tourne dans un <b>navigateur</b> (Chrome, Firefox, Safari…) sans rien installer. Tu cliques sur un lien, et ça joue !</p>
+        <p>Pour que ça marche, on assemble trois ingrédients que tu connais peut-être déjà :</p>
+        <ul class="clean">
+          <li>🧱 <b>HTML</b> — la structure de la page (les « briques »).</li>
+          <li>🎨 <b>CSS</b> — la mise en forme : couleurs, tailles, disposition.</li>
+          <li>⚙️ <b>JavaScript</b> — le cerveau : c'est lui qui fait <em>bouger</em> les choses.</li>
+        </ul>
+        <p>Notre jeu dessine tout dans une zone spéciale appelée <span class="pill">canvas</span> (la « toile » d'un peintre numérique). On utilise une boîte à outils, <b>Phaser</b>, qui gère les parties compliquées (afficher, animer, écouter le clavier) pour qu'on puisse se concentrer sur le jeu.</p>
+
+        <figure class="diagram" aria-label="Schéma : du code au jeu">
+          <svg viewBox="0 0 760 200" width="760" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <rect x="20" y="60" width="150" height="80" rx="12" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+            <text x="95" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">HTML + CSS</text>
+            <text x="95" y="118" text-anchor="middle" font-size="13" fill="#5b5470">la page</text>
+
+            <rect x="220" y="60" width="150" height="80" rx="12" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+            <text x="295" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">JavaScript</text>
+            <text x="295" y="118" text-anchor="middle" font-size="13" fill="#5b5470">+ Phaser</text>
+
+            <rect x="430" y="40" width="150" height="120" rx="12" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+            <text x="505" y="32" text-anchor="middle" font-size="13" fill="#5b5470">&lt;canvas&gt;</text>
+            <circle cx="470" cy="100" r="12" fill="#4f8fff"/>
+            <circle cx="540" cy="115" r="12" fill="#ff6b5e"/>
+            <path d="M430,140 Q505,110 580,135 L580,160 L430,160 Z" fill="#4f8f2f"/>
+
+            <rect x="630" y="60" width="110" height="80" rx="12" fill="#fff3d6" stroke="#c07d22" stroke-width="2"/>
+            <text x="685" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">Toi 🙂</text>
+            <text x="685" y="118" text-anchor="middle" font-size="13" fill="#5b5470">tu joues</text>
+
+            <g stroke="#5b5470" stroke-width="2" fill="none" marker-end="url(#arrow)">
+              <path d="M170,100 L218,100"/>
+              <path d="M370,100 L428,100"/>
+              <path d="M580,100 L628,100"/>
+            </g>
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L7,3 L0,6 Z" fill="#5b5470"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption>Du code à l'écran : le JavaScript dessine le jeu dans le canvas, et tu joues.</figcaption>
+        </figure>
+
+        <div class="callout tip"><b>À retenir.</b> Le navigateur sait déjà afficher des pages. Un jeu web n'est « qu' »une page très vivante où le JavaScript redessine l'image des dizaines de fois par seconde.</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">★</span>Le jeu qu'on construit</h2>
+        <p>Deux tours, une de chaque côté d'un paysage. Chaque joueur règle l'<b>angle</b> et la <b>puissance</b> de son canon, en tenant compte du <b>vent</b>. Le piège : les deux joueurs visent <b>en même temps</b>, puis les deux tirs partent ensemble. Le premier à toucher la tour adverse gagne la manche !</p>
+        <p>On a construit le jeu en <b>4 étapes</b> (qu'on appelle des « lots »). Chaque chapitre raconte une étape, avec son ambiance de biome :</p>
+
+        <div class="chapters" id="chapters">
+          <a class="chap-card meadow" href="chapter-1.html">
+            <div class="lot">LOT 1 · Prairie</div>
+            <h3>Faire bouger un canon</h3>
+            <p>La boucle de jeu, la trajectoire d'un boulet, et comment on « emballe » le jeu avec Docker.</p>
+          </a>
+          <a class="chap-card desert" href="chapter-2.html">
+            <div class="lot">LOT 2 · Désert</div>
+            <h3>Le rendre beau</h3>
+            <p>Les décors (biomes), les particules, la profondeur (parallaxe) et les effets sonores faits par le code.</p>
+          </a>
+          <a class="chap-card tundra" href="chapter-3.html">
+            <div class="lot">LOT 3 · Toundra</div>
+            <h3>Jouer sur plusieurs écrans</h3>
+            <p>La TV affiche, les téléphones commandent. Un serveur arbitre la partie en temps réel.</p>
+          </a>
+          <a class="chap-card volcano" href="chapter-4.html">
+            <div class="lot">LOT 4 · Volcan</div>
+            <h3>Détruire le paysage</h3>
+            <p>Comme dans Worms : chaque tir creuse un cratère. On verra le tour de magie pour « percer un trou » dans une image.</p>
+          </a>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">i</span>Comment lire ce carnet</h2>
+        <p>Tu vas croiser de petites boîtes colorées. Voici ce qu'elles veulent dire :</p>
+        <div class="callout tip"><b>À retenir</b> — l'idée importante à garder en tête.</div>
+        <div class="callout try"><b>À toi de jouer !</b> — un petit jeu juste en dessous, avec lequel t'amuser à la souris ou au doigt.</div>
+        <div class="callout nerd"><b>Pour les curieux</b> — un détail plus pointu, si tu veux creuser (tu peux le sauter !).</div>
+        <p>Et des blocs de <b>vrai code du jeu</b>, comme celui-ci :</p>
+        <figure class="code">
+          <figcaption>un peu de JavaScript</figcaption>
+<pre><span class="c">// une fois que les deux joueurs ont confirmé, on tire !</span>
+<span class="k">if</span> (tower1.<span class="f">ready</span> &amp;&amp; tower2.<span class="f">ready</span>) {
+  <span class="f">fire</span>();
+}</pre>
+        </figure>
+        <p style="text-align:center; margin-top:26px;"><a class="pill" href="chapter-1.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">Commencer le chapitre 1 →</a></p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      Carnet du créateur de <b>Tower Duel</b> · fait pour les esprits curieux de tous âges 🛠️
+    </footer>
+  </body>
+</html>

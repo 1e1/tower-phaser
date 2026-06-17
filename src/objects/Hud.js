@@ -1,69 +1,87 @@
-import { GAME_WIDTH, COLORS, MAX_WIND, AIM } from '../config/constants.js';
+import QRCode from 'qrcode';
 
-// Top status bar (names, scores, round counter, wind gauge) plus the per-player
-// aiming readouts shown above each tower.
+import { GAME_WIDTH, COLORS, MAX_WIND } from '../config/constants.js';
+
+const D = 1000; // HUD renders above scenery, particles and explosions
+
+// In-match header (variant ②): a central scoreboard card (names, scores, round,
+// wind) plus a floating room module (code + mini QR) at the top-right, so late
+// players can still scan to join. Locked above the scene so the camera pan does
+// not move it.
 export default class Hud {
-  constructor(scene, names, colors) {
+  constructor(scene, names, colors, room = {}) {
     this.scene = scene;
     const cx = GAME_WIDTH / 2;
-    const D = 1000; // HUD renders above scenery, particles and explosions
 
-    this.bar = scene.add.graphics().setDepth(D);
-    this.bar.fillStyle(0x000000, 0.32);
-    this.bar.fillRect(0, 0, GAME_WIDTH, 74);
+    // --- central scoreboard card ---
+    const cardW = 560;
+    const cardH = 70;
+    const cardX = cx - cardW / 2;
+    const card = scene.add.graphics().setDepth(D).setScrollFactor(0);
+    card.fillStyle(0x0a1020, 0.74);
+    card.fillRoundedRect(cardX, 8, cardW, cardH, 14);
+    card.lineStyle(2, 0xffffff, 0.13);
+    card.strokeRoundedRect(cardX, 8, cardW, cardH, 14);
 
-    const nameStyle = (color) => ({
+    const nameStyle = (c) => ({
       fontFamily: 'Trebuchet MS, sans-serif',
-      fontSize: '28px',
-      color: `#${color.toString(16).padStart(6, '0')}`,
+      fontSize: '24px',
       fontStyle: 'bold',
+      color: `#${c.toString(16).padStart(6, '0')}`,
     });
     const scoreStyle = {
       fontFamily: 'Trebuchet MS, sans-serif',
-      fontSize: '40px',
-      color: COLORS.hud,
+      fontSize: '34px',
       fontStyle: 'bold',
+      color: COLORS.hud,
     };
 
-    scene.add.text(28, 14, names[0], nameStyle(colors[0])).setOrigin(0, 0).setDepth(D);
-    scene.add
-      .text(GAME_WIDTH - 28, 14, names[1], nameStyle(colors[1]))
-      .setOrigin(1, 0)
-      .setDepth(D);
+    // Content sits ABOVE the card panel (which is also depth D): give the texts
+    // an explicit depth + fixed scroll factor, otherwise they fall to depth 0,
+    // get covered by the dark card and read as muddy/unreadable.
+    const top = (obj) => obj.setDepth(D + 1).setScrollFactor(0);
+    const p1x = cx - 150;
+    const p2x = cx + 150;
+    this.nameP1 = top(scene.add.text(p1x, 16, names[0], nameStyle(colors[0])).setOrigin(0.5, 0));
+    this.nameP2 = top(scene.add.text(p2x, 16, names[1], nameStyle(colors[1])).setOrigin(0.5, 0));
+    this.scoreP1 = top(scene.add.text(p1x, 40, '0', scoreStyle).setOrigin(0.5, 0));
+    this.scoreP2 = top(scene.add.text(p2x, 40, '0', scoreStyle).setOrigin(0.5, 0));
 
-    this.scoreP1 = scene.add.text(28, 40, '0', scoreStyle).setOrigin(0, 0).setDepth(D);
-    this.scoreP2 = scene.add
-      .text(GAME_WIDTH - 28, 40, '0', scoreStyle)
-      .setOrigin(1, 0)
-      .setDepth(D);
+    this.roundText = top(scene.add
+      .text(cx, 18, '', { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '17px', color: '#e7ecf6', fontStyle: 'bold' })
+      .setOrigin(0.5, 0));
+    this.windText = top(scene.add
+      .text(cx, 44, '', { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '20px', color: '#ffffff', fontStyle: 'bold' })
+      .setOrigin(0.5, 0));
 
-    this.roundText = scene.add
-      .text(cx, 14, '', {
-        fontFamily: 'Trebuchet MS, sans-serif',
-        fontSize: '24px',
-        color: COLORS.hudDim,
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(D);
+    // --- floating room module (top-right) ---
+    const room2 = scene.add.graphics().setDepth(D).setScrollFactor(0);
+    const rmW = 150;
+    const rmX = GAME_WIDTH - rmW - 14;
+    room2.fillStyle(0x0a1020, 0.74);
+    room2.fillRoundedRect(rmX, 8, rmW, 64, 12);
+    room2.lineStyle(2, 0xffffff, 0.13);
+    room2.strokeRoundedRect(rmX, 8, rmW, 64, 12);
+    top(scene.add
+      .text(rmX + 70, 22, 'JOIN', { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '13px', color: COLORS.hudDim })
+      .setOrigin(0, 0));
+    top(scene.add
+      .text(rmX + 70, 36, room.code || '', { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '26px', fontStyle: 'bold', color: COLORS.hud })
+      .setOrigin(0, 0));
 
-    this.windText = scene.add
-      .text(cx, 44, '', {
-        fontFamily: 'Trebuchet MS, sans-serif',
-        fontSize: '20px',
-        color: COLORS.hud,
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(D);
-    this.windArrow = scene.add.graphics().setDepth(D);
-
-    // Per-tower aiming readouts.
-    this.aimTexts = [
-      scene.add.text(150, 96, '', this.aimStyle()).setOrigin(0.5, 0).setDepth(D),
-      scene.add.text(GAME_WIDTH - 150, 96, '', this.aimStyle()).setOrigin(0.5, 0).setDepth(D),
-    ];
+    if (room.joinUrl) {
+      const key = `hudqr-${room.code}`;
+      const canvas = document.createElement('canvas');
+      QRCode.toCanvas(canvas, room.joinUrl, { margin: 1, width: 50 }, (err) => {
+        if (err) return;
+        if (scene.textures.exists(key)) scene.textures.remove(key);
+        scene.textures.addCanvas(key, canvas);
+        top(scene.add.image(rmX + 12, 15, key).setOrigin(0, 0));
+      });
+    }
 
     this.banner = scene.add
-      .text(cx, 200, '', {
+      .text(cx, 210, '', {
         fontFamily: 'Trebuchet MS, sans-serif',
         fontSize: '54px',
         color: COLORS.hud,
@@ -73,16 +91,13 @@ export default class Hud {
       })
       .setOrigin(0.5)
       .setAlpha(0)
-      .setDepth(D);
+      .setDepth(D)
+      .setScrollFactor(0);
   }
 
-  aimStyle() {
-    return {
-      fontFamily: 'Trebuchet MS, sans-serif',
-      fontSize: '22px',
-      color: COLORS.hud,
-      align: 'center',
-    };
+  updateNames(names) {
+    this.nameP1.setText(names[0]);
+    this.nameP2.setText(names[1]);
   }
 
   updateScores(scores) {
@@ -96,64 +111,13 @@ export default class Hud {
 
   updateWind(wind) {
     const strength = Math.round((Math.abs(wind.value) / MAX_WIND) * 100);
-    const dir = wind.value === 0 ? 'CALM' : wind.value > 0 ? 'EAST' : 'WEST';
-    this.windText.setText(`WIND  ${strength}%  ${dir}`);
-
-    const g = this.windArrow;
-    g.clear();
-    if (wind.value === 0) return;
-    const cx = GAME_WIDTH / 2;
-    const y = 38;
-    const len = 26 + (Math.abs(wind.value) / MAX_WIND) * 34;
-    const sign = Math.sign(wind.value);
-    const x0 = cx - sign * len - (sign > 0 ? 92 : -92);
-    const x1 = x0 + sign * len;
-    g.lineStyle(4, 0xffffff, 0.9);
-    g.beginPath();
-    g.moveTo(x0, y);
-    g.lineTo(x1, y);
-    g.moveTo(x1, y);
-    g.lineTo(x1 - sign * 10, y - 7);
-    g.moveTo(x1, y);
-    g.lineTo(x1 - sign * 10, y + 7);
-    g.strokePath();
-  }
-
-  updateAim(towers) {
-    towers.forEach((tower, i) => {
-      const status = tower.ready ? 'READY' : 'aiming';
-      const text = this.aimTexts[i];
-      text.setText(
-        `Angle ${Math.round(tower.angle)}°   Power ${Math.round(
-          ((tower.power - AIM.minPower) / (AIM.maxPower - AIM.minPower)) * 100,
-        )}%\n${status}`,
-      );
-      text.setColor(tower.ready ? COLORS.ready : COLORS.hud);
-    });
-  }
-
-  // Spectator status: ready/aiming only, never the actual angle or power.
-  updateStatus(towers) {
-    towers.forEach((tower, i) => {
-      const text = this.aimTexts[i];
-      text.setText(tower.ready ? 'READY' : 'aiming…');
-      text.setColor(tower.ready ? COLORS.ready : COLORS.hudDim);
-    });
+    const arrow = wind.value === 0 ? '·' : wind.value > 0 ? '→' : '←';
+    this.windText.setText(`WIND ${strength}%  ${arrow}`);
   }
 
   showBanner(message, duration = 1200) {
     this.banner.setText(message).setAlpha(1).setScale(0.7);
-    this.scene.tweens.add({
-      targets: this.banner,
-      scale: 1,
-      duration: 220,
-      ease: 'Back.out',
-    });
-    this.scene.tweens.add({
-      targets: this.banner,
-      alpha: 0,
-      delay: duration,
-      duration: 300,
-    });
+    this.scene.tweens.add({ targets: this.banner, scale: 1, duration: 220, ease: 'Back.out' });
+    this.scene.tweens.add({ targets: this.banner, alpha: 0, delay: duration, duration: 300 });
   }
 }

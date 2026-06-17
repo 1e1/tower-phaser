@@ -11,6 +11,14 @@ export function intToCss(c) {
   return `#${(c & 0xffffff).toString(16).padStart(6, '0')}`;
 }
 
+// Multiply an RGB colour's brightness (factor < 1 darkens, > 1 lightens).
+export function shade(color, factor) {
+  const r = clamp(Math.round(((color >> 16) & 0xff) * factor), 0, 255);
+  const g = clamp(Math.round(((color >> 8) & 0xff) * factor), 0, 255);
+  const b = clamp(Math.round((color & 0xff) * factor), 0, 255);
+  return (r << 16) | (g << 8) | b;
+}
+
 export function powerRatio(power) {
   return clamp((power - AIM.minPower) / (AIM.maxPower - AIM.minPower), 0, 1);
 }

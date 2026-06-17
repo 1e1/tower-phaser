@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chapitre 3 — Jouer sur plusieurs écrans</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body data-biome="tundra">
+    <nav class="nav">
+      <a class="brand" href="index.html">Tower Duel<span class="dot">.</span></a>
+      <span class="spacer"></span>
+      <a class="crumb" href="index.html">Accueil</a>
+      <span class="langs">
+        <a href="../en/chapter-3.html">EN</a>
+        <a href="../fr/chapter-3.html" class="active">FR</a>
+        <a href="../de/chapter-3.html">DE</a>
+        <a href="../es/chapter-3.html">ES</a>
+        <a href="../it/chapter-3.html">IT</a>
+      </span>
+    </nav>
+
+    <header class="hero">
+      <span class="badge">Lot 3 · Toundra</span>
+      <div class="kicker">Chapitre 3</div>
+      <h1>Jouer sur plusieurs écrans</h1>
+      <p>La TV montre le match ; les téléphones servent de manettes. Pour que tout le monde voie la même chose en même temps, il faut un <b>arbitre</b> : le serveur.</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#e7eef6"/>
+        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#c7d6e8"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>Le problème</h2>
+        <p class="lead">Jusqu'ici, tout se passait sur un seul ordinateur. Maintenant : une TV, deux téléphones… trois appareils différents qui doivent vivre <b>le même match</b>, parfaitement synchronisés.</p>
+        <p>Si chaque appareil calculait le match dans son coin, ils finiraient par ne plus être d'accord (un boulet ici, pas là…). Il nous faut <b>une seule source de vérité</b>.</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>Le serveur, c'est l'arbitre</h2>
+        <p>On ajoute un programme qui tourne « au milieu » : le <b>serveur</b>. Les appareils sont les <b>clients</b>. Le serveur est le seul à <b>calculer</b> le match (la physique, les scores) ; les clients ne font qu'<b>afficher</b> ce qu'il décide et <b>lui envoyer les ordres des joueurs</b>.</p>
+        <ul class="clean">
+          <li>📱 Les téléphones envoient : « mon angle = 60°, je confirme ».</li>
+          <li>🧑‍⚖️ Le serveur calcule la salve, qui est touché, le score.</li>
+          <li>📺 Tout le monde reçoit l'<b>état</b> du jeu et l'affiche de la même façon.</li>
+        </ul>
+        <div class="callout tip"><b>À retenir.</b> « L'arbitre a toujours raison » : comme le serveur décide de tout, les écrans ne peuvent pas se contredire — et tricher est plus difficile.</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>Une ligne téléphonique qui reste ouverte : le WebSocket</h2>
+        <p>Une page web classique <b>demande</b> une info, reçoit une réponse, puis raccroche. Trop lent pour un jeu ! On utilise un <b>WebSocket</b> : une ligne qui <b>reste ouverte</b> dans les deux sens. Le serveur peut « parler » quand il veut, ~30 fois par seconde.</p>
+        <div class="callout try"><b>À toi de jouer !</b> Clique pour lancer une salve et regarde les messages voyager : les ordres montent vers l'arbitre, puis l'état redescend vers chaque écran.</div>
+        <div class="sim">
+          <h4>La danse des messages</h4>
+          <canvas id="net" width="640" height="300"></canvas>
+          <div class="controls">
+            <button id="play">▶️ Lancer une salve</button>
+          </div>
+          <div class="hint">Bleu/rouge : les ordres des joueurs. Vert : l'état du jeu renvoyé à tout le monde.</div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>Le même paysage partout, sans tout envoyer</h2>
+        <p>Le terrain peut faire des milliers de points : trop gros à envoyer. L'astuce : le serveur n'envoie qu'une petite <b>graine</b> aléatoire (un seul nombre). Chaque écran <b>recalcule</b> le même paysage à partir de cette graine (souviens-toi du générateur du chapitre 2 !).</p>
+        <figure class="code">
+          <figcaption>l'idée du partage par graine</figcaption>
+<pre><span class="c">// le serveur envoie juste :</span>
+{ seed: <span class="s">428193</span> }
+<span class="c">// chaque écran fait :</span>
+const terrain = <span class="f">generateTerrain</span>(<span class="s">428193</span>); <span class="c">// → identique partout !</span></pre>
+        </figure>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">5</span>Rejoindre un match : code de salon &amp; QR</h2>
+        <p>La TV crée un <b>salon</b> et affiche un <b>code à 4 lettres</b> et un <b>QR code</b>. Les téléphones scannent le QR : ils atterrissent direct dans le bon match. Pratique !</p>
+        <figure class="diagram" aria-label="Se connecter via un salon">
+          <svg viewBox="0 0 700 180" width="700" xmlns="http://www.w3.org/2000/svg" font-family="Nunito">
+            <rect x="40" y="30" width="180" height="120" rx="12" fill="#fff" stroke="#5b7da6" stroke-width="3"/>
+            <text x="130" y="22" text-anchor="middle" font-size="13" fill="#5b5470">📺 TV</text>
+            <text x="130" y="78" text-anchor="middle" font-family="Fredoka" font-size="30" font-weight="700" fill="#2b2535">7F3K</text>
+            <rect x="105" y="92" width="50" height="50" fill="#2b2535"/><rect x="115" y="102" width="12" height="12" fill="#fff"/><rect x="133" y="120" width="12" height="12" fill="#fff"/>
+            <g font-family="Nunito" font-weight="800" font-size="13" text-anchor="middle">
+              <rect x="470" y="20" width="180" height="55" rx="12" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="560" y="52" fill="#2b2535">📱 scan → Joueur 1</text>
+              <rect x="470" y="105" width="180" height="55" rx="12" fill="#ffe9e6" stroke="#ff6b5e" stroke-width="2"/>
+              <text x="560" y="137" fill="#2b2535">📱 scan → Joueur 2</text>
+            </g>
+            <g stroke="#5b5470" stroke-width="2" fill="none" marker-end="url(#a3)">
+              <path d="M220,70 C330,70 360,48 468,48"/>
+              <path d="M220,110 C330,110 360,132 468,132"/>
+            </g>
+            <defs><marker id="a3" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#5b5470"/></marker></defs>
+          </svg>
+          <figcaption>La TV affiche le code &amp; le QR ; deux téléphones rejoignent en tant que joueurs.</figcaption>
+        </figure>
+        <div class="callout nerd"><b>Pour les curieux.</b> Le QR doit pointer vers l'<b>adresse réseau locale</b> de la TV (quelque chose comme <code class="inline">192.168.1.20</code>), pas vers « localhost » (qui veut dire « moi-même »). Sinon le téléphone se chercherait lui-même ! Le serveur trouve la bonne adresse tout seul.</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">6</span>Qui fait quoi ? La TV se débrouille seule</h2>
+        <ul class="clean">
+          <li>📺 Une <b>TV</b> détectée démarre tout de suite en mode « hôte » : pas besoin de télécommande.</li>
+          <li>🟢 Le match <b>démarre tout seul</b> dès que le 2e joueur a rejoint.</li>
+          <li>🧑‍🤝‍🧑 Des joueurs en plus ? Ils <b>regardent</b> en attendant qu'une place se libère, puis prennent le relais.</li>
+        </ul>
+        <div class="callout tip"><b>À retenir.</b> Lot 3 = passer d'un jeu « sur un écran » à un jeu « en réseau », sans tout réécrire : on a juste déplacé le calcul vers l'arbitre.</div>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-2.html">← Chapitre 2</a>
+        <a href="chapter-4.html">Chapitre 4 · Détruire le paysage →</a>
+      </div>
+    </main>
+
+    <footer class="foot">Carnet du créateur de <b>Tower Duel</b> · chapitre 3/4</footer>
+
+    <script>
+      (function () {
+        const cv = document.getElementById('net'), ctx = cv.getContext('2d');
+        const W = cv.width, H = cv.height;
+        const nodes = {
+          p1: { x: 90, y: 70, label: '📱 J1', c: '#3a6df0' },
+          p2: { x: 90, y: 230, label: '📱 J2', c: '#ff6b5e' },
+          sv: { x: 320, y: 150, label: '🧑‍⚖️ Serveur', c: '#5b7da6' },
+          tv: { x: 560, y: 150, label: '📺 TV', c: '#2b2535' },
+        };
+        let msgs = [], think = 0, t0 = 0;
+        function box(n, big) {
+          ctx.fillStyle = '#fff'; ctx.strokeStyle = n.c; ctx.lineWidth = 3;
+          const w = big ? 120 : 96, h = 54;
+          roundRect(n.x - w / 2, n.y - h / 2, w, h, 10); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#2b2535'; ctx.font = 'bold 15px Nunito'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(n.label, n.x, n.y);
+        }
+        function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+        function send(from, to, c, label) { msgs.push({ from, to, c, label, p: 0 }); }
+        function volley() {
+          msgs = []; think = 0;
+          send(nodes.p1, nodes.sv, '#3a6df0', 'angle/confirme');
+          send(nodes.p2, nodes.sv, '#ff6b5e', 'angle/confirme');
+        }
+        function frame(t) {
+          if (!t0) t0 = t; const dt = Math.min((t - t0) / 1000, 0.05); t0 = t;
+          ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#eaf2fb'; ctx.fillRect(0, 0, W, H);
+          // liens
+          ctx.strokeStyle = '#c7d6e8'; ctx.lineWidth = 6;
+          line(nodes.p1, nodes.sv); line(nodes.p2, nodes.sv); line(nodes.sv, nodes.tv);
+          // messages
+          let arrived = 0, total = msgs.length;
+          msgs.forEach((m) => {
+            m.p += dt * 0.9;
+            const e = Math.min(m.p, 1);
+            const x = m.from.x + (m.to.x - m.from.x) * e, y = m.from.y + (m.to.y - m.from.y) * e;
+            ctx.fillStyle = m.c; ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
+            if (e >= 1) arrived++;
+          });
+          // quand les deux intentions ont atteint le serveur, le serveur « réfléchit » puis diffuse
+          if (total === 2 && arrived === 2 && think === 0) think = 0.0001;
+          if (think > 0) {
+            think += dt;
+            if (think > 0.5) {
+              think = 0; msgs = [];
+              send(nodes.sv, nodes.tv, '#3f8f2f', 'état');
+              send(nodes.sv, nodes.p1, '#3f8f2f', 'état');
+              send(nodes.sv, nodes.p2, '#3f8f2f', 'état');
+            }
+          }
+          box(nodes.p1); box(nodes.p2); box(nodes.tv); box(nodes.sv, true);
+          if (think > 0) { ctx.fillStyle = '#3f8f2f'; ctx.font = 'bold 14px Nunito'; ctx.fillText('… calcul en cours …', nodes.sv.x, nodes.sv.y + 44); }
+          requestAnimationFrame(frame);
+        }
+        function line(a, b) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+        document.getElementById('play').addEventListener('click', volley);
+        requestAnimationFrame(frame);
+      })();
+    </script>
+  </body>
+</html>

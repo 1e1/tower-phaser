@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Capítulo 4 — Destruir el paisaje</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body data-biome="volcano">
+    <nav class="nav">
+      <a class="brand" href="index.html">Tower Duel<span class="dot">.</span></a>
+      <span class="spacer"></span>
+      <a class="crumb" href="index.html">Inicio</a>
+      <span class="langs">
+        <a href="../en/chapter-4.html">EN</a>
+        <a href="../fr/chapter-4.html">FR</a>
+        <a href="../de/chapter-4.html">DE</a>
+        <a href="../es/chapter-4.html" class="active">ES</a>
+        <a href="../it/chapter-4.html">IT</a>
+      </span>
+    </nav>
+
+    <header class="hero">
+      <span class="badge">Fase 4 · Volcán</span>
+      <div class="kicker">Capítulo 4</div>
+      <h1>Destruir el paisaje</h1>
+      <p>Como en <em>Worms</em>: cada disparo cava un agujero real en el escenario. ¡Descubriremos el truco de magia para “hacer un agujero” en una imagen — y podrás cavar tú mismo!</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#46303f"/>
+        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#ff6b35"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>Un escenario que conserva sus cicatrices</h2>
+        <p class="lead">Hasta ahora, el paisaje era un bonito fondo fijo. Ahora, cada bala que cae <b>arranca</b> un trozo de terreno. Los agujeros se quedan: al final de la ronda, el campo de batalla está todo picado.</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>La magia: el “borrador” del canvas</h2>
+        <p>El canvas sabe dibujar… ¡pero también sabe <b>borrar con una forma</b>! Cambiamos al modo <code class="inline">destination-out</code>: todo lo que “dibujamos” se convierte entonces en un <b>borrador</b>. Dibuja un círculo → un agujero redondo perfecto en el terreno.</p>
+        <figure class="code">
+          <figcaption>src/objects/Terrain.js (cavar un cráter)</figcaption>
+<pre>ctx.globalCompositeOperation = <span class="s">'destination-out'</span>; <span class="c">// modo borrador</span>
+ctx.<span class="f">arc</span>(x, y, radius, <span class="s">0</span>, <span class="s">6.28</span>);             <span class="c">// un círculo…</span>
+ctx.<span class="f">fill</span>();                                   <span class="c">// …¡que borra!</span></pre>
+        </figure>
+        <div class="callout try"><b>¡Pruébalo!</b> Haz clic (o arrastra el dedo) sobre la colina para cavar. Mira: puedes hacer cuevas, puentes, salientes… exactamente como en Worms.</div>
+        <div class="sim">
+          <h4>¡Cava el terreno!</h4>
+          <canvas id="dig" width="640" height="260" style="background:#1b0f1f"></canvas>
+          <div class="controls">
+            <button id="reset">↺ Reconstruir la colina</button>
+          </div>
+          <div class="hint">Consejo: apunta debajo de un montículo para cavar una cueva y dejar un “puente” por encima.</div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>¿Sólido o no? La regla del juego</h2>
+        <p>¿Cómo sabe el juego si una bala ha tocado el suelo? No hace falta guardar una imagen enorme en memoria. Guardamos: la <b>altura del suelo</b> en cada punto y la <b>lista de cráteres</b>. Un punto es <b>sólido</b> si:</p>
+        <div class="callout tip"><b>La regla.</b> “Estoy <b>por debajo de la superficie</b> del suelo <b>Y</b> <b>no estoy en ningún cráter</b>.” Si no, es espacio vacío.</div>
+        <p>Esta reglita basta para crear <b>cuevas</b> y <b>salientes</b>: un cráter cavado bajo un montículo deja la materia de arriba “flotando”.</p>
+        <figure class="diagram" aria-label="Sólido o vacío">
+          <svg viewBox="0 0 640 200" width="640" xmlns="http://www.w3.org/2000/svg" font-family="Nunito">
+            <rect x="0" y="0" width="640" height="200" rx="12" fill="#2a1430"/>
+            <path id="hill" d="M0,120 Q160,60 320,110 Q480,150 640,90 L640,200 L0,200 Z" fill="#46303f"/>
+            <path d="M0,120 Q160,60 320,110 Q480,150 640,90" fill="none" stroke="#ff6b35" stroke-width="4"/>
+            <circle cx="320" cy="150" r="42" fill="#2a1430"/>
+            <text x="320" y="155" text-anchor="middle" fill="#ffd0c0" font-size="13" font-weight="800">vacío (cráter)</text>
+            <text x="120" y="170" text-anchor="middle" fill="#ffd0c0" font-size="13" font-weight="800">sólido</text>
+            <text x="320" y="95" text-anchor="middle" fill="#ffd0c0" font-size="12">↑ saliente que “flota”</text>
+          </svg>
+          <figcaption>Por debajo de la superficie pero dentro de un cráter → vacío. El montículo de arriba sigue aguantando.</figcaption>
+        </figure>
+        <div class="callout nerd"><b>Para los curiosos.</b> Comprobar “¿estoy en un cráter?” = comparar la distancia al centro de cada cráter con su radio. ¡Es el teorema de Pitágoras! (<code class="inline">dx² + dy² ≤ radius²</code>).</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>Los detalles que lo hacen parecer real</h2>
+        <ul class="clean">
+          <li>🟫 <b>Borde chamuscado.</b> Oscurecemos el borde del agujero — pero <b>solo donde hay terreno</b> (modo <code class="inline">source-atop</code>), si no veríamos un círculo flotando en el cielo.</li>
+          <li>🌫️ <b>Polvo detrás del terreno.</b> El impacto levanta polvo dibujado <b>detrás</b> del terreno: el relieve lo oculta, como si saliera del agujero.</li>
+          <li>🌱 <b>Escenario arrancado.</b> La hierba y los guijarros están “horneados” en la imagen del terreno: el borrador los quita junto con la tierra.</li>
+        </ul>
+      </section>
+
+      <section class="sheet" style="text-align:center;">
+        <h2 style="justify-content:center; display:flex;"><span class="num">★</span>¡Bien hecho, has dado toda la vuelta!</h2>
+        <p class="lead">Ahora ya sabes a grandes rasgos cómo cobra vida un juego web:</p>
+        <p>un <b>bucle</b> que redibuja 60×/s, un poco de <b>matemáticas</b> para la física y el escenario, un <b>árbitro</b> en red para jugar juntos y <b>trucos de dibujo</b> para hacerlo todo pedazos. Y sobre todo: avanzamos <b>paso a paso</b>, probando cada uno antes del siguiente.</p>
+        <div class="callout tip"><b>El secreto de los profesionales.</b> Nadie escribe un juego grande de una sola vez. Haces una versión <b>pequeña</b> que funciona, la mejoras, una y otra vez. Exactamente las 4 fases de este cuaderno.</div>
+        <p style="margin-top:24px;">
+          <a class="pill" href="index.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">↩ Volver al inicio</a>
+        </p>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-3.html">← Capítulo 3</a>
+        <a class="disabled">El final 🎉</a>
+      </div>
+    </main>
+
+    <footer class="foot">Cuaderno del creador de <b>Tower Duel</b> · capítulo 4/4 · ¡gracias por leer!</footer>
+
+    <script>
+      (function () {
+        const cv = document.getElementById('dig'), ctx = cv.getContext('2d');
+        const W = cv.width, H = cv.height;
+        function build() {
+          ctx.globalCompositeOperation = 'source-over';
+          // Dejamos el cielo transparente: el fondo oscuro CSS del canvas se ve
+          // a través tanto del cielo como de cualquier agujero que cavemos.
+          ctx.clearRect(0, 0, W, H);
+          // terreno
+          ctx.beginPath(); ctx.moveTo(0, H);
+          for (let x = 0; x <= W; x += 3) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            ctx.lineTo(x, y);
+          }
+          ctx.lineTo(W, H); ctx.closePath();
+          ctx.fillStyle = '#46303f'; ctx.fill();
+          // línea de superficie brillante
+          ctx.lineWidth = 4; ctx.strokeStyle = '#ff6b35'; ctx.beginPath();
+          for (let x = 0; x <= W; x += 3) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          // un pequeño decorado
+          ctx.fillStyle = '#2a1c26';
+          for (let x = 30; x < W; x += 38) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            ctx.fillRect(x, y - 6, 3, 6);
+          }
+        }
+        function dig(x, y) {
+          // borde amarronado solo donde existe terreno
+          ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+          ctx.fillStyle = '#5a3a1e'; ctx.beginPath(); ctx.arc(x, y, 27, 0, 7); ctx.fill(); ctx.restore();
+          // hacer el agujero
+          ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath(); ctx.arc(x, y, 22, 0, 7); ctx.fill(); ctx.restore();
+        }
+        function pos(e) {
+          const r = cv.getBoundingClientRect();
+          const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+          const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+          return { x: cx * (W / r.width), y: cy * (H / r.height) };
+        }
+        let down = false;
+        const start = (e) => { down = true; const p = pos(e); dig(p.x, p.y); e.preventDefault(); };
+        const move = (e) => { if (!down) return; const p = pos(e); dig(p.x, p.y); e.preventDefault(); };
+        const end = () => { down = false; };
+        cv.addEventListener('mousedown', start); cv.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+        cv.addEventListener('touchstart', start, { passive: false });
+        cv.addEventListener('touchmove', move, { passive: false });
+        window.addEventListener('touchend', end);
+        document.getElementById('reset').addEventListener('click', build);
+        build();
+      })();
+    </script>
+  </body>
+</html>

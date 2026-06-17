@@ -1,6 +1,7 @@
-import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS } from '../config/constants.js';
+import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS, AIM_NOISE } from '../config/constants.js';
 import { generateHeights, heightAt, pointSolid } from './terrain.js';
 import { aimVector, muzzle, bounds, rectContains } from './geometry.js';
+import { getShell } from '../config/shells.js';
 
 // Authoritative, framework-free game simulation. It runs on the server (the
 // single source of truth) and is driven purely by player intents and fixed
@@ -17,12 +18,18 @@ export const PHASE = {
 const RESOLVE_MISS_DELAY = 1.1;
 const RESOLVE_HIT_DELAY = 1.7;
 
+// Special shells are rationed (normal is unlimited): one of each to start, +1
+// of every special each round, and +1 of a type whenever it hits your tower.
+const SPECIALS = ['heavy', 'light', 'salvo', 'explosive'];
+const initAmmo = () => ({ heavy: 1, light: 1, salvo: 1, explosive: 1 });
+
 export default class Simulation {
-  constructor({ names, totalRounds, biome, random = Math.random }) {
+  constructor({ names, totalRounds, biome, maxHp = 1, random = Math.random }) {
     this.random = random;
     this.names = names;
     this.totalRounds = totalRounds;
     this.biome = biome;
+    this.maxHp = maxHp;
     this.roughness = biome.roughness ?? 1;
 
     this.scores = [0, 0];
@@ -32,14 +39,14 @@ export default class Simulation {
     this.projectileSeq = 0;
     this.projectiles = [];
     this.craters = [];
-    this.turnHits = [false, false];
+    this.volleyDamage = [0, 0]; // damage dealt BY each player this volley
     this.events = [];
     this.resolveTimer = 0;
     this.banner = '';
 
     this.towers = [
-      { x: 120, facing: 1, groundY: 0, angle: 45, power: 55, ready: false },
-      { x: GAME_WIDTH - 120, facing: -1, groundY: 0, angle: 45, power: 55, ready: false },
+      { x: 120, facing: 1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo() },
+      { x: GAME_WIDTH - 120, facing: -1, groundY: 0, angle: 45, power: 55, ready: false, shell: 'normal', damage: 0, ammo: initAmmo() },
     ];
 
     this.seed = 0;
@@ -67,6 +74,7 @@ export default class Simulation {
     this.craters = [];
     for (const t of this.towers) {
       t.groundY = heightAt(this.heights, t.x);
+      t.damage = 0; // full health each new round
     }
   }
 
@@ -96,6 +104,15 @@ export default class Simulation {
     }
   }
 
+  setShell(player, id) {
+    if (this.phase !== PHASE.AIMING) return;
+    const tower = this.towers[player];
+    if (!tower || tower.ready) return;
+    if (getShell(id).id !== id) return;
+    if (id !== 'normal' && (tower.ammo[id] || 0) <= 0) return; // out of stock
+    tower.shell = id;
+  }
+
   setReady(player, ready = true) {
     if (this.phase !== PHASE.AIMING) return;
     const tower = this.towers[player];
@@ -109,24 +126,50 @@ export default class Simulation {
   // --- combat --------------------------------------------------------------
 
   fire() {
-    this.projectiles = this.towers.map((tower, i) => {
-      const v = aimVector(tower.angle, tower.facing);
-      const speed = tower.power * PHYSICS.speedScale;
-      const m = muzzle(tower);
-      this.pushEvent('fire', { owner: i, x: m.x, y: m.y, angle: tower.angle });
-      this.projectileSeq += 1;
-      return {
-        id: this.projectileSeq,
-        x: m.x,
-        y: m.y,
-        vx: v.x * speed,
-        vy: v.y * speed,
-        owner: i,
-        alive: true,
-        elapsed: 0,
-      };
+    this.projectiles = [];
+    this.towers.forEach((tower, i) => {
+      let shell = getShell(tower.shell);
+      // Special shells consume stock; fall back to the unlimited normal shell.
+      if (shell.id !== 'normal') {
+        if ((tower.ammo[shell.id] || 0) > 0) tower.ammo[shell.id] -= 1;
+        else shell = getShell('normal');
+      }
+      const m = muzzle(tower); // spawn from the validated barrel pose
+      this.pushEvent('fire', { owner: i, x: m.x, y: m.y, angle: tower.angle, shell: shell.id });
+
+      for (let k = 0; k < shell.count; k += 1) {
+        // Cluster spread + the hidden per-shot jitter (#4). Neither is sent to
+        // the clients, so the deviation stays invisible to the players.
+        const spreadOffset = shell.count > 1 ? (k - (shell.count - 1) / 2) * shell.spread : 0;
+        const jitterA = (this.random() * 2 - 1) * AIM_NOISE.angle;
+        const jitterP = (this.random() * 2 - 1) * AIM_NOISE.power;
+        const angle = Math.max(AIM.minAngle, Math.min(AIM.maxAngle, tower.angle + spreadOffset + jitterA));
+        const power = Math.max(AIM.minPower, Math.min(AIM.maxPower, tower.power + jitterP));
+        const v = aimVector(angle, tower.facing);
+        const speed = power * PHYSICS.speedScale;
+        this.projectileSeq += 1;
+        this.projectiles.push({
+          id: this.projectileSeq,
+          x: m.x,
+          y: m.y,
+          vx: v.x * speed,
+          vy: v.y * speed,
+          owner: i,
+          alive: true,
+          elapsed: 0,
+          windFactor: shell.windFactor,
+          crater: CRATER_RADIUS * shell.craterMul,
+          dmg: shell.dmg,
+          shellId: shell.id,
+        });
+      }
+
+      // If the chosen special just ran out, fall the selection back to normal.
+      if (tower.shell !== 'normal' && (tower.ammo[tower.shell] || 0) <= 0) {
+        tower.shell = 'normal';
+      }
     });
-    this.turnHits = [false, false];
+    this.volleyDamage = [0, 0];
     this.phase = PHASE.FIRING;
   }
 
@@ -147,7 +190,7 @@ export default class Simulation {
   stepProjectiles(dt) {
     for (const p of this.projectiles) {
       if (!p.alive) continue;
-      p.vx += this.wind * dt;
+      p.vx += this.wind * (p.windFactor ?? 1) * dt;
       p.vy += PHYSICS.gravity * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
@@ -167,46 +210,59 @@ export default class Simulation {
       return;
     }
 
-    const opponent = this.towers[p.owner === 0 ? 1 : 0];
+    const targetIdx = p.owner === 0 ? 1 : 0;
+    const opponent = this.towers[targetIdx];
     if (rectContains(bounds(opponent), p.x, p.y)) {
       p.alive = false;
-      this.turnHits[p.owner] = true;
-      this.pushEvent('hit', { x: p.x, y: p.y, owner: p.owner, target: p.owner === 0 ? 1 : 0 });
+      this.volleyDamage[p.owner] += p.dmg ?? 1;
+      // The struck player gains a round of the shell that just hit them.
+      if (p.shellId && p.shellId !== 'normal') {
+        opponent.ammo[p.shellId] = (opponent.ammo[p.shellId] || 0) + 1;
+      }
+      this.pushEvent('hit', { x: p.x, y: p.y, owner: p.owner, target: targetIdx, shell: p.shellId });
       return;
     }
 
     if (p.y > 0 && pointSolid(this.heights, this.craters, p.x, p.y)) {
       p.alive = false;
-      this.craters.push({ x: Math.round(p.x), y: Math.round(p.y), r: CRATER_RADIUS });
-      this.pushEvent('impact', { x: p.x, y: p.y, r: CRATER_RADIUS });
+      const r = Math.round(p.crater ?? CRATER_RADIUS);
+      this.craters.push({ x: Math.round(p.x), y: Math.round(p.y), r });
+      this.pushEvent('impact', { x: p.x, y: p.y, r });
     }
   }
 
   enterResolve() {
-    const [h1, h2] = this.turnHits;
+    const [d1, d2] = this.volleyDamage; // d1: damage dealt by player 0 to tower 1
     this.phase = PHASE.RESOLVING;
 
-    if (!h1 && !h2) {
-      this.banner = 'Both missed!';
-      this.resolveTimer = RESOLVE_MISS_DELAY;
-      this.pushEvent('turnEnd', { miss: true });
+    // Accumulate this volley's damage (fractional, e.g. salvo = 0.5/shell).
+    this.towers[1].damage += d1;
+    this.towers[0].damage += d2;
+    const dead0 = this.towers[0].damage >= this.maxHp;
+    const dead1 = this.towers[1].damage >= this.maxHp;
+
+    if (dead0 || dead1) {
+      if (dead1) this.scores[0] += 1;
+      if (dead0) this.scores[1] += 1;
+      this.roundsPlayed += 1;
+      if (dead0) this.pushEvent('destroyed', { tower: 0 });
+      if (dead1) this.pushEvent('destroyed', { tower: 1 });
+      if (dead0 && dead1) this.banner = 'Both towers fall!';
+      else if (dead1) this.banner = `${this.names[0]} scores!`;
+      else this.banner = `${this.names[1]} scores!`;
+      this.resolveTimer = RESOLVE_HIT_DELAY;
+      this.pushEvent('turnEnd', { decided: true, scores: this.scores.slice() });
       return;
     }
 
-    if (h1) this.scores[0] += 1;
-    if (h2) this.scores[1] += 1;
-    this.roundsPlayed += 1;
-
-    if (h1 && h2) this.banner = 'Double hit!';
-    else if (h1) this.banner = `${this.names[0]} scores!`;
-    else this.banner = `${this.names[1]} scores!`;
-
-    this.resolveTimer = RESOLVE_HIT_DELAY;
-    this.pushEvent('turnEnd', { miss: false, scores: this.scores.slice() });
+    // Round continues: a hit only chipped some HP, or both missed.
+    this.banner = d1 || d2 ? 'Direct hit!' : 'Both missed!';
+    this.resolveTimer = RESOLVE_MISS_DELAY;
+    this.pushEvent('turnEnd', { decided: false });
   }
 
   applyResolution() {
-    const decided = this.turnHits.some(Boolean);
+    const decided = this.towers.some((t) => t.damage >= this.maxHp);
     this.banner = '';
 
     if (!decided) {
@@ -222,6 +278,8 @@ export default class Simulation {
     }
 
     this.currentRound += 1;
+    // Each player is resupplied with one of every special shell per round.
+    this.towers.forEach((t) => SPECIALS.forEach((s) => { t.ammo[s] += 1; }));
     this.newTerrain();
     this.pushEvent('roundStart', { round: this.currentRound });
     this.nextTurn();
@@ -231,18 +289,8 @@ export default class Simulation {
     this.randomizeWind();
     this.resetReady();
     this.projectiles = [];
-    this.turnHits = [false, false];
+    this.volleyDamage = [0, 0];
     this.phase = PHASE.AIMING;
-  }
-
-  // End the match immediately, awarding it to the given player (used when an
-  // opponent leaves mid-match with nobody waiting to take over).
-  forceEnd(winner) {
-    if (winner === 0) this.scores[0] = Math.max(this.scores[0], this.scores[1] + 1);
-    else if (winner === 1) this.scores[1] = Math.max(this.scores[1], this.scores[0] + 1);
-    this.projectiles = [];
-    this.phase = PHASE.MATCH_END;
-    this.pushEvent('matchEnd', { scores: this.scores.slice() });
   }
 
   // Index of the losing player, or -1 on a draw.
@@ -278,6 +326,7 @@ export default class Simulation {
       biomeId: this.biome.id,
       banner: this.banner,
       craters: this.craters,
+      maxHp: this.maxHp,
       names: this.names.slice(),
       // angle/power drive the live cannon orientation and charge tint on the
       // renderers; the exact numbers are never displayed on the TV.
@@ -286,6 +335,9 @@ export default class Simulation {
         groundY: t.groundY,
         angle: t.angle,
         power: t.power,
+        shell: t.shell,
+        hp: Math.max(0, this.maxHp - t.damage),
+        ammo: { ...t.ammo },
       })),
       projectiles: this.projectiles
         .filter((p) => p.alive)

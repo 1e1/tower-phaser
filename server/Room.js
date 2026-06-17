@@ -16,7 +16,7 @@ export default class Room {
     this.tvs = new Set();
     this.players = [null, null]; // each: { socket, name, playAgain }
     this.waiting = []; // each: { socket, name }
-    this.config = { rounds: 3, biomeId: BIOMES[0].id };
+    this.config = { rounds: 3, biomeId: BIOMES[0].id, hp: 1 };
     this.biomeChooser = 0; // slot that picks the biome (first player, then loser)
     this.postmatch = false;
     this.sim = null;
@@ -81,6 +81,7 @@ export default class Room {
       names: [this.players[0].name, this.players[1].name],
       totalRounds: this.config.rounds,
       biome: this.biome(),
+      maxHp: this.config.hp,
     });
     this.sim.start();
     this.startLoop();
@@ -123,10 +124,11 @@ export default class Room {
 
   // Only the current chooser (first player, then the loser) sets the match
   // options — both the biome and the round count. The TV has no say.
-  setConfig(socket, rounds, biomeId) {
+  setConfig(socket, rounds, biomeId, hp) {
     if (socket.role === 'player' && socket.slot === this.biomeChooser) {
       if (Number.isFinite(rounds)) this.config.rounds = rounds;
       if (BIOMES.some((b) => b.id === biomeId)) this.config.biomeId = biomeId;
+      if (hp === 1 || hp === 2 || hp === 3) this.config.hp = hp;
     }
     this.sendRoster();
   }
@@ -155,6 +157,11 @@ export default class Room {
     if (socket.role === 'player' && this.sim) this.sim.setReady(i, value);
   }
 
+  handleShell(socket, id) {
+    const i = socket.slot;
+    if (socket.role === 'player' && this.sim) this.sim.setShell(i, id);
+  }
+
   playAgain(socket) {
     const i = socket.slot;
     if (socket.role !== 'player' || !this.players[i]) return;
@@ -163,8 +170,21 @@ export default class Room {
     this.maybeRematch();
   }
 
+  // Abort the current match and return the room to the invitation lobby so a
+  // new player can take the empty seat (the TV shows the code + QR again).
+  resetToLobby() {
+    this.sim = null;
+    this.postmatch = false;
+    this.players.forEach((p) => {
+      if (p) p.playAgain = false;
+    });
+    const occupied = this.players.findIndex(Boolean);
+    this.biomeChooser = occupied === -1 ? 0 : occupied;
+    this.sendRoster();
+  }
+
   // A player voluntarily frees their slot; they drop to the back of the queue
-  // and the next waiting participant takes the seat.
+  // and the next waiting participant takes the seat (or we return to the lobby).
   leave(socket) {
     const i = socket.slot;
     if (socket.role !== 'player' || this.players[i] == null) return;
@@ -172,13 +192,11 @@ export default class Room {
     socket.slot = undefined;
     socket.role = 'spectator';
 
-    this.promoteInto(i);
+    this.promoteInto(i); // an existing waiting player takes over (not the leaver)
     this.waiting.push({ socket, name: socket.name });
     this.send(socket, { t: 'demoted', queue: this.waiting.length });
 
-    if (this.sim && !this.postmatch && !this.bothFilled()) {
-      this.sim.forceEnd(i === 0 ? 1 : 0);
-    }
+    if (this.sim && !this.bothFilled()) this.resetToLobby();
     this.sendRoster();
   }
 
@@ -251,10 +269,8 @@ export default class Room {
     const i = this.players.findIndex((p) => p && p.socket === socket);
     if (i !== -1) {
       this.players[i] = null;
-      this.promoteInto(i);
-      if (!this.players[i] && this.sim && !this.postmatch) {
-        this.sim.forceEnd(i === 0 ? 1 : 0);
-      }
+      this.promoteInto(i); // a waiting spectator takes over mid-match if any
+      if (!this.players[i] && this.sim) this.resetToLobby(); // else back to invitation
     }
 
     this.sendRoster();

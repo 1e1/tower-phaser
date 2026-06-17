@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kapitel 4 — Die Landschaft zerstören</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body data-biome="volcano">
+    <nav class="nav">
+      <a class="brand" href="index.html">Tower Duel<span class="dot">.</span></a>
+      <span class="spacer"></span>
+      <a class="crumb" href="index.html">Startseite</a>
+      <span class="langs">
+        <a href="../en/chapter-4.html">EN</a>
+        <a href="../fr/chapter-4.html">FR</a>
+        <a href="../de/chapter-4.html" class="active">DE</a>
+        <a href="../es/chapter-4.html">ES</a>
+        <a href="../it/chapter-4.html">IT</a>
+      </span>
+    </nav>
+
+    <header class="hero">
+      <span class="badge">Etappe 4 · Vulkan</span>
+      <div class="kicker">Kapitel 4</div>
+      <h1>Die Landschaft zerstören</h1>
+      <p>Wie bei <em>Worms</em>: Jeder Schuss gräbt ein echtes Loch in die Kulisse. Wir entdecken den Zaubertrick, mit dem man ein „Loch“ in ein Bild stanzt – und du darfst selbst graben!</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,70 C260,30 520,100 760,70 C1000,40 1240,100 1440,70 L1440,120 L0,120 Z" fill="#46303f"/>
+        <path d="M0,96 C260,62 520,116 760,92 C1020,66 1240,116 1440,92 L1440,120 L0,120 Z" fill="#ff6b35"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>Eine Kulisse, die ihre Narben behält</h2>
+        <p class="lead">Bisher war die Landschaft ein hübscher fester Hintergrund. Jetzt <b>reißt</b> jede Kugel, die einschlägt, ein Stück Gelände ab. Die Löcher bleiben: Am Ende der Runde ist das Schlachtfeld ganz zerlöchert.</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>Der Zauber: der „Radierer“ des canvas</h2>
+        <p>Das canvas kann zeichnen… aber auch <b>in einer Form radieren</b>! Wir wechseln in den Modus <code class="inline">destination-out</code>: Alles, was wir dann „zeichnen“, wird zum <b>Radierer</b>. Zeichne einen Kreis → ein perfekt rundes Loch im Gelände.</p>
+        <figure class="code">
+          <figcaption>src/objects/Terrain.js (einen Krater graben)</figcaption>
+<pre>ctx.globalCompositeOperation = <span class="s">'destination-out'</span>; <span class="c">// Radierer-Modus</span>
+ctx.<span class="f">arc</span>(x, y, radius, <span class="s">0</span>, <span class="s">6.28</span>);             <span class="c">// ein Kreis…</span>
+ctx.<span class="f">fill</span>();                                   <span class="c">// …der radiert!</span></pre>
+        </figure>
+        <div class="callout try"><b>Probier's aus!</b> Klicke (oder zieh deinen Finger) über den Hügel, um zu graben. Schau: Du kannst Höhlen, Brücken, Überhänge machen… genau wie bei Worms.</div>
+        <div class="sim">
+          <h4>Grab das Gelände aus!</h4>
+          <canvas id="dig" width="640" height="260" style="background:#1b0f1f"></canvas>
+          <div class="controls">
+            <button id="reset">↺ Den Hügel neu aufbauen</button>
+          </div>
+          <div class="hint">Tipp: Ziele unter einen Buckel, um eine Höhle zu graben und oben eine „Brücke“ stehen zu lassen.</div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>Fest oder nicht? Die Regel des Spiels</h2>
+        <p>Woher weiß das Spiel, ob eine Kugel den Boden getroffen hat? Man muss kein riesiges Bild im Speicher behalten. Wir behalten: die <b>Bodenhöhe</b> an jeder Stelle und die <b>Liste der Krater</b>. Ein Punkt ist <b>fest</b>, wenn:</p>
+        <div class="callout tip"><b>Die Regel.</b> „Ich bin <b>unter der Oberfläche</b> des Bodens <b>UND</b> ich bin <b>in keinem Krater</b>.“ Sonst ist es leerer Raum.</div>
+        <p>Diese kleine Regel reicht, um <b>Höhlen</b> und <b>Überhänge</b> zu schaffen: Ein unter einem Buckel gegrabener Krater lässt die Materie darüber „schweben“.</p>
+        <figure class="diagram" aria-label="Fest oder leer">
+          <svg viewBox="0 0 640 200" width="640" xmlns="http://www.w3.org/2000/svg" font-family="Nunito">
+            <rect x="0" y="0" width="640" height="200" rx="12" fill="#2a1430"/>
+            <path id="hill" d="M0,120 Q160,60 320,110 Q480,150 640,90 L640,200 L0,200 Z" fill="#46303f"/>
+            <path d="M0,120 Q160,60 320,110 Q480,150 640,90" fill="none" stroke="#ff6b35" stroke-width="4"/>
+            <circle cx="320" cy="150" r="42" fill="#2a1430"/>
+            <text x="320" y="155" text-anchor="middle" fill="#ffd0c0" font-size="13" font-weight="800">leer (Krater)</text>
+            <text x="120" y="170" text-anchor="middle" fill="#ffd0c0" font-size="13" font-weight="800">fest</text>
+            <text x="320" y="95" text-anchor="middle" fill="#ffd0c0" font-size="12">↑ Überhang, der „schwebt“</text>
+          </svg>
+          <figcaption>Unter der Oberfläche, aber in einem Krater → leer. Der Buckel darüber hält trotzdem.</figcaption>
+        </figure>
+        <div class="callout nerd"><b>Für Neugierige.</b> Zu testen „bin ich in einem Krater?“ = die Distanz zum Mittelpunkt jedes Kraters mit seinem Radius vergleichen. Das ist der Satz des Pythagoras! (<code class="inline">dx² + dy² ≤ radius²</code>).</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>Die Details, die es echt wirken lassen</h2>
+        <ul class="clean">
+          <li>🟫 <b>Versengter Rand.</b> Wir dunkeln den Rand des Lochs ab — aber <b>nur dort, wo Gelände ist</b> (<code class="inline">source-atop</code>-Modus), sonst sähen wir einen Kreis im Himmel schweben.</li>
+          <li>🌫️ <b>Staub hinter dem Gelände.</b> Der Einschlag wirbelt Staub auf, der <b>hinter</b> dem Gelände gezeichnet wird: Das Relief verdeckt ihn, als käme er aus dem Loch.</li>
+          <li>🌱 <b>Mitgerissene Kulisse.</b> Gras und Kieselsteine sind in das Geländebild „eingebacken“: Der Radierer entfernt sie zusammen mit der Erde.</li>
+        </ul>
+      </section>
+
+      <section class="sheet" style="text-align:center;">
+        <h2 style="justify-content:center; display:flex;"><span class="num">★</span>Gut gemacht, du hast die ganze Runde geschafft!</h2>
+        <p class="lead">Du weißt jetzt ungefähr, wie ein Web-Spiel zum Leben erwacht:</p>
+        <p>eine <b>Schleife</b>, die 60×/s neu zeichnet, ein bisschen <b>Mathematik</b> für die Physik und die Kulisse, ein vernetzter <b>Schiedsrichter</b>, um zusammen zu spielen, und <b>Zeichentricks</b>, um alles zu zertrümmern. Und vor allem: Wir gehen <b>Schritt für Schritt</b> vor, jeder davon getestet, bevor der nächste kommt.</p>
+        <div class="callout tip"><b>Das Geheimnis der Profis.</b> Niemand schreibt ein großes Spiel auf einen Schlag. Du machst eine <b>kleine</b> Version, die funktioniert, verbesserst sie, immer wieder. Genau die 4 Etappen dieses Notizbuchs.</div>
+        <p style="margin-top:24px;">
+          <a class="pill" href="index.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">↩ Zurück zur Startseite</a>
+        </p>
+      </section>
+
+      <div class="pager wrap">
+        <a href="chapter-3.html">← Kapitel 3</a>
+        <a class="disabled">Das Ende 🎉</a>
+      </div>
+    </main>
+
+    <footer class="foot">Macher-Notizbuch für <b>Tower Duel</b> · Kapitel 4/4 · danke fürs Lesen!</footer>
+
+    <script>
+      (function () {
+        const cv = document.getElementById('dig'), ctx = cv.getContext('2d');
+        const W = cv.width, H = cv.height;
+        function build() {
+          ctx.globalCompositeOperation = 'source-over';
+          // Den Himmel transparent lassen: Der dunkle CSS-Hintergrund des canvas
+          // scheint durch den Himmel und durch alle Löcher, die wir graben.
+          ctx.clearRect(0, 0, W, H);
+          // Gelände
+          ctx.beginPath(); ctx.moveTo(0, H);
+          for (let x = 0; x <= W; x += 3) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            ctx.lineTo(x, y);
+          }
+          ctx.lineTo(W, H); ctx.closePath();
+          ctx.fillStyle = '#46303f'; ctx.fill();
+          // leuchtende Oberflächenlinie
+          ctx.lineWidth = 4; ctx.strokeStyle = '#ff6b35'; ctx.beginPath();
+          for (let x = 0; x <= W; x += 3) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          // ein bisschen Deko
+          ctx.fillStyle = '#2a1c26';
+          for (let x = 30; x < W; x += 38) {
+            const t = x / W;
+            const y = H * 0.45 - 60 * Math.sin(t * 3.1 + 0.6) - 22 * Math.sin(t * 7 + 1);
+            ctx.fillRect(x, y - 6, 3, 6);
+          }
+        }
+        function dig(x, y) {
+          // gebräunter Rand nur dort, wo Gelände existiert
+          ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+          ctx.fillStyle = '#5a3a1e'; ctx.beginPath(); ctx.arc(x, y, 27, 0, 7); ctx.fill(); ctx.restore();
+          // das Loch stanzen
+          ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath(); ctx.arc(x, y, 22, 0, 7); ctx.fill(); ctx.restore();
+        }
+        function pos(e) {
+          const r = cv.getBoundingClientRect();
+          const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+          const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+          return { x: cx * (W / r.width), y: cy * (H / r.height) };
+        }
+        let down = false;
+        const start = (e) => { down = true; const p = pos(e); dig(p.x, p.y); e.preventDefault(); };
+        const move = (e) => { if (!down) return; const p = pos(e); dig(p.x, p.y); e.preventDefault(); };
+        const end = () => { down = false; };
+        cv.addEventListener('mousedown', start); cv.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+        cv.addEventListener('touchstart', start, { passive: false });
+        cv.addEventListener('touchmove', move, { passive: false });
+        window.addEventListener('touchend', end);
+        document.getElementById('reset').addEventListener('click', build);
+        build();
+      })();
+    </script>
+  </body>
+</html>

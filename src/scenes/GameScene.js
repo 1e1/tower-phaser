@@ -177,7 +177,6 @@ export default class GameScene extends Phaser.Scene {
     });
 
     this.drawAimGuides();
-    this.hud.updateAim(this.towers);
 
     if (this.towers[0].ready && this.towers[1].ready) {
       this.fire();

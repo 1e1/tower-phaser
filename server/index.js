@@ -96,7 +96,7 @@ function handle(socket, msg) {
     }
 
     case 'config':
-      if (socket.room) socket.room.setConfig(socket, msg.rounds, msg.biomeId);
+      if (socket.room) socket.room.setConfig(socket, msg.rounds, msg.biomeId, msg.hp);
       break;
 
     case 'name':
@@ -109,6 +109,14 @@ function handle(socket, msg) {
 
     case 'ready':
       if (socket.room) socket.room.handleReady(socket, msg.value !== false);
+      break;
+
+    case 'shell':
+      if (socket.room) socket.room.handleShell(socket, msg.id);
+      break;
+
+    case 'sync':
+      if (socket.room) socket.room.sendRoster();
       break;
 
     case 'playAgain':

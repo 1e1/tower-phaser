@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kapitel 1 — Eine Kanone in Bewegung bringen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body data-biome="meadow">
+    <nav class="nav">
+      <a class="brand" href="index.html">Tower Duel<span class="dot">.</span></a>
+      <span class="spacer"></span>
+      <a class="crumb" href="index.html">Startseite</a>
+      <span class="langs">
+        <a href="../en/chapter-1.html">EN</a>
+        <a href="../fr/chapter-1.html">FR</a>
+        <a href="../de/chapter-1.html" class="active">DE</a>
+        <a href="../es/chapter-1.html">ES</a>
+        <a href="../it/chapter-1.html">IT</a>
+      </span>
+    </nav>
+
+    <header class="hero">
+      <span class="badge">Etappe 1 · Wiese</span>
+      <div class="kicker">Kapitel 1</div>
+      <h1>Eine Kanone in Bewegung bringen</h1>
+      <p>Wir legen das Fundament: wie ein Bild „lebendig wird“, wie eine Kanonenkugel einer Kurve folgt und wie wir das Ganze einpacken, um es zu teilen.</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,20 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>
+        <path d="M0,95 C260,55 520,120 760,90 C1020,58 1240,120 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">1</span>Die Spielschleife: 60 Bilder pro Sekunde</h2>
+        <p class="lead">Ein Spiel ist wie ein Zeichentrickfilm: eine Folge von Standbildern, sehr schnell gezeigt. Auf dem Bildschirm ergibt das die Illusion von Bewegung.</p>
+        <p>Etwa <b>60-mal pro Sekunde</b> ruft der Browser eine Funktion auf, die wir <code class="inline">update</code> nennen. Bei jedem Aufruf bewegen wir die Objekte ein kleines Stück und zeichnen dann neu. Das ist <b>die Spielschleife</b>.</p>
+
+        <figure class="diagram" aria-label="Diagramm der Spielschleife">
+          <svg viewBox="0 0 620 200" width="620" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <circle cx="310" cy="100" r="78" fill="none" stroke="#3f8f2f" stroke-width="3" stroke-dasharray="6 7"/>
+            <g text-anchor="middle">
+              <rect x="250" y="6" width="120" height="40" rx="10" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+              <text x="310" y="31" font-weight="800" fill="#2b2535">1 · Hören</text>
+              <rect x="468" y="80" width="130" height="40" rx="10" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+              <text x="533" y="105" font-weight="800" fill="#2b2535">2 · Rechnen</text>
+              <rect x="250" y="154" width="120" height="40" rx="10" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+              <text x="310" y="179" font-weight="800" fill="#2b2535">3 · Zeichnen</text>
+              <rect x="22" y="80" width="130" height="40" rx="10" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+              <text x="87" y="105" font-size="13" fill="#5b5470">…1/60 s später</text>
+            </g>
+          </svg>
+          <figcaption>Auf die Tastatur hören → die Bewegungen berechnen → zeichnen. Und wir fangen wieder von vorne an, 60×/Sekunde.</figcaption>
+        </figure>
+
+        <figure class="code">
+          <figcaption>src/scenes/GameScene.js (vereinfacht)</figcaption>
+<pre><span class="c">// delta = seit dem letzten Bild verstrichene Zeit (in Millisekunden)</span>
+<span class="f">update</span>(time, delta) {
+  <span class="k">const</span> dt = delta / <span class="s">1000</span>;        <span class="c">// in Sekunden umrechnen</span>
+  <span class="k">if</span> (this.state === <span class="s">'aiming'</span>)  this.<span class="f">handleAiming</span>(dt);
+  <span class="k">if</span> (this.state === <span class="s">'firing'</span>)  this.<span class="f">handleFiring</span>(dt);
+}</pre>
+        </figure>
+        <div class="callout tip"><b>Warum <code class="inline">dt</code>?</b> Nicht alle Computer laufen gleich schnell. Indem wir die Bewegungen mit der verstrichenen Zeit multiplizieren, läuft das Spiel überall <b>gleich schnell</b>. Clever!</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>„Szenen“ wie im Theater</h2>
+        <p>Wir teilen das Spiel in <b>Szenen</b> auf, ein bisschen wie die Zimmer eines Hauses: der Titelbildschirm, der Einstellungsbildschirm, das Match selbst. Wir wechseln von einer zur anderen.</p>
+        <ul class="clean">
+          <li>🏁 <b>Boot</b> — macht das Spiel bereit, der „Drücken zum Spielen“-Bildschirm.</li>
+          <li>⚙️ <b>Setup</b> — wir wählen die Namen und die Anzahl der Runden.</li>
+          <li>💥 <b>Game</b> — das Duell.</li>
+          <li>🏆 <b>Result</b> — wer hat gewonnen?</li>
+        </ul>
+        <p>Phaser kümmert sich von allein darum: Wir geben ihm die Liste und sagen „geh zur Game-Szene“.</p>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>Die Flugbahn einer Kanonenkugel</h2>
+        <p>Wenn die Kanone feuert, fliegt die Kugel geradeaus… dann zieht die <b>Schwerkraft</b> sie nach unten, und der <b>Wind</b> drückt sie zur Seite. Das Ergebnis ist eine schöne Kurve: eine <b>Parabel</b>.</p>
+        <p>Wir speichern zwei Zahlen für die Kugel: ihre horizontale Geschwindigkeit <code class="inline">vx</code> und ihre vertikale Geschwindigkeit <code class="inline">vy</code>. Bei jedem Bild aktualisieren wir sie:</p>
+        <figure class="code">
+          <figcaption>src/sim/Simulation.js (das Herz der Physik)</figcaption>
+<pre>ball.vx += wind   * dt;   <span class="c">// der Wind drückt zur Seite</span>
+ball.vy += <span class="s">520</span>    * dt;   <span class="c">// die Schwerkraft zieht nach unten</span>
+ball.x  += ball.vx * dt;   <span class="c">// horizontal bewegen</span>
+ball.y  += ball.vy * dt;   <span class="c">// …und vertikal</span></pre>
+        </figure>
+        <div class="callout nerd"><b>Für Neugierige.</b> Im Grunde ist es dieselbe Formel wie im Physikunterricht (Beschleunigung). Du musst sie nicht kennen, um zu spielen: Der Computer addiert einfach winzige Schritte, viele Male pro Sekunde. Viele winzige Schritte ≈ eine schöne Kurve.</div>
+
+        <div class="callout try"><b>Probier's aus!</b> Stelle den Winkel, die Stärke und den Wind ein und feuere dann. Schaffst du es, das rote Ziel rechts zu treffen?</div>
+
+        <div class="sim">
+          <h4>Schuss-Simulator</h4>
+          <canvas id="ball" width="640" height="300"></canvas>
+          <div class="controls">
+            <label>Winkel: <span id="aV">45</span>°<input id="a" type="range" min="10" max="85" value="45" /></label>
+            <label>Stärke: <span id="pV">65</span><input id="p" type="range" min="20" max="100" value="65" /></label>
+            <label>Wind: <span id="wV">0</span><input id="w" type="range" min="-100" max="100" value="0" /></label>
+            <button id="fire">🔥 Feuern</button>
+          </div>
+          <div class="hint">Negativer Wind = nach links, positiver = nach rechts. Das Ziel bewegt sich bei jedem Treffer!</div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>Docker: die Kiste zum Mitnehmen</h2>
+        <p>Mein Spiel läuft auf <em>meinem</em> Computer… aber läuft es auch auf deinem? Oft braucht ein Programm bestimmte Werkzeuge (diese Version von jener Software). Fehlen sie, stürzt es ab.</p>
+        <p><b>Docker</b> löst das: Wir packen das Spiel <b>und all seine Werkzeuge</b> in eine „Kiste“ (einen <b>Container</b>). Diese Kiste funktioniert überall gleich: auf deinem PC, auf einem Server, in der Cloud. Ein bisschen wie ein <b>Schiffscontainer</b>: egal welches Schiff, die Kiste ist immer dieselbe.</p>
+
+        <figure class="diagram" aria-label="Docker-Diagramm">
+          <svg viewBox="0 0 700 210" width="700" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <rect x="20" y="40" width="200" height="130" rx="12" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+            <text x="120" y="32" text-anchor="middle" font-size="13" fill="#5b5470">Schritt 1 · build</text>
+            <text x="120" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">der Code</text>
+            <text x="120" y="120" text-anchor="middle" font-size="13" fill="#5b5470">→ Spieldateien</text>
+
+            <rect x="270" y="25" width="220" height="160" rx="12" fill="#fff7d6" stroke="#c07d22" stroke-width="3"/>
+            <text x="380" y="18" text-anchor="middle" font-size="13" fill="#5b5470">📦 der Container</text>
+            <text x="380" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">Spiel + Server</text>
+            <text x="380" y="120" text-anchor="middle" font-size="13" fill="#5b5470">alles in einem</text>
+
+            <g text-anchor="middle">
+              <rect x="540" y="30" width="140" height="42" rx="10" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="610" y="56" font-weight="800" fill="#2b2535">dein PC</text>
+              <rect x="540" y="84" width="140" height="42" rx="10" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="610" y="110" font-weight="800" fill="#2b2535">ein Server</text>
+              <rect x="540" y="138" width="140" height="42" rx="10" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+              <text x="610" y="164" font-weight="800" fill="#2b2535">die Cloud ☁️</text>
+            </g>
+            <g stroke="#5b5470" stroke-width="2" fill="none">
+              <path d="M220,105 L268,105"/>
+              <path d="M492,95 L538,51"/><path d="M492,105 L538,105"/><path d="M492,115 L538,159"/>
+            </g>
+          </svg>
+          <figcaption>Wir bauen einmal, bekommen eine Kiste, und sie läuft überall identisch.</figcaption>
+        </figure>
+
+        <figure class="code">
+          <figcaption>Dockerfile (der entscheidende Ausschnitt)</figcaption>
+<pre><span class="c"># 1) das Spiel mit Node bauen</span>
+<span class="k">FROM</span> node:24 <span class="k">AS</span> build
+<span class="k">RUN</span> npm run build      <span class="c"># erzeugt die fertigen Dateien</span>
+
+<span class="c"># 2) sie mit einem kleinen Webserver ausliefern</span>
+<span class="k">FROM</span> nginx
+<span class="k">COPY</span> --from=build /app/dist /usr/share/nginx/html</pre>
+        </figure>
+        <div class="callout tip"><b>Merke dir.</b> Etappe 1 = ein laufendes Spiel, in einer Docker-Kiste, bereit zum Teilen. Noch nicht hübsch: Das ist die Aufgabe von Kapitel 2!</div>
+      </section>
+
+      <div class="pager wrap">
+        <a class="disabled">← Startseite</a>
+        <a href="chapter-2.html">Kapitel 2 · Es schön aussehen lassen →</a>
+      </div>
+    </main>
+
+    <footer class="foot">Macher-Notizbuch für <b>Tower Duel</b> · Kapitel 1/4</footer>
+
+    <script>
+      (function () {
+        const cv = document.getElementById('ball');
+        const ctx = cv.getContext('2d');
+        const a = document.getElementById('a'), p = document.getElementById('p'), w = document.getElementById('w');
+        const aV = document.getElementById('aV'), pV = document.getElementById('pV'), wV = document.getElementById('wV');
+        const W = cv.width, H = cv.height, groundY = H - 30;
+        const cannon = { x: 60, y: groundY };
+        let target = { x: 540, y: groundY };
+        let shot = null, anim = null;
+
+        function bg() {
+          ctx.clearRect(0, 0, W, H);
+          ctx.fillStyle = '#bfe3ff'; ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = '#4f8f2f'; ctx.fillRect(0, groundY, W, H - groundY);
+          // Kanone
+          ctx.save(); ctx.translate(cannon.x, cannon.y);
+          ctx.fillStyle = '#4f8fff'; ctx.fillRect(-16, -34, 32, 34);
+          const rad = -a.value * Math.PI / 180;
+          ctx.rotate(rad); ctx.fillStyle = '#d7dde8'; ctx.fillRect(0, -6, 40, 12);
+          ctx.restore();
+          // Ziel
+          ctx.fillStyle = '#ff6b5e'; ctx.fillRect(target.x - 16, target.y - 46, 32, 46);
+          ctx.strokeStyle = '#b8352b'; ctx.lineWidth = 3; ctx.strokeRect(target.x - 16, target.y - 46, 32, 46);
+        }
+        function refresh() { aV.textContent = a.value; pV.textContent = p.value; wV.textContent = w.value; if (!shot) bg(); }
+        [a, p, w].forEach((el) => el.addEventListener('input', refresh));
+
+        function fire() {
+          if (anim) cancelAnimationFrame(anim);
+          const speed = p.value * 4.2;
+          const rad = a.value * Math.PI / 180;
+          shot = { x: cannon.x, y: cannon.y - 34, vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, trail: [] };
+          const wind = w.value * 1.6, grav = 520, dt = 1 / 60;
+          function step() {
+            for (let i = 0; i < 2; i++) { // 2 Teilschritte für mehr Flüssigkeit
+              shot.vx += wind * dt; shot.vy += grav * dt;
+              shot.x += shot.vx * dt; shot.y += shot.vy * dt;
+              shot.trail.push({ x: shot.x, y: shot.y });
+            }
+            bg();
+            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            shot.trail.forEach((t) => { ctx.beginPath(); ctx.arc(t.x, t.y, 2.5, 0, 7); ctx.fill(); });
+            ctx.fillStyle = '#1d2233'; ctx.beginPath(); ctx.arc(shot.x, shot.y, 6, 0, 7); ctx.fill();
+            ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(shot.x, shot.y, 3.5, 0, 7); ctx.fill();
+
+            const hit = Math.abs(shot.x - target.x) < 18 && shot.y > target.y - 46 && shot.y < target.y;
+            if (hit) { boom('🎯 Treffer!', '#1f7d32'); target.x = 360 + Math.random() * 230; shot = null; return; }
+            if (shot.y >= groundY) { boom('💨 Daneben', '#b8352b'); shot = null; return; }
+            if (shot.x < -40 || shot.x > W + 40) { shot = null; bg(); return; }
+            anim = requestAnimationFrame(step);
+          }
+          step();
+        }
+        function boom(txt, col) {
+          bg(); ctx.fillStyle = col; ctx.font = "bold 26px Fredoka, sans-serif"; ctx.textAlign = 'center';
+          ctx.fillText(txt, W / 2, 50);
+        }
+        document.getElementById('fire').addEventListener('click', fire);
+        refresh();
+      })();
+    </script>
+  </body>
+</html>

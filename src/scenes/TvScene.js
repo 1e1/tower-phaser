@@ -9,6 +9,8 @@ import Background from '../objects/Background.js';
 import Terrain from '../objects/Terrain.js';
 import Tower from '../objects/Tower.js';
 import Hud from '../objects/Hud.js';
+import { computeWindsock } from '../render/visuals.js';
+import { runBenchmark } from '../systems/benchmark.js';
 
 // Big-screen view. As the host (role 'tv') it shows the room code + QR and the
 // round count, and renders the authoritative match. As a queued spectator it
@@ -42,7 +44,9 @@ export default class TvScene extends Phaser.Scene {
   create() {
     this.client = this.registry.get('client');
     this.sfx = this.registry.get('sfx');
-    this.quality = this.registry.get('quality') || 'full';
+    // Probe render performance on the screen that actually renders the match,
+    // and pick a quality tier (read later, in enterMatch).
+    runBenchmark(this);
 
     if (this.spectator) this.buildSpectatorIntro();
     else this.buildLobby();
@@ -58,6 +62,10 @@ export default class TvScene extends Phaser.Scene {
         isBiomeChooser: m.isBiomeChooser,
       }),
     ));
+
+    // Ask the server for the current roster (needed after a scene restart, e.g.
+    // returning to the lobby when a player left mid-match).
+    this.client.send('sync');
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubs.forEach((off) => off());
@@ -132,8 +140,9 @@ export default class TvScene extends Phaser.Scene {
     if (this.mode !== 'lobby') return;
     const biome = BIOMES[this.biomeIndex] || BIOMES[0];
     const rounds = ROUND_OPTIONS[this.roundsIndex];
+    const hp = this.cfgHp || 1;
     const chooser = this.roster[this.biomeChooser]?.name || `Player ${this.biomeChooser + 1}`;
-    this.biomeInfo.setText(`${biome.name} · ${rounds} rounds  (set by ${chooser})`);
+    this.biomeInfo.setText(`${biome.name} · ${rounds} rounds · ${hp} HP  (set by ${chooser})`);
 
     const slot = (p, i) => (p.connected ? `P${i + 1}: ${p.name}` : `P${i + 1}: waiting…`);
     this.rosterText.setText(`${slot(this.roster[0], 0)}     ${slot(this.roster[1], 1)}`);
@@ -184,8 +193,14 @@ export default class TvScene extends Phaser.Scene {
     if (m.config) {
       this.biomeIndex = Math.max(0, BIOMES.findIndex((b) => b.id === m.config.biomeId));
       this.roundsIndex = Math.max(0, ROUND_OPTIONS.indexOf(m.config.rounds));
+      this.cfgHp = m.config.hp || 1;
     }
     if (this.mode === 'lobby') this.refreshLobby();
+    // A player went missing mid-match: the room reset to the invitation lobby,
+    // so rebuild this scene back to the code + QR screen.
+    else if ((this.mode === 'match' || this.mode === 'end') && !m.inMatch) {
+      this.scene.restart({ code: this.code, lanIp: this.lanIp, spectator: this.spectator, queue: this.queuePos });
+    }
   }
 
   onSnapshot(m) {
@@ -218,16 +233,36 @@ export default class TvScene extends Phaser.Scene {
     this.terrain = new Terrain(this, biome.terrain);
     this.loadTerrain(state.seed);
 
-    this.towers = [
-      new Tower(this, 120, state.towers[0].groundY, COLORS.towerP1, 1),
-      new Tower(this, GAME_WIDTH - 120, state.towers[1].groundY, COLORS.towerP2, -1),
-    ];
-    this.towers.forEach((t) => t.gfx.setDepth(1));
+    this.towers = this.buildTowers(state, 0);
+    this.windsockGfx = this.add.graphics().setDepth(2);
 
     this.createEmitters();
     this.shotGfx = this.add.graphics().setDepth(5);
     this.projTrails = new Map();
-    this.hud = new Hud(this, state.names, [COLORS.towerP1, COLORS.towerP2]);
+    this.hud = new Hud(this, state.names, [COLORS.towerP1, COLORS.towerP2], {
+      code: this.code,
+      joinUrl: this.joinUrl(),
+    });
+
+    this.roundNo = state.round.current;
+    this.lastDestroyed = 1;
+    this.panActive = false;
+    this.cameras.main.setScroll(0, 0);
+  }
+
+  // Create the two towers at a world offset (used by the camera-pan transition).
+  buildTowers(state, ox) {
+    const towers = [
+      new Tower(this, 120 + ox, state.towers[0].groundY, COLORS.towerP1, 1),
+      new Tower(this, GAME_WIDTH - 120 + ox, state.towers[1].groundY, COLORS.towerP2, -1),
+    ];
+    towers.forEach((t, i) => {
+      t.gfx.setDepth(1);
+      t.maxHp = state.maxHp || 1;
+      t.hp = state.towers[i].hp ?? t.maxHp;
+      t.draw();
+    });
+    return towers;
   }
 
   loadTerrain(seed) {
@@ -267,19 +302,86 @@ export default class TvScene extends Phaser.Scene {
         tint: this.biome.terrain.dark,
       }))
       .setDepth(-1);
+
+    // Fuse spark that flickers on a ready cannon (replaces the "READY" text).
+    this.fuseSpark = this.add
+      .particles(0, 0, 'spark', opts({
+        lifespan: { min: 200, max: 480 },
+        speed: { min: 20, max: 70 },
+        angle: { min: 230, max: 310 },
+        gravityY: 120,
+        scale: { start: 0.7, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: [0xffe680, 0xff8c2a],
+        blendMode: 'ADD',
+      }))
+      .setDepth(2);
   }
 
   update(_time, delta) {
     if (this.mode !== 'match') return;
     const dt = Math.min(delta / 1000, 0.05);
     this.background.update(dt);
+    if (this.panActive) return;
+    this.drawMidWindsock(_time);
+    // Spark the fuse of any ready cannon.
+    if (this.towers && this.fuseSpark) {
+      for (const t of this.towers) {
+        if (t.ready) {
+          const f = t.fuseTip;
+          this.fuseSpark.emitParticleAt(f.x, f.y, 1);
+        }
+      }
+    }
+  }
+
+  // A windsock planted in the middle of the battlefield (#1), driven by the
+  // eased wind so it matches the particles.
+  drawMidWindsock(time) {
+    const g = this.windsockGfx;
+    if (!g) return;
+    g.clear();
+    const x = GAME_WIDTH / 2;
+    const baseY = this.terrain.heightAt(x);
+    const ws = computeWindsock(x, baseY, this.background.windValue, time, 46);
+    g.lineStyle(4, 0x6b7180, 1);
+    g.beginPath();
+    g.moveTo(ws.pole.x1, ws.pole.y1);
+    g.lineTo(ws.pole.x2, ws.pole.y2);
+    g.strokePath();
+    for (const seg of ws.segments) {
+      g.fillStyle(seg.color, 1);
+      g.beginPath();
+      g.moveTo(seg.quad[0].x, seg.quad[0].y);
+      for (let k = 1; k < seg.quad.length; k += 1) g.lineTo(seg.quad[k].x, seg.quad[k].y);
+      g.closePath();
+      g.fillPath();
+    }
   }
 
   renderState(state) {
     this.wind = state.wind;
     this.background.setWind(state.wind);
 
-    if (state.seed !== this.seed) this.loadTerrain(state.seed);
+    // HUD always tracks the authoritative state, even during the pan.
+    this.hud.updateNames(state.names);
+    this.hud.updateScores(state.scores);
+    this.hud.updateRound(state.round.current, state.round.total);
+    this.hud.updateWind({ value: state.wind });
+    if (state.banner && state.banner !== this.lastBanner) this.hud.showBanner(state.banner);
+    this.lastBanner = state.banner;
+    if (state.phase === PHASE.MATCH_END && !this.endShown) this.showEnd(state);
+
+    if (this.panActive) return; // the pan owns the world during the transition
+
+    // A new round begins (new seed): slide the camera into the next arena.
+    if (state.seed !== this.seed) {
+      if (state.round.current > this.roundNo) {
+        this.startPan(state);
+        return;
+      }
+      this.loadTerrain(state.seed);
+    }
     this.terrain.applyCraters(state.craters);
 
     this.towers.forEach((t, i) => {
@@ -288,20 +390,49 @@ export default class TvScene extends Phaser.Scene {
       t.pivotY = ts.groundY - 96;
       t.angle = ts.angle;
       t.power = ts.power;
+      // Fuse is lit only while still aiming; it goes out the instant we fire.
+      t.ready = ts.ready && state.phase === PHASE.AIMING;
+      t.maxHp = state.maxHp || 1;
+      t.hp = ts.hp ?? t.maxHp;
       t.draw();
     });
 
-    this.hud.updateScores(state.scores);
-    this.hud.updateRound(state.round.current, state.round.total);
-    this.hud.updateWind({ value: state.wind });
-    this.hud.updateStatus(state.towers);
-
     this.drawProjectiles(state.projectiles);
+  }
 
-    if (state.banner && state.banner !== this.lastBanner) this.hud.showBanner(state.banner);
-    this.lastBanner = state.banner;
+  // Inter-round camera pan toward the destroyed tower, advancing one screen.
+  startPan(state) {
+    this.panActive = true;
+    const dir = this.lastDestroyed === 0 ? -1 : 1;
+    const ox = dir * GAME_WIDTH;
 
-    if (state.phase === PHASE.MATCH_END && !this.endShown) this.showEnd(state);
+    const oldTerrain = this.terrain;
+    const oldTowers = this.towers;
+
+    const nextTerrain = new Terrain(this, this.biome.terrain);
+    nextTerrain.setHeights(generateHeights(state.seed, this.biome.roughness ?? 1));
+    nextTerrain.setX(ox);
+    const nextTowers = this.buildTowers(state, ox);
+
+    this.cameras.main.pan(
+      GAME_WIDTH / 2 + ox, GAME_HEIGHT / 2, 1100, 'Sine.easeInOut', true,
+      (cam, progress) => {
+        if (progress < 1) return;
+        oldTerrain.destroy();
+        oldTowers.forEach((t) => t.destroy());
+        nextTerrain.setX(0);
+        nextTowers.forEach((t) => {
+          t.x -= ox; t.pivotX -= ox; t.draw();
+        });
+        this.terrain = nextTerrain;
+        this.towers = nextTowers;
+        this.seed = state.seed;
+        this.roundNo = state.round.current;
+        this.cameras.main.setScroll(0, 0);
+        this.projTrails = new Map();
+        this.panActive = false;
+      },
+    );
   }
 
   drawProjectiles(projectiles) {
@@ -357,6 +488,8 @@ export default class TvScene extends Phaser.Scene {
         this.dustExplosion(e.x, e.y);
       } else if (e.type === 'hit') {
         this.explode(e.x, e.y, e.target === 0 ? COLORS.towerP1 : COLORS.towerP2, true);
+      } else if (e.type === 'destroyed') {
+        this.explodeTower(e.tower);
       }
     }
   }
@@ -379,13 +512,32 @@ export default class TvScene extends Phaser.Scene {
     this.debrisEmitter.emitParticleAt(x, y, lite ? 6 : isTowerHit ? 16 : 10);
     if (isTowerHit) {
       this.sparkEmitter.emitParticleAt(x, y, lite ? 8 : 18);
-      this.sfx.hit();
+      this.sfx.rubble(false);
       this.shake(260, 0.012);
     } else {
       this.sparkEmitter.emitParticleAt(x, y, lite ? 4 : 8);
       this.sfx.explosion();
       this.shake(150, 0.006);
     }
+  }
+
+  // Crumble the destroyed tower (#10): a burst of stone debris, hard shake, and
+  // the tower sinking and fading. It is removed shortly after by the round pan.
+  explodeTower(i) {
+    const t = this.towers[i];
+    if (!t || this.panActive) return;
+    this.lastDestroyed = i;
+    const b = t.bounds;
+    const cx = b.x + b.width / 2;
+    const cy = b.y + b.height / 2;
+    const lite = this.quality === 'lite';
+    this.flashEmitter.emitParticleAt(cx, cy, 1);
+    this.smokeEmitter.emitParticleAt(cx, cy, lite ? 3 : 7);
+    this.debrisEmitter.emitParticleAt(cx, cy, lite ? 10 : 26);
+    this.sparkEmitter.emitParticleAt(cx, cy, lite ? 8 : 20);
+    this.sfx.rubble(true);
+    this.shake(420, lite ? 0.01 : 0.02);
+    this.tweens.add({ targets: t.gfx, y: 26, alpha: 0.25, duration: 600, ease: 'Quad.easeIn' });
   }
 
   showEnd(state) {

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Build your own web game — the Tower Duel notebook</title>
+    <meta name="description" content="An illustrated tutorial to understand how a video game that runs in a browser is built, using the game Tower Duel." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body data-biome="meadow">
+    <nav class="nav">
+      <a class="brand" href="index.html">Tower Duel<span class="dot">.</span> <span style="font-weight:400;color:var(--ink-soft)">the notebook</span></a>
+      <span class="spacer"></span>
+      <a class="crumb" href="#chapters">Chapters</a>
+      <span class="langs">
+        <a href="../en/index.html" class="active">EN</a>
+        <a href="../fr/index.html">FR</a>
+        <a href="../de/index.html">DE</a>
+        <a href="../es/index.html">ES</a>
+        <a href="../it/index.html">IT</a>
+      </span>
+    </nav>
+
+    <header class="hero">
+      <span class="badge">Maker's notebook</span>
+      <div class="kicker">How you build…</div>
+      <h1>…a real video game inside a browser</h1>
+      <p>Follow the making of <strong>Tower Duel</strong>, a two-player cannon duel, step by step. With diagrams, real code, and little games you can play with to understand.</p>
+      <svg class="hills" viewBox="0 0 1440 120" preserveAspectRatio="none" height="90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C220,20 420,110 680,70 C920,35 1120,110 1440,60 L1440,120 L0,120 Z" fill="#4f8f2f"/>
+        <path d="M0,95 C260,55 520,120 760,90 C1020,58 1240,120 1440,90 L1440,120 L0,120 Z" fill="#3f7a25"/>
+      </svg>
+    </header>
+
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">?</span>What is a “web game”?</h2>
+        <p class="lead">A web game is a game that runs in a <b>browser</b> (Chrome, Firefox, Safari…) without installing anything. You click a link, and it plays!</p>
+        <p>For that to work, we put together three ingredients you may already know:</p>
+        <ul class="clean">
+          <li>🧱 <b>HTML</b> — the structure of the page (the “bricks”).</li>
+          <li>🎨 <b>CSS</b> — the styling: colours, sizes, layout.</li>
+          <li>⚙️ <b>JavaScript</b> — the brain: it's what makes things <em>move</em>.</li>
+        </ul>
+        <p>Our game draws everything inside a special area called a <span class="pill">canvas</span> (a digital painter's “canvas”). We use a toolbox, <b>Phaser</b>, which handles the tricky parts (displaying, animating, listening to the keyboard) so we can focus on the game.</p>
+
+        <figure class="diagram" aria-label="Diagram: from code to game">
+          <svg viewBox="0 0 760 200" width="760" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <rect x="20" y="60" width="150" height="80" rx="12" fill="#e9f1ff" stroke="#3a6df0" stroke-width="2"/>
+            <text x="95" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">HTML + CSS</text>
+            <text x="95" y="118" text-anchor="middle" font-size="13" fill="#5b5470">the page</text>
+
+            <rect x="220" y="60" width="150" height="80" rx="12" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+            <text x="295" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">JavaScript</text>
+            <text x="295" y="118" text-anchor="middle" font-size="13" fill="#5b5470">+ Phaser</text>
+
+            <rect x="430" y="40" width="150" height="120" rx="12" fill="#fff" stroke="#5b5470" stroke-width="2"/>
+            <text x="505" y="32" text-anchor="middle" font-size="13" fill="#5b5470">&lt;canvas&gt;</text>
+            <circle cx="470" cy="100" r="12" fill="#4f8fff"/>
+            <circle cx="540" cy="115" r="12" fill="#ff6b5e"/>
+            <path d="M430,140 Q505,110 580,135 L580,160 L430,160 Z" fill="#4f8f2f"/>
+
+            <rect x="630" y="60" width="110" height="80" rx="12" fill="#fff3d6" stroke="#c07d22" stroke-width="2"/>
+            <text x="685" y="95" text-anchor="middle" font-weight="800" fill="#2b2535">You 🙂</text>
+            <text x="685" y="118" text-anchor="middle" font-size="13" fill="#5b5470">you play</text>
+
+            <g stroke="#5b5470" stroke-width="2" fill="none" marker-end="url(#arrow)">
+              <path d="M170,100 L218,100"/>
+              <path d="M370,100 L428,100"/>
+              <path d="M580,100 L628,100"/>
+            </g>
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L7,3 L0,6 Z" fill="#5b5470"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption>From code to the screen: JavaScript draws the game inside the canvas, and you play.</figcaption>
+        </figure>
+
+        <div class="callout tip"><b>Remember.</b> The browser already knows how to display pages. A web game is “just” a very lively page where JavaScript redraws the image dozens of times per second.</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">★</span>The game we're building</h2>
+        <p>Two towers, one on each side of a landscape. Each player sets the <b>angle</b> and the <b>power</b> of their cannon, taking the <b>wind</b> into account. The twist: both players aim <b>at the same time</b>, then both shots fire together. The first to hit the opposite tower wins the round!</p>
+        <p>We built the game in <b>4 steps</b> (we call them “batches”). Each chapter tells one step, with its own biome mood:</p>
+
+        <div class="chapters" id="chapters">
+          <a class="chap-card meadow" href="chapter-1.html">
+            <div class="lot">BATCH 1 · Meadow</div>
+            <h3>Make a cannon move</h3>
+            <p>The game loop, the path of a cannonball, and how we “wrap up” the game with Docker.</p>
+          </a>
+          <a class="chap-card desert" href="chapter-2.html">
+            <div class="lot">BATCH 2 · Desert</div>
+            <h3>Make it look good</h3>
+            <p>Scenery (biomes), particles, depth (parallax) and sound effects made by code.</p>
+          </a>
+          <a class="chap-card tundra" href="chapter-3.html">
+            <div class="lot">BATCH 3 · Tundra</div>
+            <h3>Play across several screens</h3>
+            <p>The TV displays, the phones control. A server referees the match in real time.</p>
+          </a>
+          <a class="chap-card volcano" href="chapter-4.html">
+            <div class="lot">BATCH 4 · Volcano</div>
+            <h3>Destroy the landscape</h3>
+            <p>Like in Worms: every shot digs a crater. We'll see the magic trick to “punch a hole” in an image.</p>
+          </a>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">i</span>How to read this notebook</h2>
+        <p>You'll come across little coloured boxes. Here's what they mean:</p>
+        <div class="callout tip"><b>Remember</b> — the important idea to keep in mind.</div>
+        <div class="callout try"><b>Try it!</b> — a little game right below, to play with using your mouse or finger.</div>
+        <div class="callout nerd"><b>For the curious</b> — a sharper detail, if you want to dig deeper (you can skip it!).</div>
+        <p>And blocks of <b>real game code</b>, like this one:</p>
+        <figure class="code">
+          <figcaption>a bit of JavaScript</figcaption>
+<pre><span class="c">// once both players have confirmed, we fire!</span>
+<span class="k">if</span> (tower1.<span class="f">ready</span> &amp;&amp; tower2.<span class="f">ready</span>) {
+  <span class="f">fire</span>();
+}</pre>
+        </figure>
+        <p style="text-align:center; margin-top:26px;"><a class="pill" href="chapter-1.html" style="text-decoration:none; padding:10px 22px; font-size:16px;">Start chapter 1 →</a></p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      Maker's notebook for <b>Tower Duel</b> · made for curious minds of all ages 🛠️
+    </footer>
+  </body>
+</html>

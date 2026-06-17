@@ -70,6 +70,11 @@ export default class Terrain {
     this.drawBase();
   }
 
+  // Horizontal world offset of the terrain image (used by the camera pan).
+  setX(x) {
+    this.image.x = x;
+  }
+
   // Spectator/TV: adopt the server's seeded heightfield and redraw.
   setHeights(heights) {
     this.heights.set(heights);

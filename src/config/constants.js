@@ -40,8 +40,15 @@ export const AIM = {
 // Wind acceleration applied horizontally to projectiles (px/s^2).
 export const MAX_WIND = 95;
 
-// Radius (px) of the crater a shell carves out of the terrain on impact.
+// Radius (px) of the crater a (normal) shell carves out of the terrain.
 export const CRATER_RADIUS = 38;
+
+// Hidden jitter added to a shot at fire time (never shown to the player), so
+// over-precise aiming is rewarded a little less and every shot has tension.
+export const AIM_NOISE = { angle: 2.5, power: 3 };
 
 // Round-count choices offered on the setup screen.
 export const ROUND_OPTIONS = [1, 3, 5, 7];
+
+// Hit-point choices per tower (a tower falls when its HP reaches 0).
+export const HP_OPTIONS = [1, 2, 3];

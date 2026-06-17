@@ -12,6 +12,12 @@ const DEPTH = {
   ambient: 8,
 };
 
+// Scenery is drawn across this horizontal span (a few screens) so the
+// inter-round camera pan reveals continuous parallax. Layers use scroll
+// factors < 1 so they slide slower than the foreground during the pan.
+const WIDE_MIN = -GAME_WIDTH;
+const WIDE_MAX = 2 * GAME_WIDTH;
+
 // Layered, animated scenery for a biome: sky gradient, sun/moon with glow,
 // two parallax mountain ridges, drifting clouds and an ambient particle effect.
 export default class Background {
@@ -21,6 +27,7 @@ export default class Background {
     this.quality = quality;
     this.clouds = [];
     this.windValue = 0;
+    this.windTarget = 0;
     this.gustTime = 0;
 
     this.drawSky();
@@ -32,7 +39,7 @@ export default class Background {
   }
 
   drawSky() {
-    const g = this.scene.add.graphics().setDepth(DEPTH.sky);
+    const g = this.scene.add.graphics().setDepth(DEPTH.sky).setScrollFactor(0);
     const [topInt, bottomInt] = this.biome.sky;
     const top = Phaser.Display.Color.IntegerToColor(topInt);
     const bottom = Phaser.Display.Color.IntegerToColor(bottomInt);
@@ -53,6 +60,7 @@ export default class Background {
     const glow = this.scene.add
       .image(x, y, 'flash')
       .setDepth(DEPTH.glow)
+      .setScrollFactor(0.12)
       .setTint(celestial.glow)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setScale(celestial.radius / 10)
@@ -67,18 +75,18 @@ export default class Background {
       ease: 'Sine.inOut',
     });
 
-    const body = this.scene.add.graphics().setDepth(DEPTH.celestial);
+    const body = this.scene.add.graphics().setDepth(DEPTH.celestial).setScrollFactor(0.12);
     body.fillStyle(celestial.color, 1);
     body.fillCircle(x, y, celestial.radius);
   }
 
-  ridge(color, baseY, amp, depth) {
-    const g = this.scene.add.graphics().setDepth(depth);
+  ridge(color, baseY, amp, depth, scrollFactor) {
+    const g = this.scene.add.graphics().setDepth(depth).setScrollFactor(scrollFactor);
     g.fillStyle(color, 1);
     g.beginPath();
-    g.moveTo(0, GAME_HEIGHT);
+    g.moveTo(WIDE_MIN, GAME_HEIGHT);
     const seed = depth;
-    for (let x = 0; x <= GAME_WIDTH; x += 8) {
+    for (let x = WIDE_MIN; x <= WIDE_MAX; x += 8) {
       const t = x / GAME_WIDTH;
       const y =
         baseY -
@@ -86,15 +94,15 @@ export default class Background {
         amp * 0.5 * Math.sin(t * 9 + seed * 2);
       g.lineTo(x, y);
     }
-    g.lineTo(GAME_WIDTH, GAME_HEIGHT);
+    g.lineTo(WIDE_MAX, GAME_HEIGHT);
     g.closePath();
     g.fillPath();
   }
 
   drawMountains() {
     const [far, near] = this.biome.mountains;
-    this.ridge(far, GAME_HEIGHT * 0.62, 70, DEPTH.mountainFar);
-    this.ridge(near, GAME_HEIGHT * 0.72, 50, DEPTH.mountainNear);
+    this.ridge(far, GAME_HEIGHT * 0.62, 70, DEPTH.mountainFar, 0.25);
+    this.ridge(near, GAME_HEIGHT * 0.72, 50, DEPTH.mountainNear, 0.45);
   }
 
   spawnClouds() {
@@ -105,11 +113,12 @@ export default class Background {
       const scale = Phaser.Math.FloatBetween(0.5, 1.1);
       const sprite = this.scene.add
         .image(
-          Phaser.Math.Between(0, GAME_WIDTH),
+          Phaser.Math.Between(WIDE_MIN, WIDE_MAX),
           Phaser.Math.Between(40, GAME_HEIGHT * 0.32),
           'cloud',
         )
         .setDepth(DEPTH.cloud)
+        .setScrollFactor(0.5)
         .setTint(cloud.color)
         .setAlpha(cloud.alpha * Phaser.Math.FloatBetween(0.6, 1))
         .setScale(scale);
@@ -128,7 +137,7 @@ export default class Background {
     switch (ambient) {
       case 'snow':
         config = {
-          x: { min: 0, max: GAME_WIDTH },
+          x: { min: WIDE_MIN, max: WIDE_MAX },
           y: -10,
           lifespan: 13000,
           speedY: { min: 35, max: 75 },
@@ -141,7 +150,7 @@ export default class Background {
         break;
       case 'leaves':
         config = {
-          x: { min: 0, max: GAME_WIDTH },
+          x: { min: WIDE_MIN, max: WIDE_MAX },
           y: -10,
           lifespan: 11000,
           speedY: { min: 25, max: 55 },
@@ -155,7 +164,7 @@ export default class Background {
         break;
       case 'embers':
         config = {
-          x: { min: 0, max: GAME_WIDTH },
+          x: { min: WIDE_MIN, max: WIDE_MAX },
           y: GAME_HEIGHT + 10,
           lifespan: 4200,
           speedY: { min: -110, max: -45 },
@@ -170,7 +179,7 @@ export default class Background {
       case 'sand':
       default:
         config = {
-          x: -10,
+          x: WIDE_MIN,
           y: { min: 0, max: GAME_HEIGHT * 0.8 },
           lifespan: 8000,
           speedX: { min: 70, max: 150 },
@@ -185,17 +194,20 @@ export default class Background {
 
     this.emitter = this.scene.add
       .particles(0, 0, 'spark', { ...config, tint: common.tint })
-      .setDepth(common.depth);
+      .setDepth(common.depth)
+      .setScrollFactor(0.8);
   }
 
-  // Current wind (px/s^2, positive blows right) drives the ambient particles
-  // and nudges the clouds.
+  // Target wind (px/s^2, positive blows right). The applied value eases toward
+  // it (#7) so a wind change between turns transitions smoothly — no snap.
   setWind(value) {
-    this.windValue = value;
+    this.windTarget = value;
   }
 
   update(dt) {
     this.gustTime += dt;
+    this.windValue += (this.windTarget - this.windValue) * Math.min(1, dt * 1.6);
+
     // Gusty multiplier oscillating between lulls and stronger blows.
     const gust = 0.8 + 0.5 * Math.sin(this.gustTime * 1.6) + 0.3 * Math.sin(this.gustTime * 0.7 + 1);
     const windFx = this.windValue * gust;
@@ -203,13 +215,8 @@ export default class Background {
     for (const cloud of this.clouds) {
       cloud.x += (cloud.driftSpeed + this.windValue * 0.16) * dt;
       const halfWidth = (cloud.displayWidth || 220) / 2;
-      if (cloud.x - halfWidth > GAME_WIDTH) {
-        cloud.x = -halfWidth;
-        cloud.y = Phaser.Math.Between(40, GAME_HEIGHT * 0.32);
-      } else if (cloud.x + halfWidth < 0) {
-        cloud.x = GAME_WIDTH + halfWidth;
-        cloud.y = Phaser.Math.Between(40, GAME_HEIGHT * 0.32);
-      }
+      if (cloud.x - halfWidth > WIDE_MAX) cloud.x = WIDE_MIN - halfWidth;
+      else if (cloud.x + halfWidth < WIDE_MIN) cloud.x = WIDE_MAX + halfWidth;
     }
 
     if (this.emitter) {
