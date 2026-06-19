@@ -1,0 +1,34 @@
+    <script>
+      // Teaser oscilloscope — l'esthétique exacte du HUD 3e joueur (scope() de
+      // design/controller-p3.html) : chaque segment du terrain colorié selon sa
+      // franchissabilité par pente. Le lab dédié (assets/pathfinding-lab.html)
+      // déplie tout le reste.
+      (function () {
+        const cv = document.getElementById('scope');
+        if (!cv) return;
+        const g = cv.getContext('2d');
+        const W = cv.width, H = cv.height, CS = 1.35;
+        const baseY = H - 34;
+        const hY = (x) => baseY - 26 * Math.sin(x / 130 + 1) - 13 * Math.sin(x / 44) - 9 * Math.sin(x / 205);
+        const sold = [{ x: .28, c: '#5aa9e6' }, { x: .40, c: '#5aa9e6' }, { x: .60, c: '#e6685a' }, { x: .72, c: '#e6685a' }];
+        let T = 0;
+        function scope() {
+          g.fillStyle = '#060a12'; g.fillRect(0, 0, W, H);
+          g.strokeStyle = '#12331e'; g.lineWidth = 1;
+          for (let y = 18; y < H; y += 26) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+          g.lineWidth = 3; const seg = 8;
+          for (let x = 8; x < W - 8 - seg; x += seg) {
+            const y = hY(x), yr = hY(x + seg), yl = hY(x - seg);
+            const bOK = (y - yr) / seg <= CS, rOK = (y - yl) / seg <= CS;
+            g.strokeStyle = (bOK && rOK) ? '#b483f0' : bOK ? '#5aa9e6' : rOK ? '#e6685a' : '#33384b';
+            g.shadowColor = g.strokeStyle; g.shadowBlur = 6;
+            g.beginPath(); g.moveTo(x, y); g.lineTo(x + seg, yr); g.stroke();
+          }
+          g.shadowBlur = 0;
+          for (const s of sold) { const x = 12 + s.x * (W - 24); g.fillStyle = s.c; g.beginPath(); g.arc(x, hY(x) - 4, 2.6, 0, 6.28); g.fill(); }
+          for (const tx of [40, W - 40]) { g.fillStyle = '#cdd6e6'; g.beginPath(); g.arc(tx, hY(tx) - 4, 5.2, 0, 6.28); g.fill(); }
+        }
+        function loop() { T += 1 / 60; scope(); requestAnimationFrame(loop); }
+        scope(); requestAnimationFrame(loop);
+      })();
+    </script>

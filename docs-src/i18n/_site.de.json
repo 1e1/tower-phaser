@@ -1,8 +1,8 @@
 {
-  "nav.home": "Startseite",
-  "nav.annex": "Anhänge",
+  "nav.home": "🏠 Startseite",
+  "nav.annex": "📎 Anhänge",
   "nav.math": "Mathe",
-  "nav.chapters": "Kapitel",
+  "nav.chapters": "📖 Kapitel",
   "level.legend": "Niveau",
   "level.d.label": "Einstieg",
   "level.d.sub": "für Anfänger",

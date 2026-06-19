@@ -3,6 +3,16 @@
 # --- Build stage: compile the single-page bundle with Vite ---
 FROM node:24-alpine AS build
 WORKDIR /app
+# .git is excluded from the build context (.dockerignore), so the on-screen build
+# stamp can't be derived from git here. Pass these from the host so the deployed
+# build shows the real version/commit. Build with, e.g.:
+#   docker build \
+#     --build-arg BUILD_TAG="$(git describe --tags --always)" \
+#     --build-arg BUILD_SHA="$(git rev-parse --short HEAD)" .
+ARG BUILD_TAG=""
+ARG BUILD_SHA=""
+ENV BUILD_TAG=$BUILD_TAG
+ENV BUILD_SHA=$BUILD_SHA
 COPY package*.json ./
 RUN npm ci
 COPY . .

@@ -22,9 +22,24 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        /* Anchor for the CRT band layers (snow / scanlines) injected by
+           src/ui/screenFrame.js. The bands themselves stay "void" per the rule. */
+        position: relative;
+        background: #0b1020;
       }
       canvas {
         display: block;
+      }
+      /* Bezel: the 16:9 frame reads as a seated screen — a clean rim in native (at
+         the window edge) and a frame against the bands otherwise. Only OUTSET
+         shadows are kept: inset shadows sit under the opaque canvas bitmap and
+         would never show. */
+      #game canvas {
+        border-radius: 3px;
+        box-shadow:
+          0 0 0 1px rgba(125, 160, 220, 0.22),
+          0 0 0 4px rgba(11, 16, 32, 0.9),
+          0 24px 80px 10px rgba(0, 0, 0, 0.6);
       }
     </style>
   </head>

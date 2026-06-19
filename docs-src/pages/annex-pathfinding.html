@@ -1,0 +1,170 @@
+    <main class="wrap">
+      <section class="sheet">
+        <h2><span class="num">?</span>{{s0.h2}}</h2>
+        <p class="lead">{{s0.lead}}</p>
+        <p>{{s0.p1}}</p>
+        <div class="sim">
+          <h4>{{s0.sim.title}}</h4>
+          <canvas id="scope" width="720" height="150"></canvas>
+          <div class="hint">{{s0.sim.hint}}</div>
+        </div>
+        <p>{{s0.p2}}</p>
+        <div class="callout nerd">{{s0.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">1</span>{{s1.h2}}</h2>
+        <p>{{s1.p1}}</p>
+        <p>{{s1.p2}}</p>
+        <div class="callout warn">{{s1.callout.warn}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">2</span>{{s2.h2}}</h2>
+        <p>{{s2.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s2.code.cap}}</figcaption>
+<pre><span class="c">{{s2.code.c1}}</span>
+<span class="k">function</span> <span class="f">surfacesAt</span>(x) {
+  <span class="k">const</span> t = <span class="f">terrAt</span>(x), out = [t];     <span class="c">{{s2.code.c2}}</span>
+  <span class="k">for</span> (<span class="k">const</span> p <span class="k">of</span> structures)
+    <span class="k">if</span> (x &gt;= p.x0 &amp;&amp; x &lt;= p.x1 &amp;&amp; p.y &lt;= t + <span class="s">2</span>) out.<span class="f">push</span>(p.y);  <span class="c">{{s2.code.c3}}</span>
+  <span class="k">return</span> out;
+}</pre>
+        </figure>
+        <p>{{s2.p2}}</p>
+        <figure class="diagram" aria-label="{{s2.fig.alt}}">
+          <svg viewBox="0 0 720 230" width="720" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <!-- terrain -->
+            <path d="M20,150 C120,110 200,180 280,150 C340,128 360,90 420,90 L520,90 C560,90 600,160 700,150 L700,210 L20,210 Z" fill="#eef3fb" stroke="#9bb4d6" stroke-width="2"/>
+            <!-- plank (bridge) over the dip -->
+            <rect x="300" y="118" width="120" height="6" rx="2" fill="#9a6b3a" stroke="#5e3f20"/>
+            <!-- nodes ground -->
+            <g fill="#7b57c8">
+              <circle cx="100" cy="138" r="4"/><circle cx="180" cy="160" r="4"/><circle cx="260" cy="150" r="4"/>
+              <circle cx="340" cy="150" r="4"/><circle cx="420" cy="90" r="4"/><circle cx="520" cy="90" r="4"/><circle cx="600" cy="132" r="4"/>
+            </g>
+            <!-- nodes plank (a 2nd surface above ground) -->
+            <g fill="#46b6e0"><circle cx="340" cy="118" r="4"/><circle cx="420" cy="118" r="4"/></g>
+            <!-- passable edge (violet) and a wall edge (red) -->
+            <line x1="100" y1="138" x2="180" y2="160" stroke="#b483f0" stroke-width="2.5"/>
+            <line x1="180" y1="160" x2="260" y2="150" stroke="#b483f0" stroke-width="2.5"/>
+            <line x1="340" y1="118" x2="420" y2="118" stroke="#b483f0" stroke-width="2.5"/>
+            <line x1="340" y1="150" x2="420" y2="90" stroke="#e65a5a" stroke-width="2.5" stroke-dasharray="4 3"/>
+            <text x="370" y="80" text-anchor="middle" font-size="12" fill="#b14a2f">{{s2.fig.wall}}</text>
+            <text x="360" y="112" text-anchor="middle" font-size="12" fill="#3a7fa8">{{s2.fig.plank}}</text>
+            <text x="170" y="200" text-anchor="middle" font-size="12" fill="#6a4fb0">{{s2.fig.ground}}</text>
+          </svg>
+          <figcaption>{{s2.fig.cap}}</figcaption>
+        </figure>
+        <div class="callout tip">{{s2.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">3</span>{{s3.h2}}</h2>
+        <p>{{s3.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s3.code.cap}}</figcaption>
+<pre><span class="k">for</span> (<span class="k">const</span> y2 <span class="k">of</span> <span class="f">surfacesAt</span>(x2)) {
+  <span class="k">const</span> up = cy - y2;
+  <span class="k">if</span> (up &gt; SU + <span class="s">1</span>) <span class="k">continue</span>;                       <span class="c">{{s3.code.c1}}</span>
+  <span class="k">const</span> drop = y2 - cy;
+  <span class="k">let</span> cost = STEP + (drop &gt; SU ? drop*<span class="s">0.6</span> : <span class="s">0</span>)     <span class="c">{{s3.code.c2}}</span>
+                  + (up &gt; <span class="s">0</span> ? up*<span class="s">0.25</span> : <span class="s">0</span>);
+  <span class="k">if</span> (density) cost += density[i2]*congW;          <span class="c">{{s3.code.c4}}</span>
+  <span class="k">if</span> (jitter)  cost += <span class="f">hash</span>(jseed, i2)*jitter*STEP;  <span class="c">{{s3.code.c5}}</span>
+  <span class="c">{{s3.code.c3}}</span>
+}</pre>
+        </figure>
+        <p>{{s3.p2}}</p>
+        <p>{{s3.p3}}</p>
+        <div class="callout nerd">{{s3.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">4</span>{{s4.h2}}</h2>
+        <p>{{s4.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s4.code.cap}}</figcaption>
+<pre><span class="c">{{s4.code.c1}}</span>
+<span class="k">let</span> ny = plannedY, bd = <span class="s">Infinity</span>;
+<span class="k">for</span> (<span class="k">const</span> yy <span class="k">of</span> <span class="f">surfacesAt</span>(s.x)) {
+  <span class="k">const</span> d = <span class="f">Math.abs</span>(yy - plannedY);
+  <span class="k">if</span> (d &lt; bd) { bd = d; ny = yy; }     <span class="c">{{s4.code.c2}}</span>
+}
+s.y = ny;                            <span class="c">{{s4.code.c3}}</span></pre>
+        </figure>
+        <p>{{s4.p2}}</p>
+        <div class="callout tip">{{s4.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">5</span>{{s5.h2}}</h2>
+        <p>{{s5.p1}}</p>
+        <figure class="code">
+          <figcaption>{{s5.code.cap}}</figcaption>
+<pre><span class="c">{{s5.code.c1}}</span>
+<span class="k">if</span> (!s.path || s.navVer !== this.navVer
+    || s.pi &gt;= s.path.length
+    || (s.rep = (s.rep||<span class="s">0</span>) + dt) &gt; <span class="s">0.7</span>) {   <span class="c">{{s5.code.c2}}</span>
+  s.rep = <span class="s">0</span>; s.navVer = this.navVer;
+  s.path = this.<span class="f">findPath</span>(s.x, s.y, goalX);   <span class="c">{{s5.code.c3}}</span>
+}</pre>
+        </figure>
+        <p>{{s5.p2}}</p>
+        <div class="callout nerd">{{s5.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">6</span>{{s6.h2}}</h2>
+        <p>{{s6.p1}}</p>
+        <figure class="diagram" aria-label="{{s6.fig.alt}}">
+          <svg viewBox="0 0 720 170" width="720" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, sans-serif">
+            <rect x="20" y="24" width="320" height="120" rx="12" fill="#fff0e6" stroke="#d8552f" stroke-width="2"/>
+            <text x="180" y="52" text-anchor="middle" font-weight="800" fill="#2b2535">{{s6.fig.naiveTitle}}</text>
+            <text x="180" y="84" text-anchor="middle" font-size="14" fill="#5b5470">O(V²)</text>
+            <text x="180" y="110" text-anchor="middle" font-size="13" fill="#b14a2f">{{s6.fig.naiveNote}}</text>
+            <rect x="380" y="24" width="320" height="120" rx="12" fill="#ebf8e6" stroke="#3f8f2f" stroke-width="2"/>
+            <text x="540" y="52" text-anchor="middle" font-weight="800" fill="#2b2535">{{s6.fig.stagTitle}}</text>
+            <text x="540" y="84" text-anchor="middle" font-size="14" fill="#5b5470">{{s6.fig.stagFormula}}</text>
+            <text x="540" y="110" text-anchor="middle" font-size="13" fill="#2f7a2f">{{s6.fig.stagNote}}</text>
+          </svg>
+          <figcaption>{{s6.fig.cap}}</figcaption>
+        </figure>
+        <div class="callout tip">{{s6.callout.tip}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">7</span>{{s7.h2}}</h2>
+        <p>{{s7.p1}}</p>
+        <ul>
+          <li>{{s7.li1}}</li>
+          <li>{{s7.li2}}</li>
+          <li>{{s7.li3}}</li>
+        </ul>
+        <div class="callout nerd">{{s7.callout.nerd}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">8</span>{{s8.h2}}</h2>
+        <p>{{s8.p1}}</p>
+        <ul>
+          <li>{{s8.li1}}</li>
+          <li>{{s8.li2}}</li>
+          <li>{{s8.li3}}</li>
+        </ul>
+        <div class="callout warn">{{s8.callout.warn}}</div>
+      </section>
+
+      <section class="sheet">
+        <h2><span class="num">9</span>{{s9.h2}}</h2>
+        <div class="callout try">{{s9.callout.try}}</div>
+        <p>{{s9.p1}}</p>
+        <p class="cta-row center">
+          <a class="pill cta" href="../assets/pathfinding-lab.html" target="_blank" rel="noopener">{{s9.cta}}</a>
+        </p>
+        <p class="cta-row center">
+          <a class="pill cta" href="index.html">{{s9.backHome}}</a>
+        </p>
+      </section>
+    </main>

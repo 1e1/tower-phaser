@@ -5,6 +5,14 @@ import { encodeSnapshot } from '../src/net/snapshotCodec.js';
 const TICK_MS = 33; // ~30 Hz authoritative step and broadcast rate
 const DT = TICK_MS / 1000;
 
+// Coarse battlefield terrain (~324 B) only changes on a dig/fill/crater, yet it
+// rode every 30 Hz frame. We now resend it only when it actually changes, plus a
+// cheap keyframe every TERRAIN_KEYFRAME frames so a spectator who joined during a
+// static stretch still gets the real relief within ~1 s. The client already keeps
+// the last terrain when a frame carries none (TvScene: terrain.length guard), so
+// this is a server-only change — wire format and MAGIC are untouched.
+const TERRAIN_KEYFRAME = 30; // frames (~1 s at 30 Hz)
+
 // How long a vacated player slot is held open after a disconnect, so a phone
 // that locked/slept (and dropped its socket) can reconnect into the same seat
 // instead of losing it. After this, the slot is freed (promoted/reset) as usual.
@@ -48,8 +56,13 @@ export default class Room {
     this.tvGraceTimer = null;
     // each player: { socket, name, token, isConfigOwner, disconnected, graceTimer }
     this.players = [null, null];
+    // The optional third seat — the Intendant of the living world (slot 2). Held
+    // PARALLEL to the two duel seats so the artillery 2-player machinery (camp
+    // pick, config owner, seat swaps) is untouched. Same record shape minus the
+    // lobby roles: { socket, name, token, disconnected, graceTimer }.
+    this.intendant = null;
     this.waiting = []; // each: { socket, name }
-    this.config = { wins: 3, biomeId: BIOMES[0].id, hp: 1, turbo: false, cadence: 5 };
+    this.config = { wins: 3, biomeId: BIOMES[0].id, hp: 1, turbo: false, cadence: 5, livingBattlefield: false, seed: null };
     this.postmatch = false; // rematch lobby (sim kept frozen at MATCH_END)
     // --- lobby (pre-match and rematch) ---
     this.setup = true; // true until the first match starts
@@ -102,6 +115,7 @@ export default class Room {
       this.tvs.size === 0 &&
       !this.tvGraceTimer &&
       this.players.every((p) => !p) &&
+      !this.intendant &&
       this.waiting.length === 0
     );
   }
@@ -146,6 +160,16 @@ export default class Room {
   // Returns { role, slot?, token?, ... } describing where the participant landed.
   addParticipant(socket, name) {
     const slot = this.players.findIndex((p) => p === null);
+    // Living-battlefield mode: once both duel seats are filled, the next arrival
+    // becomes the Intendant (slot 2) rather than queueing — and hot-joins the live
+    // round (assignIntendant → syncIntendantPresence parachutes him from the sky).
+    // A merely HELD seat (the previous Intendant disconnected and is still inside
+    // his reconnect grace) counts as free for a brand-new arrival: otherwise a
+    // fresh P3 with no token is stranded in the spectator queue mid-round.
+    if (slot === -1 && this.config.livingBattlefield
+        && (!this.intendant || this.intendant.disconnected)) {
+      return this.assignIntendant(socket, name);
+    }
     if (slot !== -1) {
       const token = this.assignPlayer(slot, socket, name);
       return {
@@ -190,6 +214,62 @@ export default class Room {
     return token;
   }
 
+  // --- Intendant (third seat) ---------------------------------------------
+
+  assignIntendant(socket, name) {
+    // Clear any stale held record (a disconnected predecessor still in grace) so
+    // its grace timer can't later fire and evict the new occupant.
+    if (this.intendant?.graceTimer) clearTimeout(this.intendant.graceTimer);
+    const token = newToken();
+    this.intendant = { socket, name, token, disconnected: false, graceTimer: null };
+    socket.role = 'player';
+    socket.slot = 2;
+    socket.token = token;
+    this.syncIntendantPresence();
+    this.sendRoster();
+    // inMatch tells the client whether to enter the Intendant controller NOW (a
+    // mid-match hot-join → parachute) or WAIT in the lobby until the match starts
+    // (so controllers are handed to everyone at once, and the owner can still
+    // cancel living mode without leaving a phantom Intendant pad).
+    return { role: 'player', slot: 2, token, setup: this.setup, inMatch: !!this.sim, livingBattlefield: true };
+  }
+
+  // Mirror the Intendant's seat into the living-world sim. §6bis: the world is
+  // "present" as long as the seat is HELD — including the <10s reconnect grace,
+  // during which his automatic actions (auto-attack, soldiers in play) keep
+  // running. It only goes dormant (truce + soldiers desert) once the seat is
+  // released for real (the record is gone).
+  syncIntendantPresence() {
+    if (this.sim && this.sim.battlefield) this.sim.battlefield.setPresent(!!this.intendant);
+  }
+
+  // A waiting spectator takes over a freed Intendant seat (4th-player priority
+  // also covers the third seat). Mirrors promoteInto for the duel slots.
+  promoteIntoIntendant() {
+    if (!this.config.livingBattlefield || this.intendant) return;
+    const next = this.waiting.shift();
+    if (!next) return;
+    const token = newToken();
+    this.intendant = { socket: next.socket, name: next.name, token, disconnected: false, graceTimer: null };
+    next.socket.role = 'player';
+    next.socket.slot = 2;
+    next.socket.token = token;
+    this.syncIntendantPresence();
+    this.send(next.socket, { t: 'promote', player: 2, name: next.name, token });
+  }
+
+  handleIntendant(socket, input) {
+    if (!this.intendant || socket !== this.intendant.socket) return;
+    if (this.sim && this.sim.battlefield) this.sim.battlefield.setIntendantInput(input || {});
+  }
+
+  handleIntendantBuild(socket, type) {
+    if (!this.intendant || socket !== this.intendant.socket) return;
+    if (!this.sim || !this.sim.battlefield) return;
+    if (type === 'stair') this.sim.battlefield.buildStair();
+    else if (type === 'bridge') this.sim.battlefield.buildBridge();
+  }
+
   maybeStart() {
     if (this.sim || this.postmatch) return;
     if (this.setup) {
@@ -210,6 +290,14 @@ export default class Room {
   start() {
     if (!this.bothFilled()) return false;
     this.postmatch = false;
+    // Match seed: replay a chosen one (config.seed) or mint a fresh 32-bit seed.
+    // Logged so a match can be reproduced exactly by feeding it back as config.seed.
+    const seed = (this.config.seed != null)
+      ? (this.config.seed >>> 0 || 1)
+      : ((Math.random() * 0x100000000) >>> 0 || 1);
+    this.matchSeed = seed;
+    this._lastBfTerrain = null; // force a full terrain on the first frame of the match
+    console.log(`[room ${this.code}] match seed=${seed}`);
     this.sim = new Simulation({
       names: [this.players[0].name, this.players[1].name],
       winsNeeded: this.config.wins,
@@ -217,8 +305,11 @@ export default class Room {
       maxHp: this.config.hp,
       turbo: this.config.turbo,
       cadence: this.config.cadence,
+      livingBattlefield: this.config.livingBattlefield,
+      seed,
     });
     this.sim.start();
+    this.syncIntendantPresence();
     this.startLoop();
     this.sendRoster();
     return true;
@@ -236,7 +327,25 @@ export default class Room {
     // Catches both a natural finish and a forced end (player left mid-match).
     if (this.sim.phase === PHASE.MATCH_END && !this.postmatch) this.enterPostmatch();
     // The hot path: a binary frame instead of JSON (see snapshotCodec).
-    this.broadcastRaw(encodeSnapshot(this.sim.snapshot(), events));
+    const snap = this.sim.snapshot();
+    this.gateTerrain(snap);
+    this.broadcastRaw(encodeSnapshot(snap, events));
+  }
+
+  // Blank out the battlefield terrain in frames where it is unchanged (the common
+  // case at 30 Hz), keeping a periodic keyframe for late joiners. Mutates the
+  // fresh per-tick snapshot in place; an empty array encodes as a 2-byte length-0
+  // block the client already treats as "keep current terrain".
+  gateTerrain(snap) {
+    const bf = snap.battlefield;
+    if (!bf) return;
+    const cur = bf.terrain || [];
+    const last = this._lastBfTerrain;
+    let same = last && last.length === cur.length;
+    for (let i = 0; same && i < cur.length; i += 1) if (last[i] !== cur[i]) same = false;
+    this._terrainTick = ((this._terrainTick || 0) + 1) % TERRAIN_KEYFRAME;
+    if (same && this._terrainTick !== 0) { bf.terrain = []; return; }
+    this._lastBfTerrain = cur; // retain this tick's fresh array as the new baseline
   }
 
   // Match finished: freeze the sim at MATCH_END (the TV keeps the result, phones
@@ -335,6 +444,31 @@ export default class Room {
       if (cfg.hp === 1 || cfg.hp === 2 || cfg.hp === 3) this.config.hp = cfg.hp;
       if (typeof cfg.turbo === 'boolean') this.config.turbo = cfg.turbo;
       if (Number.isFinite(cfg.cadence)) this.config.cadence = cfg.cadence;
+      if (typeof cfg.livingBattlefield === 'boolean') {
+        const wasOn = this.config.livingBattlefield;
+        this.config.livingBattlefield = cfg.livingBattlefield;
+        // Enabling living-battlefield opens the third seat: a spectator who
+        // joined a full room while the mode was OFF was parked in the queue and
+        // would otherwise be stranded on the spectator (TV-replica) view. Pull
+        // the first waiter into the Intendant chair now.
+        if (cfg.livingBattlefield && !wasOn) this.promoteIntoIntendant();
+        // Cancelling living-battlefield in the lobby releases a waiting Intendant
+        // so no phantom controller lingers — he is sent back to a spectator.
+        if (!cfg.livingBattlefield && wasOn && this.intendant) {
+          const sock = this.intendant.socket;
+          if (this.intendant.graceTimer) clearTimeout(this.intendant.graceTimer);
+          this.intendant = null;
+          this.syncIntendantPresence();
+          if (sock) {
+            sock.role = 'spectator';
+            sock.slot = undefined;
+            this.waiting.push({ socket: sock, name: sock.name || 'Player' });
+            this.send(sock, { t: 'demoted' });
+          }
+        }
+      }
+      // Replay a specific match seed (null clears it → next match mints a fresh one).
+      if (cfg.seed === null || Number.isFinite(cfg.seed)) this.config.seed = cfg.seed;
     }
     this.sendRoster();
   }
@@ -412,6 +546,43 @@ export default class Room {
     this.maybeRematch();
   }
 
+  // Voluntary "step back": a seated player cedes their seat to the next waiting
+  // participant and re-queues at the BACK of the list — the "a player may move
+  // back, never forward" rule. Lobby/postmatch only, and only when someone is
+  // actually waiting to take over (otherwise it would just empty the seat). The
+  // config owner can't step back (a promoted player never inherits ownership —
+  // Room.promoteInto — so none would remain; the owner uses Leave instead). The
+  // stepper drops to the shared spectator view exactly like a fresh full-room
+  // join; the promoted player takes the freed seat as on a disconnect.
+  stepBack(socket) {
+    if (!this.setup && !this.postmatch) return;
+    if (this.waiting.length === 0) return;
+    // Intendant seat (slot 2 — never a config owner).
+    if (this.intendant && this.intendant.socket === socket) {
+      if (this.intendant.graceTimer) clearTimeout(this.intendant.graceTimer);
+      const { name } = this.intendant;
+      this.intendant = null;
+      socket.slot = undefined; socket.role = 'spectator'; socket.token = undefined;
+      this.waiting.push({ socket, name });
+      this.promoteIntoIntendant();
+      this.syncIntendantPresence();
+      this.send(socket, { t: 'joined', code: this.code, role: 'spectator', queue: this.waiting.length });
+      this.sendRoster();
+      return;
+    }
+    // Duel seat — but not the lobby's config owner.
+    const slot = this.players.findIndex((p) => p && p.socket === socket);
+    if (slot === -1 || this.players[slot].isConfigOwner) return;
+    if (this.players[slot].graceTimer) clearTimeout(this.players[slot].graceTimer);
+    const { name } = this.players[slot];
+    this.players[slot] = null;
+    socket.slot = undefined; socket.role = 'spectator'; socket.token = undefined;
+    this.waiting.push({ socket, name });
+    this.promoteInto(slot);
+    this.send(socket, { t: 'joined', code: this.code, role: 'spectator', queue: this.waiting.length });
+    this.sendRoster();
+  }
+
   // --- leaving / going home ------------------------------------------------
 
   // Escape-to-home / explicit disconnect. A host TV closes the whole room (all
@@ -429,6 +600,17 @@ export default class Room {
       this.dispose();
       return;
     }
+    // The Intendant chose to leave: free the seat immediately (no grace hold).
+    if (this.intendant && this.intendant.socket === socket) {
+      if (this.intendant.graceTimer) clearTimeout(this.intendant.graceTimer);
+      this.intendant = null;
+      if (socket) { socket.slot = undefined; socket.role = 'spectator'; socket.room = null; }
+      this.promoteIntoIntendant(); // a waiting spectator may take the third seat
+      this.syncIntendantPresence();
+      this.sendRoster();
+      if (this.empty()) this.dispose();
+      return;
+    }
     this.dropParticipant(socket, false);
   }
 
@@ -437,6 +619,21 @@ export default class Room {
   // A socket dropped (close/terminate). A player keeps their seat for GRACE_MS
   // so a reconnect can reclaim it; everyone else is removed at once.
   removeSocket(socket) {
+    // The Intendant holds his seat for GRACE_MS like a duel player; while held,
+    // the living world reverts to a pure duel (setPresent(false)).
+    if (this.intendant && this.intendant.socket === socket) {
+      const it = this.intendant;
+      it.disconnected = true;
+      it.socket = null;
+      if (it.graceTimer) clearTimeout(it.graceTimer);
+      it.graceTimer = setTimeout(() => this.dropIntendant(it.token), GRACE_MS);
+      // Freeze his held inputs so the avatar stops moving/terraforming during the
+      // grace, but he stays present (auto-attack continues) until it expires.
+      if (this.sim && this.sim.battlefield) this.sim.battlefield.setIntendantInput({ left: false, right: false, up: false, down: false, jump: false, dig: false, fill: false, flat: false });
+      this.sendRoster();
+      if (this.empty()) this.dispose();
+      return;
+    }
     const i = this.players.findIndex((p) => p && p.socket === socket);
     if (i !== -1) {
       const p = this.players[i];
@@ -459,6 +656,18 @@ export default class Room {
       return;
     }
     this.waiting = this.waiting.filter((w) => w.socket !== socket);
+    this.sendRoster();
+    if (this.empty()) this.dispose();
+  }
+
+  // The Intendant's grace expired (or he left): free the third seat. The duel
+  // carries on as a plain 2-player match (the world has already gone dormant).
+  dropIntendant(token) {
+    if (!this.intendant || this.intendant.token !== token) return; // already reclaimed
+    if (this.intendant.graceTimer) clearTimeout(this.intendant.graceTimer);
+    this.intendant = null;
+    this.promoteIntoIntendant(); // a waiting spectator may take the third seat
+    this.syncIntendantPresence();
     this.sendRoster();
     if (this.empty()) this.dispose();
   }
@@ -486,7 +695,14 @@ export default class Room {
         socket.role = 'spectator';
       }
       this.promoteInto(i); // a waiting spectator takes over if any
-      if (!this.players[i] && this.sim) this.resetToLobby();
+      if (!this.players[i] && this.sim) {
+        // §6bis: in a 3-player living-battlefield match with the Intendant still
+        // present, a vacated duel seat (no replacement) razes that tower and ends
+        // the match (the other duelist wins; P3 is then ranked, tie→P3). Plain
+        // 2-player keeps the existing abort-to-lobby behaviour.
+        if (this.sim.battlefield && this.intendant && !this.intendant.disconnected) this.sim.forfeit(i);
+        else this.resetToLobby();
+      }
     }
     if (socket && !fromGrace) socket.room = null;
     this.sendRoster();
@@ -497,6 +713,22 @@ export default class Room {
   // success; false means the grace window had already expired (caller falls back
   // to a fresh join).
   rejoin(socket, token, name) {
+    // Reclaim the held Intendant seat first (it lives outside this.players).
+    if (this.intendant && this.intendant.token === token && this.intendant.disconnected) {
+      const it = this.intendant;
+      if (it.graceTimer) { clearTimeout(it.graceTimer); it.graceTimer = null; }
+      it.socket = socket;
+      it.disconnected = false;
+      if (name) it.name = name;
+      socket.room = this;
+      socket.role = 'player';
+      socket.slot = 2;
+      socket.token = token;
+      this.syncIntendantPresence();
+      this.send(socket, { t: 'rejoined', code: this.code, slot: 2, token, inMatch: !!this.sim, livingBattlefield: true });
+      this.sendRoster();
+      return true;
+    }
     const i = this.players.findIndex((p) => p && p.token === token && p.disconnected);
     if (i === -1) return false;
     const p = this.players[i];
@@ -547,6 +779,10 @@ export default class Room {
         reconnecting: !!p?.disconnected,
         isConfigOwner: !!p?.isConfigOwner,
       })),
+      intendant: this.intendant
+        ? { name: this.intendant.name, connected: !this.intendant.disconnected, reconnecting: this.intendant.disconnected }
+        : null,
+      livingBattlefield: this.config.livingBattlefield,
       queue: this.waiting.length,
     };
   }
@@ -573,6 +809,7 @@ export default class Room {
     const sockets = [
       ...this.tvs,
       ...this.players.filter((p) => p && p.socket).map((p) => p.socket),
+      ...(this.intendant && this.intendant.socket ? [this.intendant.socket] : []),
       ...this.waiting.map((w) => w.socket),
     ];
     for (const s of sockets) {
@@ -588,6 +825,7 @@ export default class Room {
     this.players.forEach((p) => {
       if (p?.graceTimer) clearTimeout(p.graceTimer);
     });
+    if (this.intendant?.graceTimer) clearTimeout(this.intendant.graceTimer);
     this.onEmpty(this.code);
   }
 }

@@ -5,6 +5,7 @@ import BootScene from './scenes/BootScene.js';
 import LobbyScene from './scenes/LobbyScene.js';
 import TvScene from './scenes/TvScene.js';
 import ControllerScene from './scenes/ControllerScene.js';
+import IntendantScene from './scenes/IntendantScene.js';
 import SetupScene from './scenes/SetupScene.js';
 import GameScene from './scenes/GameScene.js';
 import ResultScene from './scenes/ResultScene.js';
@@ -29,6 +30,7 @@ const config = {
     LobbyScene,
     TvScene,
     ControllerScene,
+    IntendantScene,
     SetupScene,
     GameScene,
     ResultScene,

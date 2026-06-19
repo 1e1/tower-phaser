@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Battlefield SFX Lab — bruitages 2.0.0</title>
+<style>
+  :root{
+    --ground:#161d28; --panel:#1f2a3a; --panel2:#192230; --text:#e8e0cf; --muted:#93a0b2;
+    --line:rgba(232,224,207,.12); --accent:#f0a830; --accent-dim:rgba(240,168,48,.16);
+    --new:#f0a830; --reuse:#5b9bd5; --chair:#d07a8a; --bois:#c79a5b;
+    --display:"Optima","Candara","Gill Sans","Trebuchet MS",sans-serif;
+    --body:-apple-system,system-ui,"Segoe UI",sans-serif; --mono:"Menlo","SF Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--text);font-family:var(--body);line-height:1.5;
+    background-image:radial-gradient(120% 70% at 50% -10%,rgba(240,168,48,.05),transparent 60%)}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 22px 70px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);margin:12px 0 0;line-height:1}
+  .lede{color:var(--muted);max-width:70ch;margin:12px 0 0;font-size:14.5px}
+  .lede code{font-family:var(--mono);color:var(--text);font-size:13px}
+  .toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    margin:24px 0 4px;padding:12px 16px;background:rgba(22,29,40,.92);backdrop-filter:blur(6px);
+    border:1px solid var(--line);border-radius:8px}
+  .toolbar .grp{display:flex;align-items:center;gap:9px}
+  .toolbar label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  h2{font-family:var(--display);font-weight:600;font-size:23px;margin:38px 0 4px;border-bottom:1px solid var(--line);padding-bottom:8px}
+  h2 small{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-left:10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;margin-top:14px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;padding:15px 16px 14px;display:flex;flex-direction:column}
+  .card .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .card h3{font-family:var(--display);font-weight:600;font-size:17px;margin:0}
+  .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;white-space:nowrap}
+  .tag.new{background:var(--accent-dim);color:var(--accent)}
+  .tag.reuse{background:rgba(91,155,213,.16);color:var(--reuse)}
+  .tag.dep{background:rgba(205,90,90,.18);color:#dd8080}
+  .card.dep{opacity:.5;filter:grayscale(.45)}
+  .card.dep h3{text-decoration:line-through;text-decoration-color:rgba(221,128,128,.7)}
+  .dep-note{font-family:var(--mono);font-size:11px;color:#dd8080;margin:-2px 0 10px}
+  .dep-note b{color:#f0a8a8}
+  .todo-note{font-family:var(--mono);font-size:11px;color:var(--reuse);margin:-2px 0 10px}
+  .tag.keep{background:rgba(120,190,120,.18);color:#86c486}
+  .card.keep{border-left:3px solid #6fae6f}
+  .keep-note{font-family:var(--mono);font-size:11px;color:#86c486;margin:-2px 0 10px}
+  .card .desc{color:var(--muted);font-size:12px;margin:6px 0 10px;min-height:30px}
+  .card .desc code{font-family:var(--mono);font-size:11px;color:var(--text)}
+  .sliders{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+  .sl{display:grid;grid-template-columns:64px 1fr 50px;align-items:center;gap:8px}
+  .sl label{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  .sl output{font-family:var(--mono);font-size:10.5px;color:var(--text);text-align:right}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:4px;background:var(--line);border-radius:4px;outline:none;width:100%}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:var(--accent);cursor:pointer}
+  .actions{display:flex;gap:8px;margin-top:auto}
+  button.play{flex:1;font-family:var(--body);font-size:14px;font-weight:600;color:#241704;background:var(--accent);
+    border:0;border-radius:5px;padding:9px;cursor:pointer;transition:background .15s,transform .05s}
+  button.play:hover{background:#ffbb47}
+  button.play:active{transform:translateY(1px)}
+  button.copy{font-family:var(--mono);font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:5px;padding:0 11px;cursor:pointer}
+  button.copy:hover{color:var(--text);border-color:rgba(232,224,207,.3)}
+  button.copy.ok{color:var(--accent);border-color:var(--accent)}
+  .note{margin-top:30px;color:var(--muted);font-size:12.5px;max-width:80ch;line-height:1.6;padding-left:14px;border-left:2px solid var(--line)}
+  .note code{font-family:var(--mono);color:var(--text);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Champ de bataille vivant — labo de bruitage · 2.0.0</div>
+  <h1>Battlefield SFX Lab</h1>
+  <p class="lede">Prototypage et tuning des bruitages manquants pour les soldats &amp; l'Intendant. Tout est synthétisé en Web Audio avec les mêmes primitives que <code>src/systems/Sfx.js</code> (oscillateurs + bruit filtré, aucun asset) → réglages portables tels quels. Ajuste les sliders, écoute, puis <b>Copier JSON</b>. Checklist : <code>design/battlefield-bruitages.md</code>.</p>
+
+  <div class="toolbar">
+    <div class="grp"><label>Volume</label><input type="range" id="master" min="0" max="1" step="0.01" value="0.5" style="width:120px"></div>
+    <div class="grp"><button class="copy" id="copyall">Copier TOUS les réglages</button></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>NEW (à composer)</span>
+      <span><i style="background:var(--reuse)"></i>REUSE (existant)</span>
+    </div>
+  </div>
+
+  <div id="root"></div>
+
+  <p class="note">Rappel d'archi : <b>« passage du projectile »</b> doit en jeu réutiliser <code>whistles()</code> (polyphonique, indexé par id) — ici c'est un one-shot d'audition. <b>Spatialisation</b> : chaque émetteur passe par <code>depth → tilt → pan</code> et est capté par le micro de l'acteur (tour fixe pour les soldats, <b>avatar mobile</b> pour l'Intendant). Les sons <span style="color:var(--chair)">chair</span> et <span style="color:var(--bois)">bois</span> sont les nouveaux timbres que le moteur n'a pas encore.</p>
+</div>
+
+<script>
+"use strict";
+let actx=null, master=null;
+const masterEl=document.getElementById('master');
+function ctx(){
+  if(!actx){actx=new (window.AudioContext||window.webkitAudioContext)();
+    master=actx.createGain(); master.gain.value=parseFloat(masterEl.value); master.connect(actx.destination);}
+  if(actx.state==='suspended') actx.resume();
+  return actx;
+}
+masterEl.oninput=()=>{ if(master) master.gain.value=parseFloat(masterEl.value); };
+
+// ── primitives (mêmes que Sfx.js) ──────────────────────────────────────────
+function noise(dur){const c=ctx();const n=Math.floor(c.sampleRate*dur);const b=c.createBuffer(1,n,c.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;const s=c.createBufferSource();s.buffer=b;return s;}
+function biq(type,f,q){const c=ctx();const b=c.createBiquadFilter();b.type=type;b.frequency.value=f;if(q!=null)b.Q.value=q;return b;}
+function gain(v){const c=ctx();const g=c.createGain();g.gain.value=(v==null?0:v);return g;}
+// réverb synthétique (pour les versions « modernes ») + saturation douce
+let _rev=null,_revSend=null;
+function _impulse(dur,decay){const c=ctx();const n=Math.floor(c.sampleRate*dur);const b=c.createBuffer(2,n,c.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,decay);}return b;}
+function rev(){if(!_rev){const c=ctx();_rev=c.createConvolver();_rev.buffer=_impulse(1.8,2.6);_revSend=c.createGain();_revSend.gain.value=1;_revSend.connect(_rev);_rev.connect(master);}return _revSend;}
+function send(node,amt){if(!amt||amt<=0)return;const g=gain(amt);node.connect(g);g.connect(rev());}
+function shaper(k){const c=ctx();const ws=c.createWaveShaper();const n=1024;const cv=new Float32Array(n);
+  for(let i=0;i<n;i++){const x=i/(n-1)*2-1;cv[i]=(1+k)*x/(1+k*Math.abs(x));}ws.curve=cv;return ws;}
+
+// ── briques réutilisables (portées de Sfx.js) ──────────────────────────────
+function fxBoom(p){p=p||{};const c=ctx(),t=c.currentTime,vol=p.vol??0.9,pit=p.pitch??160;
+  const s=noise(0.35),lp=biq('lowpass',1800);lp.frequency.exponentialRampToValueAtTime(280,t+0.3);
+  const g=gain(vol);g.gain.exponentialRampToValueAtTime(0.001,t+0.32);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+0.35);
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(pit,t);o.frequency.exponentialRampToValueAtTime(50,t+0.25);
+  const og=gain(vol*0.9);og.gain.exponentialRampToValueAtTime(0.001,t+0.28);o.connect(og).connect(master);o.start(t);o.stop(t+0.3);
+  if(p.wheel){for(let i=0;i<4;i++){const tt=t+0.02+Math.random()*0.18;const b=noise(0.04);const hp=biq('highpass',1400);
+    const bg=gain(0.0001);bg.gain.exponentialRampToValueAtTime(0.12,tt+0.004);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.05);
+    b.connect(hp).connect(bg).connect(master);b.start(tt);b.stop(tt+0.06);}}}
+function fxExplosion(vol){const c=ctx(),t=c.currentTime;vol=vol??1;
+  const s=noise(0.55),lp=biq('lowpass',1200);lp.frequency.exponentialRampToValueAtTime(120,t+0.5);
+  const g=gain(Math.max(0.001,vol));g.gain.exponentialRampToValueAtTime(0.001,t+0.55);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+0.55);}
+function fxHit(){const c=ctx(),t=c.currentTime;fxExplosion(1);[880,1320].forEach((f,i)=>{const o=c.createOscillator();o.type='triangle';
+  o.frequency.setValueAtTime(f,t+i*0.04);const g=gain(0.5);g.gain.setValueAtTime(0.5,t+i*0.04);g.gain.exponentialRampToValueAtTime(0.001,t+0.4+i*0.04);
+  o.connect(g).connect(master);o.start(t+i*0.04);o.stop(t+0.45+i*0.04);});}
+function fxRubble(big){const c=ctx(),t=c.currentTime,dur=big?0.95:0.62;
+  const s=noise(dur),lp=biq('lowpass',700);lp.frequency.exponentialRampToValueAtTime(80,t+dur);
+  const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(big?1:0.8,t+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+dur);
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(42,t+(big?0.4:0.3));
+  const og=gain(big?0.85:0.7);og.gain.exponentialRampToValueAtTime(0.001,t+(big?0.44:0.34));o.connect(og).connect(master);o.start(t);o.stop(t+(big?0.46:0.36));
+  const bursts=big?8:5;for(let i=0;i<bursts;i++){const tt=t+0.04+Math.random()*dur*0.85;const b=noise(0.07);const hp=biq('highpass',1700);
+    const bg=gain(0.0001);bg.gain.exponentialRampToValueAtTime(0.3,tt+0.005);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.09);b.connect(hp).connect(bg).connect(master);b.start(tt);b.stop(tt+0.1);}}
+function fxWhizz(p){const c=ctx(),t=c.currentTime,dur=p.dur,f=p.freq,vol=p.vol;
+  const s=noise(dur),bp=biq('bandpass',f,p.q??8);
+  bp.frequency.setValueAtTime(f*0.85,t);bp.frequency.linearRampToValueAtTime(f*1.12,t+dur*0.5);bp.frequency.linearRampToValueAtTime(f*0.8,t+dur);
+  const g=gain(0.0001);g.gain.linearRampToValueAtTime(vol,t+dur*0.45);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(bp).connect(g).connect(master);s.start(t);s.stop(t+dur+0.02);}
+
+// ── timbres NOUVEAUX ────────────────────────────────────────────────────────
+function fxFlesh(p){const c=ctx(),t=c.currentTime;
+  const s=noise(p.dur),lp=biq('lowpass',420,0.8);const g=gain(0.0001);
+  g.gain.exponentialRampToValueAtTime(p.vol,t+0.004);g.gain.exponentialRampToValueAtTime(0.0001,t+p.dur);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+p.dur+0.02);
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(p.thud,t);o.frequency.exponentialRampToValueAtTime(Math.max(30,p.thud*0.5),t+p.dur);
+  const og=gain(p.vol*0.9);og.gain.exponentialRampToValueAtTime(0.0001,t+p.dur);o.connect(og).connect(master);o.start(t);o.stop(t+p.dur+0.02);
+  const s2=noise(0.08),bp=biq('bandpass',p.wet,3);const g2=gain(0.0001);
+  g2.gain.exponentialRampToValueAtTime(p.vol*0.5,t+0.004);g2.gain.exponentialRampToValueAtTime(0.0001,t+0.08);s2.connect(bp).connect(g2).connect(master);s2.start(t);s2.stop(t+0.1);}
+function fxVoice(p){const c=ctx(),t=c.currentTime;
+  const o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(p.pitch,t);o.frequency.exponentialRampToValueAtTime(Math.max(40,p.pitch*(p.drop??0.7)),t+p.dur);
+  const env=gain(0.0001);env.connect(master);
+  [[700,8],[1100,10],[2500,12]].forEach(([f,q])=>{const bp=biq('bandpass',f,q);const fg=gain(0.5);o.connect(bp).connect(fg).connect(env);});
+  env.gain.exponentialRampToValueAtTime(p.vol,t+0.02);env.gain.setValueAtTime(p.vol,t+p.dur*0.5);env.gain.exponentialRampToValueAtTime(0.0001,t+p.dur);
+  o.start(t);o.stop(t+p.dur+0.05);
+  if(p.vib){const lfo=c.createOscillator();lfo.frequency.value=6;const lg=gain(p.pitch*0.035);lfo.connect(lg).connect(o.frequency);lfo.start(t);lfo.stop(t+p.dur);}
+  const br=noise(p.dur),hp=biq('highpass',1200);const bg=gain(0.0001);bg.gain.exponentialRampToValueAtTime(p.vol*0.12,t+0.03);bg.gain.exponentialRampToValueAtTime(0.0001,t+p.dur);br.connect(hp).connect(bg).connect(master);br.start(t);br.stop(t+p.dur+0.02);}
+function fxMusket(p,at){const c=ctx(),t=(at??c.currentTime);
+  const s=noise(p.dur),hp=biq('highpass',p.bright);const g=gain(p.vol);g.gain.exponentialRampToValueAtTime(0.0001,t+p.dur);s.connect(hp).connect(g).connect(master);s.start(t);s.stop(t+p.dur+0.02);
+  const s2=noise(0.05),bp=biq('bandpass',1500,1);const g2=gain(p.vol*0.7);g2.gain.exponentialRampToValueAtTime(0.0001,t+0.05);s2.connect(bp).connect(g2).connect(master);s2.start(t);s2.stop(t+0.06);
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(p.body,t);o.frequency.exponentialRampToValueAtTime(Math.max(30,p.body*0.5),t+0.06);
+  const og=gain(p.vol*0.6);og.gain.exponentialRampToValueAtTime(0.0001,t+0.07);o.connect(og).connect(master);o.start(t);o.stop(t+0.08);}
+function fxWood(p){const c=ctx(),t=c.currentTime;
+  const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(70,t+0.18);
+  const og=gain(p.vol*0.7);og.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.connect(og).connect(master);o.start(t);o.stop(t+0.22);
+  for(let i=0;i<(p.n|0);i++){const tt=t+Math.random()*0.28;const b=noise(0.06);const bp=biq('bandpass',600+Math.random()*p.bright,3);
+    const bg=gain(0.0001);bg.gain.exponentialRampToValueAtTime(p.vol*(0.3+Math.random()*0.4),tt+0.003);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.07);
+    b.connect(bp).connect(bg).connect(master);b.start(tt);b.stop(tt+0.08);}}
+
+function fxShotgun(p,at){const c=ctx(),t=(at??c.currentTime);
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(p.body,t);o.frequency.exponentialRampToValueAtTime(Math.max(30,p.body*0.4),t+0.14);
+  const og=gain(p.vol*0.9);og.gain.exponentialRampToValueAtTime(0.001,t+0.16);o.connect(og).connect(master);o.start(t);o.stop(t+0.18);
+  const s=noise(p.dur),lp=biq('lowpass',2200);lp.frequency.exponentialRampToValueAtTime(500,t+p.dur);
+  const g=gain(p.vol);g.gain.exponentialRampToValueAtTime(0.001,t+p.dur);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+p.dur+0.02);
+  const s2=noise(0.04),hp=biq('highpass',p.bright);const g2=gain(p.vol*0.7);g2.gain.exponentialRampToValueAtTime(0.001,t+0.04);s2.connect(hp).connect(g2).connect(master);s2.start(t);s2.stop(t+0.05);}
+
+// ── versions MODERNES (sub + transient + saturation + réverb) ───────────────
+function fxCannonModern(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol;
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(p.sub,t);o.frequency.exponentialRampToValueAtTime(28,t+0.6);
+  const og=gain(vol);og.gain.exponentialRampToValueAtTime(0.001,t+0.7);o.connect(og).connect(master);send(og,rv);o.start(t);o.stop(t+0.72);
+  const s=noise(0.02),hp=biq('highpass',3000);const g=gain(vol*0.8);g.gain.exponentialRampToValueAtTime(0.001,t+0.02);s.connect(hp).connect(g).connect(master);s.start(t);s.stop(t+0.03);
+  const s2=noise(0.28),lp=biq('lowpass',1000),ws=shaper(6);const g2=gain(vol*0.7);g2.gain.exponentialRampToValueAtTime(0.001,t+0.28);s2.connect(lp).connect(ws).connect(g2).connect(master);send(g2,rv);s2.start(t);s2.stop(t+0.3);}
+function fxExplosionModern(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol;
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(80,t);o.frequency.exponentialRampToValueAtTime(24,t+0.7);
+  const og=gain(vol);og.gain.exponentialRampToValueAtTime(0.001,t+0.8);o.connect(og).connect(master);send(og,rv);o.start(t);o.stop(t+0.82);
+  const s=noise(0.45),lp=biq('lowpass',1500),ws=shaper(8);const g=gain(vol*0.9);g.gain.exponentialRampToValueAtTime(0.001,t+0.45);s.connect(lp).connect(ws).connect(g).connect(master);send(g,rv);s.start(t);s.stop(t+0.47);
+  const s2=noise(0.12),hp=biq('highpass',2200);const g2=gain(vol*0.5);g2.gain.exponentialRampToValueAtTime(0.001,t+0.12);s2.connect(hp).connect(g2).connect(master);s2.start(t);s2.stop(t+0.13);}
+function fxWhistleModern(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol,dur=p.dur,f=p.freq;
+  const mk=det=>{const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(f*0.9*det,t);o.frequency.linearRampToValueAtTime(f*1.15*det,t+dur*0.55);o.frequency.linearRampToValueAtTime(f*0.9*det,t+dur);return o;};
+  const env=gain(0.0001);env.connect(master);send(env,rv);
+  const o1=mk(1),o2=mk(1.006);o1.connect(env);o2.connect(env);
+  env.gain.linearRampToValueAtTime(vol,t+dur*0.5);env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  const lfo=c.createOscillator();lfo.frequency.value=5.5;const lg=gain(f*0.01);lfo.connect(lg);lg.connect(o1.frequency);lg.connect(o2.frequency);
+  o1.start(t);o2.start(t);lfo.start(t);o1.stop(t+dur+0.05);o2.stop(t+dur+0.05);lfo.stop(t+dur);}
+function fxHitModern(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol;
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(70,t);o.frequency.exponentialRampToValueAtTime(38,t+0.3);
+  const og=gain(vol);og.gain.exponentialRampToValueAtTime(0.001,t+0.32);o.connect(og).connect(master);send(og,rv);o.start(t);o.stop(t+0.34);
+  const s=noise(0.02),hp=biq('highpass',2600);const g=gain(vol*0.7);g.gain.exponentialRampToValueAtTime(0.001,t+0.02);s.connect(hp).connect(g).connect(master);s.start(t);s.stop(t+0.03);
+  [900,1500,2300].forEach((f,i)=>{const o2=c.createOscillator();o2.type='triangle';o2.frequency.setValueAtTime(f,t);o2.frequency.exponentialRampToValueAtTime(f*0.85,t+0.4);
+    const g2=gain(vol*0.4/(i+1));g2.gain.exponentialRampToValueAtTime(0.001,t+0.45);o2.connect(g2).connect(master);send(g2,rv);o2.start(t);o2.stop(t+0.47);});}
+function fxRubbleModern(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol,dur=0.9;
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(75,t);o.frequency.exponentialRampToValueAtTime(30,t+0.5);
+  const og=gain(vol);og.gain.exponentialRampToValueAtTime(0.001,t+0.55);o.connect(og).connect(master);send(og,rv);o.start(t);o.stop(t+0.57);
+  const s=noise(dur),lp=biq('lowpass',500);lp.frequency.exponentialRampToValueAtTime(60,t+dur);const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(vol*0.9,t+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(lp).connect(g).connect(master);send(g,rv);s.start(t);s.stop(t+dur);
+  for(let i=0;i<10;i++){const tt=t+0.04+Math.random()*dur*0.85;const b=noise(0.08);const bp=biq('bandpass',900+Math.random()*1400,2);const bg=gain(0.0001);bg.gain.exponentialRampToValueAtTime(0.28,tt+0.005);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.1);b.connect(bp).connect(bg).connect(master);send(bg,rv*0.6);b.start(tt);b.stop(tt+0.11);}}
+
+function fxFieldCannonModern(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol;
+  // sub plus court & un peu plus haut que le gros canon (engin léger à roue)
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(p.sub,t);o.frequency.exponentialRampToValueAtTime(34,t+0.42);
+  const og=gain(vol);og.gain.exponentialRampToValueAtTime(0.001,t+0.5);o.connect(og).connect(master);send(og,rv);o.start(t);o.stop(t+0.52);
+  const s=noise(0.02),hp=biq('highpass',3200);const g=gain(vol*0.8);g.gain.exponentialRampToValueAtTime(0.001,t+0.02);s.connect(hp).connect(g).connect(master);s.start(t);s.stop(t+0.03);
+  const s2=noise(0.2),lp=biq('lowpass',1200),ws=shaper(5);const g2=gain(vol*0.7);g2.gain.exponentialRampToValueAtTime(0.001,t+0.2);s2.connect(lp).connect(ws).connect(g2).connect(master);send(g2,rv);s2.start(t);s2.stop(t+0.22);
+  if(p.wheel){for(let i=0;i<5;i++){const tt=t+0.02+Math.random()*0.22;const b=noise(0.05);const bp=biq('bandpass',900+Math.random()*900,3);
+    const bg=gain(0.0001);bg.gain.exponentialRampToValueAtTime(vol*0.18,tt+0.004);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.06);b.connect(bp).connect(bg).connect(master);b.start(tt);b.stop(tt+0.07);}}}
+
+// Canon de campagne — RECUL de l'affût : « clonk » bois grave + glissement des roues sur le sol (rumble qui revient). Joué juste après le boom, sans tonale aiguë.
+function fxFieldRecoil(p){const c=ctx(),t=c.currentTime,vol=p.vol;
+  // clonk de l'affût : corps bois grave qui descend vite
+  const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(p.thud,t);o.frequency.exponentialRampToValueAtTime(Math.max(28,p.thud*0.45),t+0.12);
+  const og=gain(vol*0.8);og.gain.exponentialRampToValueAtTime(0.001,t+0.14);o.connect(og).connect(master);o.start(t);o.stop(t+0.16);
+  // glissement des roues : rumble grave filtré qui enfle puis s'éteint (recul puis retour)
+  const s=noise(p.dur),lp=biq('lowpass',360);lp.frequency.setValueAtTime(500,t);lp.frequency.exponentialRampToValueAtTime(160,t+p.dur);
+  const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(vol*0.5,t+0.04);g.gain.exponentialRampToValueAtTime(0.001,t+p.dur);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+p.dur+0.02);
+  // grincements de l'essieu (2-3 craquements bois épars)
+  for(let i=0;i<3;i++){const tt=t+0.02+Math.random()*p.dur*0.7;const o2=c.createOscillator();o2.type='triangle';o2.frequency.setValueAtTime(p.creak*(0.8+Math.random()*0.5),tt);o2.frequency.exponentialRampToValueAtTime(p.creak*0.6,tt+0.05);const o2g=gain(vol*0.18);o2g.gain.exponentialRampToValueAtTime(0.001,tt+0.06);o2.connect(o2g).connect(master);o2.start(tt);o2.stop(tt+0.07);}}
+// Canon de campagne — ROULEMENT : roues qui roulent pendant la marche. Lit grave qui gronde + craquements bois réguliers (essieu) cadencés sur la vitesse. One-shot d'audition d'une demi-seconde de roulement (en jeu : boucle pilotée par s.st==='march').
+function fxFieldRoll(p){const c=ctx(),t=c.currentTime,vol=p.vol,dur=p.dur;
+  // grondement de roulement (sol)
+  const s=noise(dur),lp=biq('lowpass',320,0.6);const g=gain(0.0001);g.gain.linearRampToValueAtTime(vol*0.4,t+0.08);g.gain.setValueAtTime(vol*0.4,t+dur-0.1);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+dur+0.02);
+  // craquements d'essieu réguliers (un par tour de roue ≈ cadence)
+  const step=60/p.creakBpm;for(let tt=t;tt<t+dur;tt+=step*(0.9+Math.random()*0.2)){const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(p.creak*(0.85+Math.random()*0.4),tt);o.frequency.exponentialRampToValueAtTime(p.creak*0.55,tt+0.05);const og=gain(vol*0.22);og.gain.exponentialRampToValueAtTime(0.001,tt+0.06);o.connect(og).connect(master);o.start(tt);o.stop(tt+0.07);
+    const b=noise(0.03),bp=biq('bandpass',1100,2);const bg=gain(vol*0.1);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.03);b.connect(bp).connect(bg).connect(master);b.start(tt);b.stop(tt+0.04);}}
+
+function fxMagicShield(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol;
+  // explosion CONTENUE sur la barrière (devant lui)
+  const s=noise(0.3),lp=biq('lowpass',1300);lp.frequency.exponentialRampToValueAtTime(200,t+0.28);const g=gain(vol*0.7);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);s.connect(lp).connect(g).connect(master);send(g,rv);s.start(t);s.stop(t+0.31);
+  // scintillement magique : harmoniques brillantes montantes + tremolo
+  [1,1.5,2.02,2.67].forEach((m,i)=>{const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(p.shimmer*m,t);o.frequency.linearRampToValueAtTime(p.shimmer*m*1.5,t+0.4);
+    const og=gain(0.0001);og.gain.exponentialRampToValueAtTime(vol*0.3/(i+1),t+0.02);og.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+    const lfo=c.createOscillator();lfo.type='sine';lfo.frequency.value=14+i*3;const lg=gain(vol*0.1/(i+1));lfo.connect(lg).connect(og.gain);lfo.start(t);lfo.stop(t+0.5);
+    o.connect(og).connect(master);send(og,rv);o.start(t);o.stop(t+0.52);});
+  // whump grave de la barrière qui encaisse
+  const o2=c.createOscillator();o2.type='sine';o2.frequency.setValueAtTime(110,t);o2.frequency.exponentialRampToValueAtTime(55,t+0.2);const g2=gain(vol*0.5);g2.gain.exponentialRampToValueAtTime(0.001,t+0.22);o2.connect(g2).connect(master);o2.start(t);o2.stop(t+0.24);}
+
+// Bouclier VORTEX — énergie tournante (panner rotatif + FM + whoosh aspirant)
+function fxVortexShield(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol;
+  const pan=c.createStereoPanner();const panOut=gain(1);pan.connect(panOut).connect(master);send(panOut,rv);
+  const plfo=c.createOscillator();plfo.type='sine';plfo.frequency.value=p.spin;const pg=gain(0.9);plfo.connect(pg).connect(pan.pan);plfo.start(t);plfo.stop(t+0.7);
+  // swirl : bandpass dont la fréquence tourne
+  const s=noise(0.6),bp=biq('bandpass',p.swirl,6);
+  const flfo=c.createOscillator();flfo.type='sine';flfo.frequency.value=p.spin*1.5;const fg=gain(p.swirl*0.6);flfo.connect(fg).connect(bp.frequency);flfo.start(t);flfo.stop(t+0.6);
+  const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(vol*0.6,t+0.05);g.gain.exponentialRampToValueAtTime(0.001,t+0.6);s.connect(bp).connect(g).connect(pan);s.start(t);s.stop(t+0.62);
+  // whoosh montant (spin-up)
+  const s2=noise(0.4),bp2=biq('bandpass',400,1.2);bp2.frequency.setValueAtTime(300,t);bp2.frequency.exponentialRampToValueAtTime(3500,t+0.4);
+  const g2=gain(0.0001);g2.gain.exponentialRampToValueAtTime(vol*0.4,t+0.1);g2.gain.exponentialRampToValueAtTime(0.001,t+0.4);s2.connect(bp2).connect(g2).connect(pan);s2.start(t);s2.stop(t+0.42);
+  // explosion "avalée" : swell entrant puis coupe
+  const s3=noise(0.28),lp=biq('lowpass',1100);const g3=gain(0.0001);g3.gain.linearRampToValueAtTime(vol*0.5,t+0.16);g3.gain.exponentialRampToValueAtTime(0.001,t+0.26);s3.connect(lp).connect(g3).connect(pan);s3.start(t);s3.stop(t+0.28);
+  // drone grave rotatif (FM lente)
+  const o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(p.drone,t);
+  const olfo=c.createOscillator();olfo.type='sine';olfo.frequency.value=p.spin;const od=gain(p.drone*0.06);olfo.connect(od).connect(o.frequency);olfo.start(t);olfo.stop(t+0.6);
+  const lp2=biq('lowpass',600);const og=gain(0.0001);og.gain.exponentialRampToValueAtTime(vol*0.3,t+0.05);og.gain.exponentialRampToValueAtTime(0.001,t+0.6);o.connect(lp2).connect(og).connect(pan);o.start(t);o.stop(t+0.62);}
+
+function fxVortexFatal(p){const c=ctx(),t=c.currentTime,rv=p.rev,vol=p.vol;
+  // collapse : swirl qui descend + rotation qui ralentit, puis burst + cri
+  const pan=c.createStereoPanner();const panOut=gain(1);pan.connect(panOut).connect(master);send(panOut,rv);
+  const s=noise(0.4),bp=biq('bandpass',2600,5);bp.frequency.setValueAtTime(2600,t);bp.frequency.exponentialRampToValueAtTime(280,t+0.35);
+  const plfo=c.createOscillator();plfo.type='sine';plfo.frequency.setValueAtTime(p.spin*1.6,t);plfo.frequency.exponentialRampToValueAtTime(1,t+0.35);const pg=gain(0.9);plfo.connect(pg).connect(pan.pan);plfo.start(t);plfo.stop(t+0.4);
+  const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(vol*0.55,t+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+0.37);s.connect(bp).connect(g).connect(pan);s.start(t);s.stop(t+0.39);
+  setTimeout(()=>fxExplosionModern({vol:p.vol,rev:p.rev}),170);
+  setTimeout(()=>fxVoice({pitch:p.pitch,dur:0.6,drop:0.5,vol:0.5,vib:1}),170);}
+
+// ── soldats : combat & mort ─────────────────────────────────────────────────
+function fxMelee(p){const c=ctx(),t=c.currentTime;
+  // 1) tirage de la lame : « shink » — bandpass aigu très court qui plonge
+  const s=noise(0.06),bp=biq('bandpass',p.clink,7);bp.frequency.setValueAtTime(p.clink,t);bp.frequency.exponentialRampToValueAtTime(p.clink*0.4,t+0.05);
+  const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(p.vol*0.5,t+0.003);g.gain.exponentialRampToValueAtTime(0.001,t+0.06);
+  s.connect(bp).connect(g).connect(master);s.start(t);s.stop(t+0.07);
+  // fine résonance métallique de la lame (un seul ping, pas un cliquetis de lames croisées)
+  const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(p.clink*0.9,t);o.frequency.exponentialRampToValueAtTime(p.clink*0.6,t+0.05);
+  const og=gain(p.vol*0.16);og.gain.exponentialRampToValueAtTime(0.001,t+0.06);o.connect(og).connect(master);o.start(t);o.stop(t+0.07);
+  // 2) l'estoc dans la chair : thud sourd + squelch humide, juste après la lame
+  fxFlesh({thud:90,dur:0.13,wet:p.wet,vol:p.vol*0.75});}
+function fxSoldierDeath(p){const c=ctx(),t=c.currentTime;
+  fxVoice({pitch:p.pitch,dur:0.26,drop:0.5,vol:p.vol});
+  const s=noise(0.18),lp=biq('lowpass',300);const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(p.vol*0.6,t+0.18);g.gain.exponentialRampToValueAtTime(0.001,t+0.28);s.connect(lp).connect(g).connect(master);s.start(t+0.1);s.stop(t+0.3);}
+
+// ── Intendant : actions ──────────────────────────────────────────────────────
+function fxDig(p){const c=ctx(),t=c.currentTime;const s=noise(0.12),lp=biq('lowpass',700);const g=gain(p.vol);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+0.13);
+  const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(90,t);o.frequency.exponentialRampToValueAtTime(48,t+0.1);const og=gain(p.vol*0.6);og.gain.exponentialRampToValueAtTime(0.001,t+0.11);o.connect(og).connect(master);o.start(t);o.stop(t+0.12);}
+function fxFill(p){const c=ctx(),t=c.currentTime;const s=noise(0.16),lp=biq('lowpass',500);const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(p.vol*0.7,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+0.16);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+0.17);
+  for(let i=0;i<6;i++){const tt=t+Math.random()*0.14;const b=noise(0.02),hp=biq('highpass',2000);const bg=gain(p.vol*0.12);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.02);b.connect(hp).connect(bg).connect(master);b.start(tt);b.stop(tt+0.03);}}
+function fxFlatten(p){const c=ctx(),t=c.currentTime;const s=noise(0.25),bp=biq('bandpass',800,0.8);bp.frequency.setValueAtTime(500,t);bp.frequency.linearRampToValueAtTime(1400,t+0.12);bp.frequency.linearRampToValueAtTime(400,t+0.25);const g=gain(0.0001);g.gain.linearRampToValueAtTime(p.vol*0.6,t+0.08);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);s.connect(bp).connect(g).connect(master);s.start(t);s.stop(t+0.26);}
+// ── briques décomposables : 1 coup de marteau, 1 pas sur le bois ─────────────
+// L'ouvrage = montage (quelques coups de marteau) puis franchissement (n-1 pas,
+// où n = longueur de l'ouvrage en unités). On compose à partir de ces deux briques.
+function fxHammer(p,at){const c=ctx(),t=at??c.currentTime;
+  // tête métallique : transitoire sec et bref
+  const s=noise(0.02),hp=biq('highpass',2400);const g=gain(p.vol*0.6);g.gain.exponentialRampToValueAtTime(0.001,t+0.02);s.connect(hp).connect(g).connect(master);s.start(t);s.stop(t+0.03);
+  // corps bois frappé : « toc » qui descend vite
+  const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(p.tone,t);o.frequency.exponentialRampToValueAtTime(p.tone*0.5,t+0.07);
+  const og=gain(p.vol*0.55);og.gain.exponentialRampToValueAtTime(0.001,t+0.09);o.connect(og).connect(master);o.start(t);o.stop(t+0.1);}
+function fxStepWood(p,at){const c=ctx(),t=at??c.currentTime;
+  // impact sourd de la semelle sur le bois
+  const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(p.tone,t);o.frequency.exponentialRampToValueAtTime(p.tone*0.55,t+0.06);
+  const og=gain(p.vol*0.5);og.gain.exponentialRampToValueAtTime(0.001,t+0.08);o.connect(og).connect(master);o.start(t);o.stop(t+0.09);
+  // grain / frottement de semelle
+  const s=noise(0.04),bp=biq('bandpass',1200,2);const g=gain(p.vol*0.16);g.gain.exponentialRampToValueAtTime(0.001,t+0.04);s.connect(bp).connect(g).connect(master);s.start(t);s.stop(t+0.05);
+  // résonance creuse de la planche (pont) — la marche pleine ne sonne pas
+  if(p.hollow){const o2=c.createOscillator();o2.type='sine';o2.frequency.setValueAtTime(p.tone*0.6,t+0.01);o2.frequency.exponentialRampToValueAtTime(p.tone*0.42,t+0.18);
+    const o2g=gain(p.vol*0.22);o2g.gain.exponentialRampToValueAtTime(0.001,t+0.2);o2.connect(o2g).connect(master);o2.start(t+0.01);o2.stop(t+0.21);}}
+// L'Intendant martèle ET avance d'autant qu'il construit : on entrelace
+// marteau↔pas (pose le segment devant soi, puis y monte), façon constructeur
+// Lemmings. 1er coup de marteau d'amorce, puis n-1 cycles, puis calage d'arrivée.
+function fxStairs(p){const c=ctx(),t=c.currentTime;const steps=Math.max(0,(p.n|0)-1);let k=t;
+  fxHammer({tone:240,vol:p.vol*0.8},k);k+=0.16;                                           // amorce : 1er coup avant le franchissement
+  for(let i=0;i<steps;i++){fxHammer({tone:240,vol:p.vol*0.8},k+Math.random()*0.02);       // pose la marche devant soi...
+    fxStepWood({tone:200,vol:p.vol,hollow:false},k+0.09+Math.random()*0.02);k+=0.2;}      // ...et y monte
+  fxStepWood({tone:200,vol:p.vol*0.6,hollow:false},k+0.02);}                              // calage : il arrive et s'immobilise
+function fxBridge(p){const c=ctx(),t=c.currentTime;const steps=Math.max(0,(p.n|0)-1);let k=t;
+  fxHammer({tone:150,vol:p.vol*0.85},k);k+=0.18;                                          // amorce : marteau plus grave
+  for(let i=0;i<steps;i++){fxHammer({tone:150,vol:p.vol*0.85},k+Math.random()*0.02);      // pose la planche devant soi...
+    fxStepWood({tone:120,vol:p.vol,hollow:true},k+0.1+Math.random()*0.02);k+=0.22;}       // ...et l'enjambe (planche creuse)
+  fxStepWood({tone:120,vol:p.vol*0.6,hollow:true},k+0.02);}                               // calage d'arrivée
+// ── Ingénieur (sapeur) : ouvrier non-combattant, ouvrage en petit bois ───────────
+// DIFFÉRENCE avec l'Intendant : l'ingénieur assemble SUR PLACE puis déserte (il ne
+// traverse pas son ouvrage → PAS de pas entrelacés). Timbres SECS, queue tonale
+// quasi nulle (≈ pas de résonance) : « clac » de petit bois, et un clou enfoncé
+// pour clouer les planches du pont. L'ÉCHELLE n'a pas de marteau (assemblage).
+function fxWoodClack(p,at){const c=ctx(),t=at??c.currentTime;   // « clac » bref dominé par le transitoire
+  const s=noise(0.03),bp=biq('bandpass',Math.min(8000,p.tone*5),1.1);const g=gain(p.vol*0.5);g.gain.exponentialRampToValueAtTime(0.001,t+0.03);s.connect(bp).connect(g).connect(master);s.start(t);s.stop(t+0.04);
+  const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(p.tone,t);o.frequency.exponentialRampToValueAtTime(p.tone*0.6,t+0.03);
+  const og=gain(p.vol*0.28);og.gain.exponentialRampToValueAtTime(0.001,t+0.035);o.connect(og).connect(master);o.start(t);o.stop(t+0.045);}   // corps bois TRÈS court (pas de queue)
+function fxNailTap(p,at){const c=ctx(),t=at??c.currentTime;   // clou enfoncé : transitoire métal sec + mini-thud, sans résonance
+  const s=noise(0.015),hp=biq('highpass',2800);const g=gain(p.vol*0.5);g.gain.exponentialRampToValueAtTime(0.001,t+0.018);s.connect(hp).connect(g).connect(master);s.start(t);s.stop(t+0.02);
+  const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(p.tone,t);o.frequency.exponentialRampToValueAtTime(p.tone*0.5,t+0.025);
+  const og=gain(p.vol*0.32);og.gain.exponentialRampToValueAtTime(0.001,t+0.03);o.connect(og).connect(master);o.start(t);o.stop(t+0.035);}
+function fxEngineerBridge(p){const n=Math.max(1,p.n|0);let k=ctx().currentTime;   // PONT : planches clouées à plat (clou sec + planche calée)
+  for(let i=0;i<n;i++){fxNailTap({tone:p.tap,vol:p.vol*0.7},k+Math.random()*0.01);
+    fxWoodClack({tone:p.wood,vol:p.vol},k+0.05);k+=p.gap;}}
+function fxEngineerLadder(p){const n=Math.max(1,p.n|0);let k=ctx().currentTime;const rise=p.rise||0;   // ÉCHELLE : assemblage de petit bois — pas de marteau, clacs légers qui montent
+  for(let i=0;i<n;i++){const tone=p.wood+i*rise;
+    fxWoodClack({tone:tone*1.4,vol:p.vol*0.5},k+Math.random()*0.01);   // emboîtement (aigu, léger)
+    fxWoodClack({tone,vol:p.vol*0.8},k+0.05);                          // barreau calé
+    k+=p.gap;}}
+function fxGliderDeploy(p){const c=ctx(),t=c.currentTime;const s=noise(0.35),lp=biq('lowpass',900);lp.frequency.setValueAtTime(300,t);lp.frequency.exponentialRampToValueAtTime(1200,t+0.12);lp.frequency.exponentialRampToValueAtTime(500,t+0.35);const g=gain(0.0001);g.gain.linearRampToValueAtTime(p.vol*0.6,t+0.1);g.gain.exponentialRampToValueAtTime(0.001,t+0.35);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+0.36);
+  for(let i=0;i<2;i++){const tt=t+0.15+i*0.12;const b=noise(0.06),bp=biq('bandpass',400,1);const bg=gain(p.vol*0.3);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.06);b.connect(bp).connect(bg).connect(master);b.start(tt);b.stop(tt+0.07);}}
+function fxApparition(p){const c=ctx(),t=c.currentTime,rv=p.rev;[523,659,784,1046].forEach((f,i)=>{const tt=t+i*0.05;const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(f,tt);const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(p.vol*0.3/(i*0.5+1),tt+0.02);g.gain.exponentialRampToValueAtTime(0.001,tt+0.5);o.connect(g).connect(master);send(g,rv);o.start(tt);o.stop(tt+0.52);});
+  const o2=c.createOscillator();o2.type='sine';o2.frequency.setValueAtTime(120,t+0.35);o2.frequency.exponentialRampToValueAtTime(60,t+0.5);const g2=gain(p.vol*0.5);g2.gain.exponentialRampToValueAtTime(0.001,t+0.52);o2.connect(g2).connect(master);o2.start(t+0.35);o2.stop(t+0.54);}
+
+// ── fin de manche ────────────────────────────────────────────────────────────
+function fxStampede(p){const c=ctx(),t=c.currentTime,dur=p.dur;
+  const s=noise(dur),lp=biq('lowpass',400);const g=gain(0.0001);g.gain.linearRampToValueAtTime(p.vol*0.5,t+0.15);g.gain.setValueAtTime(p.vol*0.5,t+dur-0.2);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+dur+0.02);
+  const step=60/p.bpm/2;for(let tt=t;tt<t+dur;tt+=step*(0.85+Math.random()*0.3)){const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(90,tt);o.frequency.exponentialRampToValueAtTime(45,tt+0.08);const og=gain(p.vol*0.4);og.gain.exponentialRampToValueAtTime(0.001,tt+0.09);o.connect(og).connect(master);o.start(tt);o.stop(tt+0.1);
+    const b=noise(0.03),hp=biq('highpass',3000);const bg=gain(p.vol*0.1);bg.gain.exponentialRampToValueAtTime(0.001,tt+0.03);b.connect(hp).connect(bg).connect(master);b.start(tt);b.stop(tt+0.04);}}
+function fxHordeCry(p){const c=ctx(),t=c.currentTime,rv=p.rev;
+  for(let v=0;v<5;v++){const o=c.createOscillator();o.type='sawtooth';const base=p.pitch*(0.92+v*0.04);o.frequency.setValueAtTime(base,t);o.frequency.linearRampToValueAtTime(base*1.12,t+0.4);
+    const env=gain(0.0001);env.connect(master);send(env,rv);
+    [[650,7],[1080,9]].forEach(([f,q])=>{const bp=biq('bandpass',f,q);const fg=gain(0.4);o.connect(bp).connect(fg).connect(env);});
+    env.gain.linearRampToValueAtTime(p.vol*0.22,t+0.25);env.gain.setValueAtTime(p.vol*0.22,t+p.dur*0.6);env.gain.exponentialRampToValueAtTime(0.0001,t+p.dur);o.start(t);o.stop(t+p.dur+0.05);}}
+function fxFlag(p){const c=ctx(),t=c.currentTime;const s=noise(0.18),bp=biq('bandpass',700,1);bp.frequency.setValueAtTime(500,t);bp.frequency.linearRampToValueAtTime(1100,t+0.08);bp.frequency.linearRampToValueAtTime(600,t+0.18);const g=gain(0.0001);g.gain.linearRampToValueAtTime(p.vol*0.5,t+0.05);g.gain.exponentialRampToValueAtTime(0.001,t+0.18);s.connect(bp).connect(g).connect(master);s.start(t);s.stop(t+0.19);}
+
+// ── instruments ────────────────────────────────────────────────────────────
+const sl=(k,label,min,max,step)=>({k,label,min,max,step});
+const INSTR=[
+ {g:'Communs (nouveaux timbres)',id:'flesh-hit',name:'Impact chair',tag:'new',
+  desc:'Base partagée : impact sur un corps (soldat ou Intendant). Thud sourd + corps grave + squelch.',
+  p:{thud:120,dur:0.16,wet:320,vol:0.5},c:[sl('thud','grave',60,260,1),sl('dur','durée',0.06,0.4,0.01),sl('wet','squelch',150,800,5),sl('vol','vol',0,1,0.01)],play:p=>fxFlesh(p)},
+
+ {g:'Intendant',id:'sword-swing',name:'Épée — swing',tag:'new',
+  desc:'Whoosh : bruit bandpass qui balaie du grave vers l\'aigu.',
+  p:{dur:0.22,f0:280,f1:2600,q:6,vol:0.5},c:[sl('dur','durée',0.1,0.5,0.01),sl('f0','f début',120,800,10),sl('f1','f fin',1200,5000,50),sl('q','Q',1,14,0.5),sl('vol','vol',0,1,0.01)],
+  play:p=>{const c=ctx(),t=c.currentTime;const s=noise(p.dur),bp=biq('bandpass',p.f0,p.q);
+    bp.frequency.setValueAtTime(p.f0,t);bp.frequency.exponentialRampToValueAtTime(p.f1,t+p.dur);
+    const g=gain(0.0001);g.gain.linearRampToValueAtTime(p.vol,t+p.dur*0.35);g.gain.exponentialRampToValueAtTime(0.0001,t+p.dur);
+    s.connect(bp).connect(g).connect(master);s.start(t);s.stop(t+p.dur+0.02);}},
+
+ {g:'Intendant',id:'sword-hit',name:'Épée — touche / parade',tag:'new',
+  desc:'Coup : thud + cliquetis métallique (lame). Monte le métal pour une parade.',
+  p:{thud:150,dur:0.15,clink:0.25,vol:0.55},c:[sl('thud','grave',60,300,1),sl('dur','durée',0.06,0.3,0.01),sl('clink','métal',0,0.6,0.01),sl('vol','vol',0,1,0.01)],
+  play:p=>{const c=ctx(),t=c.currentTime;fxFlesh({thud:p.thud,dur:p.dur,wet:400,vol:p.vol});
+    [2200,3100].forEach((f,i)=>{const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(f,t);
+    const g=gain(p.clink/(i+1));g.gain.exponentialRampToValueAtTime(0.001,t+0.18);o.connect(g).connect(master);o.start(t);o.stop(t+0.2);});}},
+
+ {g:'Intendant',id:'bow-twang',name:'Arc — lâcher de corde',tag:'new',
+  desc:'Twang : corde pincée, pitch qui retombe + clic de relâche.',
+  p:{freq:240,decay:0.2,drop:0.85,vol:0.06},c:[sl('freq','hauteur',120,500,5),sl('decay','tenue',0.08,0.5,0.01),sl('drop','chute',0.6,0.98,0.01),sl('vol','vol',0,1,0.01)],
+  play:p=>{const c=ctx(),t=c.currentTime;const o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(p.freq,t);o.frequency.exponentialRampToValueAtTime(p.freq*p.drop,t+p.decay);
+    const lp=biq('lowpass',1800);const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(p.vol,t+0.004);g.gain.exponentialRampToValueAtTime(0.0001,t+p.decay);
+    o.connect(lp).connect(g).connect(master);o.start(t);o.stop(t+p.decay+0.02);
+    const s=noise(0.02),hp=biq('highpass',3000);const ng=gain(p.vol*0.5);ng.gain.exponentialRampToValueAtTime(0.001,t+0.02);s.connect(hp).connect(ng).connect(master);s.start(t);s.stop(t+0.03);}},
+
+ {g:'Intendant',id:'arrow-whizz',name:'Flèche — en vol',tag:'reuse',
+  desc:'Fly-by léger. En jeu : alimenter whistles() (continu).',
+  p:{dur:0.5,freq:1500,q:9,vol:0.22},c:[sl('dur','durée',0.2,1,0.01),sl('freq','hauteur',600,3000,20),sl('q','Q',3,16,0.5),sl('vol','vol',0,0.6,0.01)],play:p=>fxWhizz(p)},
+
+ {g:'Intendant',id:'arrow-ground',name:'Flèche — impact sol',tag:'new',
+  desc:'Thunk boisé planté dans la terre/roche.',
+  p:{vol:0.4,tick:0.3},c:[sl('vol','vol',0,1,0.01),sl('tick','bois',0,0.6,0.01)],
+  play:p=>{const c=ctx(),t=c.currentTime;const s=noise(0.1),lp=biq('lowpass',600);const g=gain(p.vol);g.gain.exponentialRampToValueAtTime(0.001,t+0.1);s.connect(lp).connect(g).connect(master);s.start(t);s.stop(t+0.11);
+    const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(320,t);o.frequency.exponentialRampToValueAtTime(160,t+0.08);const og=gain(p.tick);og.gain.exponentialRampToValueAtTime(0.001,t+0.09);o.connect(og).connect(master);o.start(t);o.stop(t+0.1);}},
+
+ {g:'Intendant',id:'arrow-flesh',name:'Flèche — impact chair',tag:'new',
+  desc:'Touche au corps (variante de l\'impact chair, plus sèche).',
+  p:{thud:130,dur:0.13,wet:300,vol:0.28},c:[sl('thud','grave',60,260,1),sl('dur','durée',0.06,0.3,0.01),sl('wet','squelch',150,700,5),sl('vol','vol',0,1,0.01)],play:p=>fxFlesh(p)},
+
+ {g:'Intendant',id:'intendant-grunt',name:'Intendant — grognement (touché)',tag:'new',
+  desc:'Voix synthétique courte (formants). Le retour « lui » quand il encaisse.',
+  p:{pitch:184,dur:0.18,drop:0.57,vol:0.26},c:[sl('pitch','hauteur',90,300,2),sl('dur','durée',0.1,0.5,0.01),sl('drop','chute',0.5,0.95,0.01),sl('vol','vol',0,1,0.01)],play:p=>fxVoice(p)},
+
+ {g:'Intendant',id:'intendant-cry',name:'Intendant — cri (mort)',tag:'new',
+  desc:'Cri descendant plus long, avec vibrato — au moment où il tombe.',
+  p:{pitch:230,dur:0.7,drop:0.55,vol:0.5,vib:1},c:[sl('pitch','hauteur',120,400,2),sl('dur','durée',0.3,1.2,0.02),sl('drop','chute',0.4,0.9,0.01),sl('vol','vol',0,1,0.01)],play:p=>fxVoice(Object.assign({vib:1},p))},
+
+ {g:'Intendant — bouclier Hexagonal',id:'parry-hex',name:'Obus paré — Hexagonal',tag:'new',
+  desc:'Non létal : explosion contenue sur la barrière cristalline + scintillement (harmoniques montantes).',
+  p:{vol:0.8,shimmer:1200,rev:0.35},c:[sl('vol','vol',0,1,0.01),sl('shimmer','scintille',700,2200,20),sl('rev','réverb',0,0.9,0.01)],
+  play:p=>fxMagicShield(p)},
+ {g:'Intendant — bouclier Hexagonal',id:'fatal-hex',name:'Obus dernier PV — Hexagonal',tag:'new',
+  desc:'Bouclier à bout : l\'obus éclate directement sur lui → mort. Explosion moderne + cri.',
+  p:{vol:0.9,pitch:210,rev:0.45},c:[sl('vol','explosion',0,1,0.01),sl('pitch','cri',120,360,2),sl('rev','réverb',0,0.9,0.01)],
+  play:p=>{fxExplosionModern({vol:p.vol,rev:p.rev});fxVoice({pitch:p.pitch,dur:0.6,drop:0.55,vol:0.5,vib:1});}},
+
+ {g:'Intendant — bouclier Vortex',id:'parry-vortex',name:'Obus paré — Vortex',tag:'new',
+  desc:'Non létal : énergie tournante (panner rotatif + swirl FM + whoosh) qui aspire et avale l\'obus.',
+  p:{vol:0.8,swirl:1400,spin:7,drone:90,rev:0.4},c:[sl('vol','vol',0,1,0.01),sl('swirl','swirl',600,3000,20),sl('spin','rotation',3,14,0.5),sl('drone','grave',50,160,2),sl('rev','réverb',0,0.9,0.01)],
+  play:p=>fxVortexShield(p)},
+ {g:'Intendant — bouclier Vortex',id:'fatal-vortex',name:'Obus dernier PV — Vortex',tag:'new',
+  desc:'Le vortex s\'effondre (rotation qui ralentit + swirl descendant), puis l\'obus traverse → burst + cri.',
+  p:{vol:0.9,spin:9,pitch:210,rev:0.45},c:[sl('vol','explosion',0,1,0.01),sl('spin','rotation',4,16,0.5),sl('pitch','cri',120,360,2),sl('rev','réverb',0,0.9,0.01)],
+  play:p=>fxVortexFatal(p)},
+
+ {g:'Mousquetaire',id:'musket-crack',name:'Mousquet — déclenchement',tag:'new',
+  desc:'Crack de silex sec (≠ boom du gros canon) : crack aigu + snap + pop grave.',
+  p:{bright:5000,body:90,dur:0.09,vol:0.6},c:[sl('bright','crack',2500,9000,100),sl('body','pop',50,200,2),sl('dur','durée',0.04,0.2,0.005),sl('vol','vol',0,1,0.01)],play:p=>fxMusket(p)},
+
+ {g:'Mousquetaire',id:'ball-zip',name:'Balle — passage',tag:'reuse',
+  desc:'Zip aigu très court. En jeu : whistles() à haute fréquence.',
+  p:{dur:0.1,freq:3200,q:11,vol:0.2},c:[sl('dur','durée',0.05,0.3,0.005),sl('freq','hauteur',1800,5000,50),sl('q','Q',4,16,0.5),sl('vol','vol',0,0.5,0.01)],play:p=>fxWhizz(p)},
+
+ {g:'Mousquetaire',id:'ball-ground',name:'Balle — impact sol',tag:'new',
+  desc:'Petit pouf + ricochet métallique optionnel.',
+  p:{vol:0.3,ric:1400},c:[sl('vol','pouf',0,0.7,0.01),sl('ric','ricochet',0,3000,50)],
+  play:p=>{const c=ctx(),t=c.currentTime;const s=noise(0.04),hp=biq('highpass',2600);const g=gain(p.vol);g.gain.exponentialRampToValueAtTime(0.001,t+0.04);s.connect(hp).connect(g).connect(master);s.start(t);s.stop(t+0.05);
+    if(p.ric>50){const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(p.ric,t);o.frequency.exponentialRampToValueAtTime(p.ric*0.5,t+0.12);const og=gain(0.12);og.gain.exponentialRampToValueAtTime(0.001,t+0.14);o.connect(og).connect(master);o.start(t);o.stop(t+0.16);}}},
+
+ {g:'Grenadier',id:'grenade-pin',name:'Grenade — goupille retirée',tag:'new',
+  desc:'Métallique : grattement de goupille + ping de la cuillère, puis petit lancer sourd.',
+  p:{scrape:4200,ping:2600,vol:0.45,throw:0.2},c:[sl('scrape','grattement',2500,7000,100),sl('ping','métal',1600,4000,50),sl('throw','lancer',0,0.5,0.01),sl('vol','vol',0,1,0.01)],
+  play:p=>{const c=ctx(),t=c.currentTime;
+    const s=noise(0.06),bp=biq('bandpass',p.scrape,2);const g=gain(0.0001);g.gain.exponentialRampToValueAtTime(p.vol*0.5,t+0.004);g.gain.exponentialRampToValueAtTime(0.001,t+0.06);s.connect(bp).connect(g).connect(master);s.start(t);s.stop(t+0.07);
+    [p.ping,p.ping*1.32].forEach((f,i)=>{const tt=t+i*0.05;const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(f,tt);const og=gain(p.vol*0.6/(i+1));og.gain.exponentialRampToValueAtTime(0.001,tt+0.22);o.connect(og).connect(master);o.start(tt);o.stop(tt+0.24);});
+    if(p.throw>0){const tt=t+0.12;const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(140,tt);o.frequency.exponentialRampToValueAtTime(80,tt+0.1);const og=gain(p.throw);og.gain.exponentialRampToValueAtTime(0.001,tt+0.11);o.connect(og).connect(master);o.start(tt);o.stop(tt+0.13);}}},
+
+ {g:'Grenadier',id:'grenade-burst',name:'Grenade — explosion',tag:'reuse',
+  desc:'Burst dérivé d\'explosion() (volume plus faible) + crack.',
+  p:{vol:0.55},c:[sl('vol','vol',0,1,0.01)],
+  play:p=>{fxExplosion(p.vol);const c=ctx(),t=c.currentTime;const s=noise(0.05),hp=biq('highpass',4000);const g=gain(p.vol*0.6);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);s.connect(hp).connect(g).connect(master);s.start(t);s.stop(t+0.06);}},
+
+ {g:'Grenadier',id:'grenade-shrapnel',name:'Grenadier — touché (chair + éclats)',tag:'new',
+  desc:'Impact chair + quelques tintements d\'éclats.',
+  p:{thud:120,vol:0.5,tings:4},c:[sl('thud','grave',60,240,1),sl('vol','vol',0,1,0.01),sl('tings','éclats',0,8,1)],
+  play:p=>{fxFlesh({thud:p.thud,dur:0.15,wet:320,vol:p.vol});const c=ctx(),t=c.currentTime;
+    for(let i=0;i<(p.tings|0);i++){const tt=t+Math.random()*0.12;const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(2600+Math.random()*2500,tt);
+    const g=gain(0.08);g.gain.exponentialRampToValueAtTime(0.001,tt+0.1);o.connect(g).connect(master);o.start(tt);o.stop(tt+0.12);}}},
+
+ {g:'Canon de campagne',id:'cannon-fire',name:'Tir',tag:'reuse',dep:'Tir — moderne (cannon-fire-modern)',
+  desc:'Variante de boom() avec cliquetis de roue.',
+  p:{vol:0.9,pitch:150,wheel:1},c:[sl('vol','vol',0,1,0.01),sl('pitch','grave',90,240,2),sl('wheel','roue',0,1,1)],play:p=>fxBoom(p)},
+
+ {g:'Canon de campagne',id:'cannon-fire-modern',name:'Tir — moderne',tag:'new',
+  desc:'Sub court + transient + corps saturé + roue, façon les modernes validés. À comparer au Tir ci-dessus.',
+  p:{vol:0.85,sub:65,rev:0.25,wheel:1},c:[sl('vol','vol',0,1,0.01),sl('sub','sub',40,110,1),sl('rev','réverb',0,0.7,0.01),sl('wheel','roue',0,1,1)],play:p=>fxFieldCannonModern(p)},
+
+ {g:'Canon de campagne',id:'cannon-fire-full',name:'Tir complet (boom + recul)',tag:'new',
+  desc:'La <b>séquence jouée à la détonation</b> dans le moteur : boom moderne immédiat, puis le <b>recul de l\'affût</b> (≈80 ms après) — clonk bois grave + glissement des roues qui recule et revient. C\'est ce que dessine maintenant le canon (recul d\'ensemble).',
+  p:{vol:0.85,sub:65,rev:0.25,thud:130,creak:240,recDur:0.32,recVol:0.6},c:[sl('vol','tir',0,1,0.01),sl('sub','sub',40,110,1),sl('rev','réverb',0,0.7,0.01),sl('thud','affût',70,260,2),sl('recDur','glissement',0.12,0.6,0.02),sl('recVol','recul',0,1,0.01)],
+  play:p=>{fxFieldCannonModern({vol:p.vol,sub:p.sub,rev:p.rev,wheel:0});setTimeout(()=>fxFieldRecoil({vol:p.recVol,thud:p.thud,creak:p.creak,dur:p.recDur}),80);}},
+
+ {g:'Canon de campagne',id:'cannon-recoil',name:'· brique : recul de l\'affût',tag:'new',
+  desc:'Brique décomposable : le recul seul — clonk bois grave de l\'affût + glissement des roues (rumble qui enfle puis revient) + grincements d\'essieu. Sans la détonation.',
+  p:{vol:0.6,thud:130,creak:240,dur:0.32},c:[sl('vol','vol',0,1,0.01),sl('thud','affût',70,260,2),sl('creak','essieu',120,420,5),sl('dur','glissement',0.12,0.6,0.02)],play:p=>fxFieldRecoil(p)},
+
+ {g:'Canon de campagne',id:'cannon-roll',name:'Roues — roulement (marche)',tag:'new',
+  desc:'Roues qui roulent pendant la marche : lit grave qui gronde + craquements d\'essieu cadencés sur la vitesse. En jeu : <b>boucle</b> tant que <code>s.st===&#39;march&#39;</code>, débit lié à la vitesse du canon. Ici, ½ s d\'audition.',
+  p:{vol:0.45,creak:230,creakBpm:240,dur:0.7},c:[sl('vol','vol',0,1,0.01),sl('creak','essieu',120,400,5),sl('creakBpm','cadence',120,420,10),sl('dur','durée',0.3,1.5,0.05)],play:p=>fxFieldRoll(p)},
+
+ {g:'Canon de campagne',id:'boulet-whizz',name:'Boulet — en vol',tag:'reuse',
+  desc:'Whoosh grave. En jeu : whistles() basse fréquence.',
+  p:{dur:0.6,freq:600,q:6,vol:0.3},c:[sl('dur','durée',0.3,1.2,0.02),sl('freq','hauteur',300,1200,20),sl('q','Q',3,12,0.5),sl('vol','vol',0,0.6,0.01)],play:p=>fxWhizz(p)},
+
+ {g:'Canon de campagne',id:'cannon-impact-tower',name:'Boulet — impact sur tour',tag:'reuse',
+  desc:'Composite : hit() + rubble() (existants).',
+  p:{},c:[],play:()=>{fxHit();fxRubble(false);}},
+
+ {g:'Canon de campagne',id:'wood-smash',name:'Canon détruit — fracas de bois',tag:'new',
+  desc:'Bois/roue qui éclate — pas de grondement de pierre (≠ rubble).',
+  p:{vol:0.6,n:6,bright:1400},c:[sl('vol','vol',0,1,0.01),sl('n','éclats',2,12,1),sl('bright','aigu',600,2600,50)],play:p=>fxWood(p)},
+
+ {g:'Tour (défense)',id:'tower-volley',name:'Meurtrière — volée (1–4 balles)',tag:'new',
+  desc:'Façon fusil de chasse : détonations pleines (corps grave + souffle + crack), échelonnées.',
+  p:{n:2,spread:0.1,body:90,bright:4000,dur:0.22,vol:0.55},c:[sl('n','tirs',1,4,1),sl('spread','écart',0.04,0.25,0.01),sl('body','corps',50,160,2),sl('dur','souffle',0.1,0.4,0.01),sl('vol','vol',0,1,0.01)],
+  play:p=>{const c=ctx(),t0=c.currentTime;for(let i=0;i<(p.n|0);i++){fxShotgun({body:p.body,bright:p.bright,dur:p.dur,vol:p.vol},t0+i*p.spread+Math.random()*p.spread*0.3);}}},
+
+ {g:'Soldats — combat & mort',id:'melee-clash',name:'Mêlée — baïonnette (estoc)',tag:'new',
+  desc:'Coup de couteau : « shink » de la lame qui plonge + estoc humide dans la chair (≠ cliquetis de lames croisées).',
+  p:{clink:2600,wet:340,vol:0.5},c:[sl('clink','lame',1600,4200,50),sl('wet','chair',180,700,10),sl('vol','vol',0,1,0.01)],play:p=>fxMelee(p)},
+ {g:'Soldats — combat & mort',id:'soldier-death',name:'Mort de soldat',tag:'new',
+  desc:'Bref : râle court (plus sec que l\'Intendant) + chute du corps. À garder léger (beaucoup de soldats).',
+  p:{pitch:150,vol:0.4},c:[sl('pitch','voix',90,260,2),sl('vol','vol',0,1,0.01)],play:p=>fxSoldierDeath(p)},
+
+ {g:'Intendant — actions',id:'int-dig',name:'Creuser',tag:'new',desc:'Coup de pelle : motte arrachée + thud sourd.',p:{vol:0.4},c:[sl('vol','vol',0,1,0.01)],play:p=>fxDig(p)},
+ {g:'Intendant — actions',id:'int-fill',name:'Remblayer',tag:'new',desc:'Terre déversée : whump + grains qui retombent.',p:{vol:0.4},c:[sl('vol','vol',0,1,0.01)],play:p=>fxFill(p)},
+ {g:'Intendant — actions',id:'int-flatten',name:'Aplanir',tag:'new',desc:'Lissage : swoosh large et doux.',p:{vol:0.4},c:[sl('vol','vol',0,1,0.01)],play:p=>fxFlatten(p)},
+ {g:'Intendant — actions',id:'int-stairs',name:'Escalier (ouvrage)',tag:'new',desc:'Marteau d’amorce puis n−1 cycles marteau↔pas entrelacés : il pose chaque marche et y monte en avançant (n = longueur).',p:{n:4,vol:0.45},c:[sl('n','longueur',2,8,1),sl('vol','vol',0,1,0.01)],play:p=>fxStairs(p)},
+ {g:'Intendant — actions',id:'int-bridge',name:'Pont (ouvrage)',tag:'new',desc:'Marteau grave d’amorce puis n−1 cycles marteau↔pas : il pose chaque planche (creuse) et l’enjambe en avançant (n = longueur).',p:{n:4,vol:0.5},c:[sl('n','longueur',2,8,1),sl('vol','vol',0,1,0.01)],play:p=>fxBridge(p)},
+ {g:'Intendant — actions',id:'int-hammer',name:'· brique : coup de marteau',tag:'new',desc:'Brique décomposable — la frappe seule (tête métallique + toc de bois).',p:{tone:220,vol:0.5},c:[sl('tone','bois',90,320,5),sl('vol','vol',0,1,0.01)],play:p=>fxHammer(p)},
+ {g:'Intendant — actions',id:'int-step',name:'· brique : pas sur le bois',tag:'new',desc:'Brique décomposable — un pas. « creux » = planche de pont, sinon marche pleine.',p:{tone:180,vol:0.5,hollow:1},c:[sl('tone','bois',90,260,5),sl('hollow','creux',0,1,1),sl('vol','vol',0,1,0.01)],play:p=>fxStepWood(p)},
+ {g:'Intendant — actions',id:'int-glider',name:'Planeur (déploiement)',tag:'new',desc:'Toile qui s\'ouvre : fwoomp + claquements.',p:{vol:0.4},c:[sl('vol','vol',0,1,0.01)],play:p=>fxGliderDeploy(p)},
+ {g:'Intendant — actions',id:'int-apparition',name:'Apparition (descente du ciel)',tag:'new',desc:'Matérialisation magique montante + atterrissage sourd.',p:{vol:0.5,rev:0.4},c:[sl('vol','vol',0,1,0.01),sl('rev','réverb',0,0.9,0.01)],play:p=>fxApparition(p)},
+
+ {g:'Ingénieur (sapeur)',id:'engineer-bridge',name:'Pont — pose de planches',tag:'new',
+  desc:'Sapeur non-combattant : il assemble <b>sur place</b> puis déserte (≠ Intendant, qui traverse en construisant → pas de pas entrelacés ici). Timbres <b>secs</b> : clou enfoncé + planche calée à plat, cadence brève.',
+  p:{n:6,tap:200,wood:140,gap:0.15,vol:0.5},c:[sl('n','planches',2,6,1),sl('tap','clou',120,320,5),sl('wood','bois',80,240,5),sl('gap','cadence',0.08,0.3,0.01),sl('vol','vol',0,1,0.01)],
+  play:p=>fxEngineerBridge(p)},
+
+ {g:'Ingénieur (sapeur)',id:'engineer-ladder',name:'Échelle — assemblage de petit bois',tag:'new',
+  desc:'Échelle inclinée (mur raide ≥ ~60°) : <b>pas de marteau</b> — emboîtement de petit bois, barreaux fixés du pied vers le sommet → la tonalité <b>monte</b>. Sec et léger.',
+  p:{n:5,wood:150,rise:14,gap:0.13,vol:0.5},c:[sl('n','barreaux',2,8,1),sl('wood','bois',80,240,5),sl('rise','montée',0,30,1),sl('gap','cadence',0.07,0.28,0.01),sl('vol','vol',0,1,0.01)],
+  play:p=>fxEngineerLadder(p)},
+
+ {g:'Ingénieur (sapeur)',id:'engineer-nail',name:'· brique : clou enfoncé (sec)',tag:'new',
+  desc:'Brique du pont : transitoire métallique sec + mini-thud bois, sans queue tonale (≈ pas de résonance).',
+  p:{tone:200,vol:0.5},c:[sl('tone','bois',120,360,5),sl('vol','vol',0,1,0.01)],play:p=>fxNailTap(p)},
+
+ {g:'Ingénieur (sapeur)',id:'engineer-clack',name:'· brique : clac de petit bois',tag:'new',
+  desc:'Brique de l\'échelle : « clac » bref de petit bois, dominé par le transitoire — peu de tonale donc peu de résonance.',
+  p:{tone:160,vol:0.5},c:[sl('tone','bois',80,320,5),sl('vol','vol',0,1,0.01)],play:p=>fxWoodClack(p)},
+
+ {g:'Ingénieur (sapeur)',id:'engineer-hammer',name:'· brique : coup de marteau (cadence)',tag:'new',
+  desc:'L\'ingénieur <b>martèle</b> maintenant en cadence (1 coup / planche, calé sur <code>engDur</code>) : un coup seul, plus <b>sec</b> que le marteau de l\'Intendant (tête métal + toc bois court, sans résonance). Sert à scander la pose du pont.',
+  p:{tone:200,vol:0.5},c:[sl('tone','bois',90,320,5),sl('vol','vol',0,1,0.01)],play:p=>fxHammer(p)},
+
+ {g:'Ingénieur (sapeur)',id:'engineer-rung',name:'· brique : barreau d\'échelle posé',tag:'new',
+  desc:'L\'échelle se <b>dresse barreau par barreau</b> (bras hauts, le long de la face). Un seul barreau calé : emboîtement aigu léger + barreau calé (2 clacs très brefs). La tonalité <b>monte</b> avec la hauteur en jeu.',
+  p:{wood:180,vol:0.5},c:[sl('wood','bois',90,300,5),sl('vol','vol',0,1,0.01)],
+  play:p=>{const t=ctx().currentTime;fxWoodClack({tone:p.wood*1.4,vol:p.vol*0.5},t);fxWoodClack({tone:p.wood,vol:p.vol*0.8},t+0.05);}},
+
+ {g:'Fin de manche',id:'horde-stampede',name:'Horde — piétinement',tag:'new',desc:'Foule qui court : lit grave + pas multiples + poussière.',p:{dur:1.4,bpm:300,vol:0.6},c:[sl('dur','durée',0.6,2.5,0.1),sl('bpm','cadence',180,460,10),sl('vol','vol',0,1,0.01)],play:p=>fxStampede(p)},
+ {g:'Fin de manche',id:'horde-cry',name:'Horde — cri de victoire',tag:'new',desc:'Clameur collective (5 voix désaccordées) qui monte.',p:{pitch:170,dur:0.9,vol:0.7,rev:0.3},c:[sl('pitch','hauteur',110,260,2),sl('dur','durée',0.5,1.6,0.05),sl('vol','vol',0,1,0.01),sl('rev','réverb',0,0.8,0.01)],play:p=>fxHordeCry(p)},
+ {g:'Fin de manche',id:'desert-flag',name:'Désertion — drapeau levé',tag:'new',note:'priorité basse — coûteux pour peu (mieux : 1 cue collectif, pas par soldat)',desc:'Léger claquement de toile au lever du drapeau blanc.',p:{vol:0.25},c:[sl('vol','vol',0,1,0.01)],play:p=>fxFlag(p)},
+
+ {g:'Existants (réutilisables — pour comparer)',id:'ex-boom',name:'boom() — gros canon',tag:'reuse',dep:'Canon — moderne (mod-cannon)',desc:'Tir du canon d\'artillerie principal.',p:{},c:[],play:()=>fxBoom({vol:0.9,pitch:160})},
+ {g:'Existants (réutilisables — pour comparer)',id:'ex-explosion',name:'explosion()',tag:'reuse',dep:'Explosion — moderne (mod-explosion)',desc:'Impact d\'obus.',p:{vol:1},c:[sl('vol','vol',0,1,0.01)],play:p=>fxExplosion(p.vol)},
+ {g:'Existants (réutilisables — pour comparer)',id:'ex-whistle',name:'whistles() — sifflement',tag:'reuse',keep:'CONSERVÉ (moderne rejeté)',desc:'Sifflement d\'obus (one-shot d\'audition). Direction retenue.',p:{dur:0.7,freq:1200,q:6,vol:0.3},c:[sl('dur','durée',0.3,1.2,0.02),sl('freq','hauteur',500,2500,20),sl('vol','vol',0,0.6,0.01)],play:p=>fxWhizz(p)},
+ {g:'Existants (réutilisables — pour comparer)',id:'ex-hit',name:'hit() — tour touchée',tag:'reuse',keep:'CONSERVÉ (moderne rejeté)',desc:'Coup direct métallique sur tour. Direction retenue.',p:{},c:[],play:()=>fxHit()},
+ {g:'Existants (réutilisables — pour comparer)',id:'ex-rubble',name:'rubble() — effondrement',tag:'reuse',dep:'Effondrement — moderne (mod-rubble)',desc:'Tour qui s\'écroule (pierre).',p:{big:0},c:[sl('big','fatal',0,1,1)],play:p=>fxRubble(!!p.big)},
+
+ {g:'Modernes (comparaison — sub + saturation + réverb)',id:'mod-cannon',name:'Canon — moderne',tag:'new',
+  desc:'Sub profond + transient claquant + corps saturé + queue de réverb. À comparer à boom().',
+  p:{vol:0.9,sub:55,rev:0.3},c:[sl('vol','vol',0,1,0.01),sl('sub','sub',35,90,1),sl('rev','réverb',0,0.8,0.01)],play:p=>fxCannonModern(p)},
+ {g:'Modernes (comparaison — sub + saturation + réverb)',id:'mod-explosion',name:'Explosion — moderne',tag:'new',
+  desc:'Chute de sub + crunch saturé + éclats + réverb. À comparer à explosion().',
+  p:{vol:1,rev:0.4},c:[sl('vol','vol',0,1,0.01),sl('rev','réverb',0,0.9,0.01)],play:p=>fxExplosionModern(p)},
+ {g:'Modernes (comparaison — sub + saturation + réverb)',id:'mod-whistle',name:'Sifflement — moderne',tag:'new',dep:'whistles() / ex-whistle (conservé)',
+  desc:'Tonal (sines désaccordées + vibrato), façon projectile cinématique. Rejeté.',
+  p:{dur:0.7,freq:1200,vol:0.3,rev:0.3},c:[sl('dur','durée',0.3,1.2,0.02),sl('freq','hauteur',500,2500,20),sl('vol','vol',0,0.6,0.01),sl('rev','réverb',0,0.8,0.01)],play:p=>fxWhistleModern(p)},
+ {g:'Modernes (comparaison — sub + saturation + réverb)',id:'mod-hit',name:'Tour touchée — moderne',tag:'new',dep:'hit() / ex-hit (conservé)',
+  desc:'Sub thump + transient + harmoniques métalliques + réverb. Rejeté.',
+  p:{vol:0.8,rev:0.35},c:[sl('vol','vol',0,1,0.01),sl('rev','réverb',0,0.9,0.01)],play:p=>fxHitModern(p)},
+ {g:'Modernes (comparaison — sub + saturation + réverb)',id:'mod-rubble',name:'Effondrement — moderne',tag:'new',
+  desc:'Plus grave et plus long, éclats spatialisés + réverb. À comparer à rubble().',
+  p:{vol:1,rev:0.4},c:[sl('vol','vol',0,1,0.01),sl('rev','réverb',0,0.9,0.01)],play:p=>fxRubbleModern(p)},
+];
+
+// ── render ───────────────────────────────────────────────────────────────
+const root=document.getElementById('root');
+const groups=[...new Set(INSTR.map(i=>i.g))];
+for(const g of groups){
+  const h=document.createElement('h2');h.textContent=g;root.appendChild(h);
+  const grid=document.createElement('div');grid.className='grid';root.appendChild(grid);
+  for(const ins of INSTR.filter(i=>i.g===g)){
+    const card=document.createElement('div');card.className='card'+(ins.dep?' dep':'')+(ins.keep?' keep':'');
+    const top=document.createElement('div');top.className='top';
+    const badge=ins.dep?`<span class="tag dep">déprécié</span>`:(ins.keep?`<span class="tag keep">conservé</span>`:`<span class="tag ${ins.tag}">${ins.tag}</span>`);
+    top.innerHTML=`<h3>${ins.name}</h3>`+badge;
+    card.appendChild(top);
+    const d=document.createElement('div');d.className='desc';d.innerHTML=ins.desc;card.appendChild(d);
+    if(ins.dep){const w=document.createElement('div');w.className='dep-note';w.innerHTML='⤳ remplacé par <b>'+ins.dep+'</b>';card.appendChild(w);}
+    else if(ins.keep){const w=document.createElement('div');w.className='keep-note';w.textContent='✓ '+ins.keep;card.appendChild(w);}
+    else if(ins.note){const w=document.createElement('div');w.className='todo-note';w.textContent='⚖ '+ins.note;card.appendChild(w);}
+    const sld=document.createElement('div');sld.className='sliders';
+    for(const ctl of ins.c){
+      const row=document.createElement('div');row.className='sl';
+      const out=document.createElement('output');out.textContent=ins.p[ctl.k];
+      const inp=document.createElement('input');inp.type='range';inp.min=ctl.min;inp.max=ctl.max;inp.step=ctl.step;inp.value=ins.p[ctl.k];
+      inp.oninput=()=>{ins.p[ctl.k]=parseFloat(inp.value);out.textContent=ins.p[ctl.k];};
+      inp.onchange=()=>ins.play(ins.p);
+      const lab=document.createElement('label');lab.textContent=ctl.label;
+      row.appendChild(lab);row.appendChild(inp);row.appendChild(out);sld.appendChild(row);
+    }
+    card.appendChild(sld);
+    const act=document.createElement('div');act.className='actions';
+    const pb=document.createElement('button');pb.className='play';pb.textContent='▶ Jouer';pb.onclick=()=>ins.play(ins.p);
+    const cb=document.createElement('button');cb.className='copy';cb.textContent='JSON';
+    cb.onclick=()=>{navigator.clipboard.writeText(JSON.stringify({[ins.id]:ins.p},null,2));cb.textContent='copié';cb.classList.add('ok');setTimeout(()=>{cb.textContent='JSON';cb.classList.remove('ok');},1100);};
+    act.appendChild(pb);act.appendChild(cb);card.appendChild(act);
+    grid.appendChild(card);
+  }
+}
+document.getElementById('copyall').onclick=e=>{
+  const all={};INSTR.forEach(i=>{all[i.id]=i.p;});
+  navigator.clipboard.writeText(JSON.stringify(all,null,2));
+  e.target.textContent='copié !';setTimeout(()=>e.target.textContent='Copier TOUS les réglages',1100);
+};
+</script>
+</body>
+</html>

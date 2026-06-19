@@ -15,6 +15,9 @@ export const COLORS = {
   // Shown before a side is claimed (and again at every rematch until a camp is
   // picked): a calm slate that belongs to neither player.
   towerNeutral: 0x6f7d96,
+  // The third player (Intendant of the living world): a regal violet that is
+  // neither camp's colour — he belongs to no army.
+  intendant: 0xb483f0,
   barrel: 0xd7dde8,
   projectileP1: 0xbcd4ff,
   projectileP2: 0xffd0c0,

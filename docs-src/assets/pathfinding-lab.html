@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pathfinding Lab — Tower Duel</title>
+<style>
+  :root{--bg:#0e1320;--bg2:#141c2e;--ink:#e8eef7;--mut:#8a99b3;--line:#26324a;--gold:#f2c14e;--blue:#5aa9e6;--red:#e6685a;--violet:#b483f0;--green:#46e06a;--accent:#7ee0c0;}
+  *{box-sizing:border-box} body{margin:0}
+  .lab{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink);background:linear-gradient(180deg,#0b0f1a,#0e1320 40%);min-height:100vh;padding:16px;display:flex;flex-direction:column;gap:12px;max-width:1100px;margin:0 auto;}
+  h1{font:600 17px/1.2 ui-sans-serif,system-ui,sans-serif;margin:0} h1 small{color:var(--mut);font-weight:400;font-size:12px}
+  .intro{color:var(--mut);font:13px/1.5 ui-sans-serif,system-ui,sans-serif;max-width:80ch}
+  .intro b{color:var(--ink)}
+  .stage{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1020}
+  canvas{display:block;width:100%;height:auto}
+  canvas.editing{cursor:crosshair}
+  .scopewrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#060a12}
+  .scopewrap .cap{padding:6px 10px;color:var(--mut);font-size:11px;border-bottom:1px solid var(--line);background:#0a1020}
+  .scopewrap .cap b{color:var(--violet)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--mut);padding:4px 2px}
+  .legend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .panel{border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:12px;display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .row .lbl{color:var(--mut);min-width:120px}
+  button{font:inherit;color:var(--ink);background:#1b2740;border:1px solid var(--line);border-radius:7px;padding:7px 11px;cursor:pointer}
+  button:hover{border-color:var(--gold)} button.on{background:var(--gold);color:#1a1300;border-color:var(--gold);font-weight:600}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden} .seg button{border:0;border-radius:0;background:#101a2e;padding:6px 11px} .seg button.on{background:var(--gold);color:#1a1300}
+  .note{color:var(--mut);font-size:11px}
+  .badge{display:inline-block;padding:1px 7px;border-radius:999px;background:#1b2740;border:1px solid var(--line);color:var(--accent)}
+  code{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="lab">
+  <h1>Pathfinding Lab <small>— Tower Duel · le graphe de navigation des soldats (dérivé de battlefield-lab)</small></h1>
+  <p class="intro">Tu connais déjà ce graphe : c'est l'<b>oscilloscope</b> que le 3ᵉ joueur (l'Intendant) a sous les yeux sur sa manette. Chaque segment du terrain y est colorié selon sa <b>franchissabilité par pente</b>. Le « Debug chemins » des développeurs est devenu une <b>aide de jeu</b>. Ici, on le déplie : pose des planches, vois les <b>nœuds</b> du graphe, le <b>chemin A*</b>, et creuse un cratère pour regarder le <code>navVer</code> s'incrémenter et la <b>replanification</b> se déclencher.</p>
+
+  <!-- HERO : l'esthétique oscilloscope du 3e joueur -->
+  <div class="scopewrap">
+    <div class="cap">HUD MANETTE — oscilloscope du 3ᵉ joueur : <b>violet</b> = franchissable deux sens · <b>bleu</b> = montable →  · <b>rouge</b> = montable ← · <b>gris</b> = mur (seuil de pente <b>CS = 1.35</b> = <code>montée ≤ SU</code>)</div>
+    <canvas id="scope" width="1060" height="120"></canvas>
+  </div>
+
+  <!-- STAGE pédagogique : terrain éditable + graphe + chemin -->
+  <div class="stage">
+    <canvas id="cv" width="1060" height="420"></canvas>
+  </div>
+  <div class="legend">
+    <span><i style="background:#46e06a"></i>chemin A* (gauche→droite)</span>
+    <span><i style="background:#46b6e0"></i>chemin A* (droite→gauche)</span>
+    <span><i style="background:#e65a5a"></i>pente infranchissable</span>
+    <span><i style="background:#b483f0"></i>nœud / arête du graphe</span>
+    <span><i style="background:#9a6b3a"></i>planche (pont / escalier)</span>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <span class="lbl">Pose</span>
+      <span class="seg" id="placeSeg"><button data-p="bridge" class="on">Poser un pont</button><button data-p="stair">Poser un escalier</button></span>
+      <span class="note">Clique sur le terrain pour déposer l'ouvrage (point de départ).</span>
+    </div>
+    <div class="row">
+      <span class="lbl">Voir</span>
+      <button id="graphBtn">Voir le graphe</button>
+      <button id="pathBtn" class="on">Voir le chemin</button>
+      <button id="nodesBtn">Voir les nœuds</button>
+    </div>
+    <div class="row">
+      <span class="lbl">Éditer le terrain</span>
+      <button id="craterBtn">Creuser un cratère</button>
+      <button id="reTerrain">Nouveau terrain</button>
+      <button id="reset">Tout effacer</button>
+      <span class="badge">navVer = <span id="navVerLbl">1</span></span>
+      <span class="badge" id="replanLbl">replan ✓</span>
+    </div>
+    <div class="note" id="statusLine"></div>
+  </div>
+
+  <div class="panel">
+    <div class="note"><b style="color:var(--ink)">Lecture.</b> Le graphe est implicite : un <b>nœud</b> = un couple <code>(colonne, surface)</code> renvoyé par <code>surfacesAt(x)</code> (le sol, plus chaque planche au-dessus). Une <b>arête</b> relie deux colonnes voisines si la marche est franchissable (<code>montée ≤ SU</code>) ; les descentes passent toujours mais coûtent plus cher (pénalité de chute). <code>findPath</code> applique Dijkstra/A* du soldat vers la tour adverse ; s'il n'y a aucun chemin, le soldat déserte.</div>
+    <div class="note"><b style="color:var(--ink)">Replanification.</b> Chaque édition (pose d'ouvrage, cratère) incrémente <code>navVer</code>. Les soldats comparent leur <code>navVer</code> mémorisé à l'actuel et recalculent ; un replan périodique (~0,7 s) absorbe en plus les éditions continues (creuser/aplanir). Ici, chaque cratère bump <code>navVer</code> → tu vois le chemin se redessiner.</div>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+ * Pathfinding Lab — slice fidèle de design/battlefield-lab.html (v22) et du
+ * moteur src/sim/battlefield.js. On reprend VERBATIM surfacesAt / findPath /
+ * la pose de planches / carveCrater / navVer — on ne réinvente pas l'algo.
+ * On retire tout le combat, l'audio, les animaux : juste la pédagogie graphe.
+ * ------------------------------------------------------------------------- */
+(function(){
+  const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  const sc=document.getElementById('scope'), sg=sc.getContext('2d');
+  const W=cv.width, H=cv.height;
+  const PLAT=130, platY=H-90, TLX=72, TRX=W-72, top=platY-96;
+  const SU=14;                       // marche max franchissable entre colonnes voisines
+  const CS=1.35;                      // seuil de pente (climbSlope) — identique au moteur & à l'oscilloscope P3
+  const PW=16, SW=11, SH=5;           // largeur planche-pont / marche-escalier / hauteur de marche
+
+  // RNG seedé (mulberry32) — INTERDICTION du vrai Math.random (cohérent rng.js)
+  let seed=12345, rngState=12345;
+  function reseed(s){ seed=(s>>>0)||1; rngState=seed; }
+  function rnd(){ rngState=(rngState+0x6D2B79F5)|0; let t=Math.imul(rngState^(rngState>>>15),1|rngState); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }
+
+  // ---- terrain (heightfield 1D) ----
+  const heights=new Float32Array(W);
+  const cX=x=>x<0?0:(x>W-1?W-1:x|0);
+  const terrAt=x=>heights[cX(Math.round(x))];
+  function genTerrain(){ reseed(seed); const base=platY-26, hh=60+rnd()*60, ph=rnd()*6, f1=2+rnd()*2, f2=5+rnd()*3;
+    for(let x=0;x<W;x++){ let h; if(x<PLAT||x>W-PLAT)h=platY;
+      else{ const t=(x-PLAT)/(W-2*PLAT); h=base+16*Math.sin(t*Math.PI*f1+ph)+8*Math.sin(t*Math.PI*f2+1.3)-hh*Math.exp(-((t-0.5)**2)/0.036); } heights[x]=h; }
+    for(let p=0;p<3;p++){ const c=heights.slice(); for(let x=1;x<W-1;x++)heights[x]=(c[x-1]+2*c[x]+c[x+1])/4; } }
+
+  // ---- structures (planches pont/escalier) ----
+  let structures=[];
+  let navVer=1;                       // incrémenté à CHAQUE édition → replanification
+
+  // surface la plus PROCHE de yRef et atteignable
+  function groundY(x,yRef){ const t=terrAt(x); let best=t,bd=(t<yRef-SU)?1e9:Math.abs(t-yRef);
+    for(const p of structures){ if(x<p.x0||x>p.x1||p.y<yRef-SU)continue; const d=Math.abs(p.y-yRef); if(d<bd){bd=d;best=p.y;} } return best; }
+
+  // surfaces praticables à l'abscisse x (sol + planches au-dessus) — nœuds du graphe
+  function surfacesAt(x){ const t=terrAt(x), out=[t]; for(const p of structures){ if(x>=p.x0&&x<=p.x1&&p.y<=t+2) out.push(p.y); } return out; }
+
+  // ---- A* / Dijkstra sur surfaces (VERBATIM du moteur) ----
+  function findPath(sx,sy,goalX){
+    const STEP=8, N=Math.floor((W-6)/STEP), gi=Math.max(0,Math.min(N,Math.round(goalX/STEP))), si=Math.max(0,Math.min(N,Math.round(sx/STEP)));
+    let startY=terrAt(si*STEP),bd=1e9; for(const y of surfacesAt(si*STEP)){const d=Math.abs(y-sy);if(d<bd){bd=d;startY=y;}}
+    const key=(i,y)=>i+'_'+Math.round(y), dist=new Map(), prev=new Map(), ny_=new Map(), done=new Set();
+    const sk=key(si,startY); dist.set(sk,0); prev.set(sk,null); ny_.set(sk,startY);
+    let guard=0;
+    while(guard++<6000){ let cur=null,cd=1e9; for(const [k,v] of dist){ if(!done.has(k)&&v<cd){cd=v;cur=k;} } if(cur==null)break; done.add(cur);
+      const ci=parseInt(cur), cy=ny_.get(cur);
+      if(ci===gi){ const path=[]; let k=cur; while(k){ path.push({x:parseInt(k)*STEP,y:ny_.get(k)}); k=prev.get(k); } return path.reverse(); }
+      for(const i2 of [ci-1,ci+1]){ if(i2<0||i2>N)continue; const x2=i2*STEP;
+        for(const y2 of surfacesAt(x2)){ const up=cy-y2; if(up>SU+1)continue;       // marche trop haute → infranchissable
+          const drop=y2-cy, cost=STEP+(drop>SU?drop*0.6:0)+(up>0?up*0.25:0); const k2=key(i2,y2), nd=cd+cost;
+          if(!dist.has(k2)||nd<dist.get(k2)){ dist.set(k2,nd); prev.set(k2,cur); ny_.set(k2,y2); } } } }
+    return null; }
+  function crossPath(dir){ const sx=dir>0?TLX+14:TRX-14, gx=dir>0?TRX-14:TLX+14; return findPath(sx,terrAt(sx),gx); }
+
+  // ---- pose de planches (escalier / pont), façon stepBuild() + supports ----
+  function placeWork(type, x0px, y0px){
+    const f=1;                                            // toujours vers la droite, pour la démo
+    let bx=x0px, by=groundY(x0px,y0px);
+    for(let i=0;i<5;i++){
+      let sx,sy,a,b;
+      if(type==='stair'){ sx=bx+f*(i*SW); sy=by-i*SH; a=Math.min(sx,sx+f*SW); b=Math.max(sx,sx+f*SW); }
+      else { sx=bx+f*(i*PW); sy=by; a=Math.min(sx,sx+f*PW); b=Math.max(sx,sx+f*PW); }
+      if(sx<6||sx>W-6||sy<12||sy>terrAt(sx)+3) break;     // build sûr : pas hors-cadre ni sous le terrain
+      structures.push({x0:a,x1:b,y:sy});
+    }
+    navVer++;                                             // → replanification
+  }
+
+  // ---- cratère : abîme les planches + creuse le terrain, bump navVer ----
+  function craterStructures(mx,my,r){ const out=[];
+    for(const p of structures){ const dy=Math.abs(p.y-my); if(dy>=r){out.push(p);continue;} const dx=Math.sqrt(r*r-dy*dy),cl=mx-dx,cr=mx+dx;
+      if(cr<=p.x0||cl>=p.x1){out.push(p);continue;} if(cl>p.x0)out.push({x0:p.x0,x1:Math.min(p.x1,cl),y:p.y}); if(cr<p.x1)out.push({x0:Math.max(p.x0,cr),x1:p.x1,y:p.y}); }
+    structures=out.filter(p=>p.x1-p.x0>1); }
+  function carveCrater(mx,my,r){ r=r||34;
+    for(let d=-r;d<=r;d++){ const c=cX(mx+d), fy=my+Math.sqrt(Math.max(0,r*r-d*d)); if(heights[c]<fy)heights[c]=Math.min(H-2,fy); }
+    // léger lissage des bords du cratère
+    for(let p=0;p<2;p++){ const a=cX(mx-r-2),b=cX(mx+r+2); const c=heights.slice(); for(let x=a+1;x<b;x++)heights[x]=(c[x-1]+2*c[x]+c[x+1])/4; }
+    craterStructures(mx,my,r); navVer++; }
+
+  // ---- état UI ----
+  let placeType='bridge', showGraph=false, showPath=true, showNodes=false, craterTool=false;
+  let dbgL=null, dbgR=null, lastNav=0;
+  function replan(){ dbgL=crossPath(1); dbgR=crossPath(-1); lastNav=navVer; flash=1; }
+
+  // ---- rendu STAGE ----
+  function drawTower(x,facing){ ctx.fillStyle='#2a3550'; ctx.fillRect(x-16,top,32,96); ctx.fillStyle='#46557a'; ctx.fillRect(x-16,top,32,10);
+    ctx.fillStyle='#0a1020'; ctx.fillRect(x+facing*10-3,top+22,6,12); }
+  function render(){
+    ctx.fillStyle='#0a1020'; ctx.fillRect(0,0,W,H);
+    // ciel léger en haut
+    const sky=ctx.createLinearGradient(0,0,0,platY); sky.addColorStop(0,'#10182b'); sky.addColorStop(1,'#0a1020'); ctx.fillStyle=sky; ctx.fillRect(0,0,W,platY);
+    // terrain rempli
+    ctx.beginPath(); ctx.moveTo(0,H); for(let x=0;x<W;x+=2)ctx.lineTo(x,terrAt(x)); ctx.lineTo(W,terrAt(W-1)); ctx.lineTo(W,H); ctx.closePath();
+    ctx.fillStyle='#1a2236'; ctx.fill(); ctx.strokeStyle='#33405e'; ctx.lineWidth=1.5; ctx.beginPath(); for(let x=0;x<W;x+=2)x?ctx.lineTo(x,terrAt(x)):ctx.moveTo(x,terrAt(x)); ctx.stroke();
+    drawTower(TLX,1); drawTower(TRX,-1);
+
+    // pentes infranchissables (rouge) — comme le Debug chemins de dev
+    ctx.lineWidth=2; for(let x=PLAT;x<W-PLAT-4;x+=4){ const r=(terrAt(x)-terrAt(x+4))/4; if(Math.abs(r)>CS){ ctx.strokeStyle='rgba(230,90,90,.85)'; ctx.beginPath(); ctx.moveTo(x,terrAt(x)); ctx.lineTo(x+4,terrAt(x+4)); ctx.stroke(); } }
+
+    // GRAPHE : arêtes franchissables entre colonnes voisines (échantillon STEP=8)
+    if(showGraph){
+      const STEP=8, N=Math.floor((W-6)/STEP);
+      ctx.lineWidth=1; ctx.strokeStyle='rgba(180,131,240,.5)';
+      for(let i=0;i<N;i++){ const x1=i*STEP, x2=(i+1)*STEP;
+        for(const y1 of surfacesAt(x1)) for(const y2 of surfacesAt(x2)){ const up=y1-y2; if(up>SU+1)continue; ctx.beginPath(); ctx.moveTo(x1,y1-2); ctx.lineTo(x2,y2-2); ctx.stroke(); } }
+    }
+    // NŒUDS : un point par surface (sol + planches) à chaque colonne échantillonnée
+    if(showNodes){
+      const STEP=8, N=Math.floor((W-6)/STEP); ctx.fillStyle='#b483f0';
+      for(let i=0;i<=N;i++){ const x=i*STEP; for(const y of surfacesAt(x)){ ctx.beginPath(); ctx.arc(x,y-2,1.8,0,6.28); ctx.fill(); } }
+    }
+
+    // planches
+    ctx.fillStyle='#9a6b3a'; ctx.strokeStyle='#5e3f20'; ctx.lineWidth=1; for(const p of structures){ ctx.fillRect(p.x0,p.y,p.x1-p.x0,4); ctx.strokeRect(p.x0,p.y,p.x1-p.x0,4); }
+
+    // CHEMIN A* (vert →, bleu ←) + waypoints
+    if(showPath){ for(const [pth,col] of [[dbgL,'#46e06a'],[dbgR,'#46b6e0']]){ if(!pth)continue;
+        ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.beginPath(); pth.forEach((w,i)=>i?ctx.lineTo(w.x,w.y-2):ctx.moveTo(w.x,w.y-2)); ctx.stroke();
+        ctx.fillStyle=col; for(const w of pth){ ctx.beginPath(); ctx.arc(w.x,w.y-2,2.6,0,6.28); ctx.fill(); } } }
+
+    // libellé d'état
+    statusLine.innerHTML = 'chemin <b style="color:var(--green)">→</b> : '+(dbgL?('OK · '+dbgL.length+' waypoints'):'AUCUN (désertion)')
+      + ' &nbsp;·&nbsp; chemin <b style="color:#46b6e0">←</b> : '+(dbgR?'OK':'AUCUN')
+      + ' &nbsp;·&nbsp; planches : '+structures.length;
+  }
+
+  // ---- oscilloscope HERO (style scope() de design/controller-p3.html) ----
+  let T=0, flash=0;
+  function scope(){ const w=sc.width,h=sc.height,baseScale=h/120;
+    sg.fillStyle='#060a12'; sg.fillRect(0,0,w,h);
+    sg.strokeStyle='#12331e'; sg.lineWidth=1; for(let y=14;y<h;y+=22){ sg.beginPath(); sg.moveTo(0,y); sg.lineTo(w,y); sg.stroke(); }
+    // on lit le VRAI terrain du stage (mappé verticalement dans la bande du scope)
+    const map=y=>{ const lo=top, hi=platY+20; return 8+((y-lo)/(hi-lo))*(h-16); };
+    sg.lineWidth=3; const seg=8;
+    for(let x=8;x<w-8-seg;x+=seg){ const y=terrAt(x), yr=terrAt(x+seg), yl=terrAt(x-seg);
+      const bOK=(y-yr)/seg<=CS, rOK=(y-yl)/seg<=CS;
+      sg.strokeStyle=(bOK&&rOK)?'#b483f0':bOK?'#5aa9e6':rOK?'#e6685a':'#33384b'; sg.shadowColor=sg.strokeStyle; sg.shadowBlur=6;
+      sg.beginPath(); sg.moveTo(x,map(y)); sg.lineTo(x+seg,map(yr)); sg.stroke(); }
+    sg.shadowBlur=0;
+    // tours = points radar
+    for(const tx of [40,w-40]){ sg.fillStyle='#cdd6e6'; sg.beginPath(); sg.arc(tx,map(terrAt(tx))-4,4,0,6.28); sg.fill(); }
+    // soldats fictifs qui glissent (téléteur visuel)
+    for(const fx of [0.30,0.46,0.62]){ const x=12+fx*(w-24); sg.fillStyle=fx<0.5?'#5aa9e6':'#e6685a'; sg.beginPath(); sg.arc(x,map(terrAt(x))-4,2.4,0,6.28); sg.fill(); }
+    if(flash>0){ sg.fillStyle='rgba(120,150,210,'+(flash*0.10)+')'; sg.fillRect(0,0,w,h); flash-=0.02; }
+  }
+
+  // ---- boucle ----
+  function loop(){ T+=1/60; if(navVer!==lastNav)replan(); navVerLbl.textContent=navVer; replanLbl.textContent=(navVer===lastNav?'replan ✓':'replan…'); scope(); render(); requestAnimationFrame(loop); }
+
+  // ---- contrôles ----
+  const navVerLbl=document.getElementById('navVerLbl'), replanLbl=document.getElementById('replanLbl'), statusLine=document.getElementById('statusLine');
+  document.querySelectorAll('#placeSeg button').forEach(b=>b.onclick=()=>{ placeType=b.dataset.p; document.querySelectorAll('#placeSeg button').forEach(x=>x.classList.toggle('on',x===b)); craterTool=false; craterBtn.classList.remove('on'); cv.classList.add('editing'); });
+  const graphBtn=document.getElementById('graphBtn'); graphBtn.onclick=()=>{ showGraph=!showGraph; graphBtn.classList.toggle('on',showGraph); };
+  const pathBtn=document.getElementById('pathBtn'); pathBtn.onclick=()=>{ showPath=!showPath; pathBtn.classList.toggle('on',showPath); };
+  const nodesBtn=document.getElementById('nodesBtn'); nodesBtn.onclick=()=>{ showNodes=!showNodes; nodesBtn.classList.toggle('on',showNodes); };
+  const craterBtn=document.getElementById('craterBtn'); craterBtn.onclick=()=>{ craterTool=!craterTool; craterBtn.classList.toggle('on',craterTool); cv.classList.toggle('editing',craterTool); };
+  document.getElementById('reTerrain').onclick=()=>{ reseed(seed+1); structures=[]; genTerrain(); navVer++; };
+  document.getElementById('reset').onclick=()=>{ structures=[]; genTerrain(); navVer++; };
+
+  cv.addEventListener('click',e=>{ const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width*W, y=(e.clientY-r.top)/r.height*H;
+    if(craterTool){ carveCrater(x,Math.min(y,terrAt(x)),34); }
+    else { placeWork(placeType,x,y); } });
+
+  // init
+  genTerrain(); replan(); cv.classList.add('editing'); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

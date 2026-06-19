@@ -236,6 +236,18 @@ figure.diagram figcaption { font-size: 14px; color: var(--ink-soft); margin-top:
 .sim button:hover { filter: brightness(1.08); }
 .sim .hint { font-size: 13px; color: var(--ink-soft); margin-top: 8px; }
 
+/* ---- "Play this lot" call-to-action --------------------------------- */
+.callout.play { background: #e9f1ff; border-color: #b9d3ff; }
+.callout.play::before { content: '▶️'; }
+.playbtn {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
+  border-radius: 10px; padding: 11px 20px; font-weight: 800; font-size: 15px;
+  background: var(--accent); color: #fff; text-decoration: none;
+  font-family: 'Fredoka', sans-serif; box-shadow: var(--shadow);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.playbtn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
 /* ---- Chapter cards on the home page --------------------------------- */
 .chapters { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin: 22px 0; }
 .chap-card {

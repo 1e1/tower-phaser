@@ -71,5 +71,8 @@
   "pager.next": "Chapter 2 · Make it look good →",
 
   "sim.hit": "🎯 Hit!",
-  "sim.miss": "💨 Missed"
+  "sim.miss": "💨 Missed",
+
+  "play.lead": "<b>Now play it for real!</b> This is the complete <b>batch 1</b> — the little game this chapter just walked through — playable right in your browser, two players sharing one screen.",
+  "play.btn": "Play batch 1"
 }

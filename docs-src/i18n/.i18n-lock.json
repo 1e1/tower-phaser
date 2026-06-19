@@ -1,9 +1,9 @@
 {
   "_site": {
-    "nav.home": "a8ff8fd20789",
-    "nav.annex": "db58c921b9bf",
+    "nav.home": "b2635376ba23",
+    "nav.annex": "c44256c12a92",
     "nav.math": "33b877756ef7",
-    "nav.chapters": "54d34cdf9843",
+    "nav.chapters": "fd1c0c7da6e4",
     "level.legend": "058818ff083b",
     "level.d.label": "4c4a8cfef49d",
     "level.d.sub": "010b985e66eb",
@@ -19,7 +19,7 @@
     "hero.badge": "4d963cfab70d",
     "hero.kicker": "7478244ca585",
     "hero.title": "db58c921b9bf",
-    "hero.lead": "e3fe1eb3e5b7",
+    "hero.lead": "9ef9a8caac48",
     "card.lobby.lot": "587d2e9ec868",
     "card.lobby.title": "b566a07d2611",
     "card.lobby.desc": "60eaf655ef36",
@@ -172,15 +172,15 @@
     "s3.callout.warn": "327f6a3aaa6b",
     "s4.h2": "1ab623d7ab3f",
     "s4.lead": "d35506b23564",
-    "s4.deploy.h": "f2769f3731f1",
-    "s4.deploy.p": "0e316562b39b",
-    "s4.code.cap": "5400ca52d2bf",
-    "s4.code.c1": "2a4b98368a2d",
-    "s4.code.c2": "66654b59757a",
-    "s4.code.c3": "f0c84f5c0bbd",
-    "s4.code.c4": "87da502cd5c2",
-    "s4.code.c5": "123ea87e4f02",
-    "s4.deploy.warn": "98eebf01c164",
+    "s4.deploy.h": "89b6a62419e6",
+    "s4.deploy.p": "f45154964b1b",
+    "s4.code.cap": "cdf32658356f",
+    "s4.code.c1": "bd653f8acfe0",
+    "s4.code.c2": "e587490d35e9",
+    "s4.code.c3": "538d2f01838c",
+    "s4.code.c4": "1e9fe77a31dd",
+    "s4.code.c5": "130bfe0ec543",
+    "s4.deploy.warn": "5f0a0f763ac2",
     "s4.site.h": "e6bd692dff98",
     "s4.site.p": "b43e61701a57",
     "s4.site.li1": "dd63751bb88c",
@@ -213,7 +213,8 @@
     "s7.backHome": "a1be0c6ddb2a",
     "footer.suffix": "60098bc0b903",
     "pager.prev": "16b9fda0c8e1",
-    "pager.next": "162efd38aead"
+    "pager.next": "162efd38aead",
+    "s4.deploy.tip": "ed4089b42e65"
   },
   "annex-lobby": {
     "title": "db05aaf4baaf",
@@ -411,7 +412,9 @@
     "pager.prev": "8a753db12f87",
     "pager.next": "bc45f49e2254",
     "sim.hit": "f853adf205c8",
-    "sim.miss": "cb9f2bb3c102"
+    "sim.miss": "cb9f2bb3c102",
+    "play.lead": "a3c55ae537c8",
+    "play.btn": "3feba18136a1"
   },
   "chapter-1-e": {
     "title": "f7c14992edee",
@@ -542,7 +545,9 @@
     "s5.sim.hint": "31df5aff1455",
     "footer.suffix": "f75e3a56d50e",
     "pager.prev": "cb9971afd6df",
-    "pager.next": "65408244a39d"
+    "pager.next": "65408244a39d",
+    "play.lead": "41bf5f66c371",
+    "play.btn": "430b798c412e"
   },
   "chapter-2-e": {
     "title": "d419e5b73cd9",
@@ -706,7 +711,7 @@
     "s2.h2": "d5935eb472d3",
     "s2.p1": "9a9af8eff376",
     "s2.code1.cap": "751cc498d6db",
-    "s2.p2": "db7e6756d8c5",
+    "s2.p2": "1b52fe866b31",
     "s2.code2.cap": "6eca7cfaeb4c",
     "s2.p3": "61dd135854a1",
     "s2.setaim.cap": "ed5dfc38d5cf",
@@ -832,7 +837,7 @@
     "s5.back": "a1be0c6ddb2a",
     "footer.suffix": "d582b3b8eab6",
     "pager.prev": "0a0e16c58a6f",
-    "pager.next": "7bb68a8c139a"
+    "pager.next": "b8acd90be2c2"
   },
   "chapter-4-e": {
     "title": "76eb08094e57",
@@ -884,7 +889,7 @@
     "s6.link": "9b1f4f66a863",
     "footer.suffix": "26fd2953ce3c",
     "pager.prev": "1301835109d5",
-    "pager.next": "7bb68a8c139a"
+    "pager.next": "b8acd90be2c2"
   },
   "chapter-4-i": {
     "title": "4fa6546247ea",
@@ -927,7 +932,7 @@
     "s4.callout.nerd": "77a7b5ad9503",
     "footer.suffix": "4d7814366096",
     "pager.prev": "5ef3a35cbebb",
-    "pager.next": "ad444a5087af"
+    "pager.next": "b8acd90be2c2"
   },
   "index": {
     "title": "0191fe74480d",
@@ -952,7 +957,7 @@
     "s1.callout": "45a80d572f28",
     "s2.h2": "cf6e633983ca",
     "s2.p1": "99dff69d8fa1",
-    "s2.p2": "4c1e1f2313ed",
+    "s2.p2": "023a4247cc0b",
     "s2.c1.lot": "99a52abb9bd4",
     "s2.c1.title": "fb255724be61",
     "s2.c1.desc": "bb752749589f",

@@ -200,6 +200,10 @@ function handle(socket, msg) {
       if (socket.room) socket.room.exit(socket);
       break;
 
+    case 'stepBack':
+      if (socket.room) socket.room.stepBack(socket);
+      break;
+
     case 'name':
       if (socket.room) socket.room.rename(socket, msg.name);
       break;
@@ -214,6 +218,14 @@ function handle(socket, msg) {
 
     case 'shell':
       if (socket.room) socket.room.handleShell(socket, msg.id);
+      break;
+
+    case 'intendant':
+      if (socket.room) socket.room.handleIntendant(socket, msg);
+      break;
+
+    case 'intendantBuild':
+      if (socket.room) socket.room.handleIntendantBuild(socket, msg.type);
       break;
 
     case 'sync':

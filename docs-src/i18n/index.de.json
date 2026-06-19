@@ -59,12 +59,6 @@
   "s4.cta": "Kapitel 1 starten →",
   "s5.h2": "Anhänge",
   "s5.p1": "Boni, um weiterzugehen: das Spiel selbst hosten, ein Abstecher in die Mathematik und ein Blick hinter die Kulissen des Start-Briefings.",
-  "s5.li1.label": "Deployment",
-  "s5.li1.desc": " — das Docker-Image bauen und das Spiel online hosten.",
-  "s5.li2.label": "Schnelle Mathematik",
-  "s5.li2.desc": " — die Quadratwurzel, der <code class=\"inline\">0x5f3759df</code>-Code aus Quake III und Pythagoras.",
-  "s5.li3.label": "Das Start-Briefing",
-  "s5.li3.desc": " — das Lastenheft, mit dem alles begann, kommentiert und kritisiert.",
   "s5.cta": "Alle Anhänge ansehen →",
   "footer.suffix": "gemacht für neugierige Köpfe jeden Alters 🛠️"
 }

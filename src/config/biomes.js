@@ -13,6 +13,11 @@ export const BIOMES = [
     cloud: { color: 0xffffff, alpha: 0.9 },
     ambient: 'leaves',
     ambientColor: 0x9be36b,
+    // intendantShield: visual style of the Intendant's magic shield (artillery
+    // interception) in this biome. Data-driven so there is NEVER a `biome.id ===
+    // 'x'` branch in the render code — add a style here, not a conditional there.
+    // Styles: 'egide' (heraldic ward) | 'vortex' (ember swirl) | 'hex' | 'orbe' | 'runique'.
+    intendantShield: 'egide',
     roughness: 1,
     // Difficulty knobs (see Simulation.newTerrain / generateHeights / wind).
     // heightVariance: ± px the flat platforms wander from the base height.
@@ -34,6 +39,7 @@ export const BIOMES = [
     cloud: { color: 0xfff4e0, alpha: 0.5 },
     ambient: 'sand',
     ambientColor: 0xe9cf9a,
+    intendantShield: 'egide',
     roughness: 1.25,
     heightVariance: 80,
     distanceVariance: 0.8,
@@ -50,6 +56,7 @@ export const BIOMES = [
     cloud: { color: 0xffffff, alpha: 0.8 },
     ambient: 'snow',
     ambientColor: 0xffffff,
+    intendantShield: 'egide',
     roughness: 0.85,
     heightVariance: 65,
     distanceVariance: 0.6,
@@ -66,6 +73,7 @@ export const BIOMES = [
     cloud: { color: 0x5a3340, alpha: 0.55 },
     ambient: 'embers',
     ambientColor: 0xff7a33,
+    intendantShield: 'vortex',
     roughness: 1.4,
     heightVariance: 95,
     distanceVariance: 1.0,
@@ -82,6 +90,7 @@ export const BIOMES = [
     cloud: { color: 0x3c4768, alpha: 0.92 },
     ambient: 'rain',
     ambientColor: 0x9fb4e0,
+    intendantShield: 'egide',
     roughness: 1.1,
     heightVariance: 80,
     distanceVariance: 0.85,

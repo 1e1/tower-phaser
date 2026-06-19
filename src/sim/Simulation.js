@@ -1,7 +1,9 @@
 import { GAME_WIDTH, GAME_HEIGHT, AIM, PHYSICS, MAX_WIND, CRATER_RADIUS, AIM_NOISE, SHIELD, WINDSOCK } from '../config/constants.js';
 import { generateHeights, heightAt, pointSolid, TERRAIN } from './terrain.js';
+import { mulberry32 } from './rng.js';
 import { aimVector, muzzle, pivot, bounds, rectContains } from './geometry.js';
 import { getShell } from '../config/shells.js';
+import Battlefield from './battlefield.js';
 
 // Authoritative, framework-free game simulation. It runs on the server (the
 // single source of truth) and is driven purely by player intents and fixed
@@ -40,8 +42,20 @@ function segDist(px, py, ax, ay, bx, by) {
 }
 
 export default class Simulation {
-  constructor({ names, winsNeeded, biome, maxHp = 1, turbo = false, cadence = 5, random = Math.random }) {
-    this.random = random;
+  constructor({ names, winsNeeded, biome, maxHp = 1, turbo = false, cadence = 5, seed = null, random = null, livingBattlefield = false }) {
+    // A match seed makes the whole "B" layer replayable: terrain seed, free
+    // platform heights, tower spread, wind and aim noise all draw from this one
+    // deterministic stream (mulberry32) instead of Math.random. Same seed +
+    // same inputs → same match. An explicit `random` (tests) overrides it; with
+    // neither, we fall back to Math.random (legacy, non-reproducible).
+    this.matchSeed = (seed != null) ? (seed >>> 0 || 1) : null;
+    this.random = random ?? (this.matchSeed != null ? mulberry32(this.matchSeed) : Math.random);
+    // Optional "living battlefield" mode (3rd-player Intendant + continuous
+    // soldiers). OFF by default → the 2-player duel behaves exactly as before.
+    // When on, a Phaser-free Battlefield sim advances the living world on top of
+    // the turn-by-turn artillery (built in newTerrain, once heights exist).
+    this.livingBattlefield = livingBattlefield;
+    this.battlefield = null;
     this.names = names;
     this.winsNeeded = winsNeeded; // first player to win this many rounds takes the match
     this.biome = biome;
@@ -148,6 +162,53 @@ export default class Simulation {
       t.shields = []; // shields do not carry across rounds
     }
     this.spawnWindsock();
+
+    if (this.livingBattlefield) this.buildBattlefield();
+  }
+
+  // World adapter handed to the Battlefield sim: it reads/writes THIS sim's
+  // authoritative heightfield and craters, so the living world and the artillery
+  // duel share one ground. The Battlefield never regenerates terrain itself.
+  battlefieldWorld() {
+    const self = this;
+    return {
+      width: GAME_WIDTH,
+      height: GAME_HEIGHT,
+      platformWidth: TERRAIN.platformWidth,
+      towerX: [this.towers[0].x, this.towers[1].x],
+      craterR: CRATER_RADIUS,
+      heightAt: (x) => heightAt(self.heights, x),
+      // Terraforming / impacts mutate the shared heightfield. We model the
+      // surface as the heightfield's y (lab convention): raising heights[x]
+      // lowers the surface on screen (digging), lowering it raises the ground.
+      carveCrater(mx, my, r, vx, vy) { self.carveTerrain(mx, my, r, vx, vy); },
+      dig(tx, ty, rr, amount, digH = 9) {
+        // Pit floor referenced to the stable rim outside the hole (min of the two
+        // shoulders) so digging bottoms out at rim + digH instead of forever.
+        const ref = Math.min(self.heights[self.clampX(tx - rr - 6)], self.heights[self.clampX(tx + rr + 6)]);
+        for (let d = -rr; d <= rr; d += 1) { const w = 0.5 + 0.5 * Math.cos((Math.PI * d) / rr); const c = self.clampX(tx + d); const fy = ref + w * digH; if (self.heights[c] < fy) self.heights[c] = Math.min(GAME_HEIGHT - 2, self.heights[c] + amount * w); }
+      },
+      bash(ix, iy, dir, reach, amount) {
+        for (let d = 0; d <= reach; d += 1) { const c = self.clampX(ix + dir * d); if (self.heights[c] < iy) self.heights[c] = Math.min(iy, self.heights[c] + amount); }
+      },
+      fill(tx, ty, rr, amount, digH = rr * 0.85) {
+        for (let d = -rr; d <= rr; d += 1) { const w = 0.5 + 0.5 * Math.cos((Math.PI * d) / rr); const c = self.clampX(tx + d); const tp = Math.max(0, ty - w * digH); if (self.heights[c] > tp) self.heights[c] = Math.max(tp, self.heights[c] - amount * w); }
+      },
+      flatten(tx, rr, k) {
+        const xl = self.clampX(tx - rr); const xr = self.clampX(tx + rr); const yl = self.heights[xl]; const yr = self.heights[xr];
+        for (let x = xl; x <= xr; x += 1) { const t = (x - xl) / Math.max(1, xr - xl); const target = yl + (yr - yl) * t; self.heights[x] += (target - self.heights[x]) * k; }
+      },
+      editColumn() {}, // presence enables terraform in Battlefield
+    };
+  }
+
+  clampX(x) { return x < 0 ? 0 : (x > GAME_WIDTH - 1 ? GAME_WIDTH - 1 : x | 0); }
+
+  buildBattlefield() {
+    // Seed derived from the terrain seed → deterministic, no Math.random.
+    this.battlefield = new Battlefield({ seed: this.seed ^ 0x9e3779b9, world: this.battlefieldWorld(), params: { maxHp: this.maxHp } });
+    // Real artillery drives the escalade cannon's cadence (see onArtilleryFired).
+    this.battlefield.syncCannon = true;
   }
 
   // Plant the central windsock on the fresh terrain: alive again, anchored to the
@@ -285,6 +346,8 @@ export default class Simulation {
       }
       const m = muzzle(tower); // spawn from the validated barrel pose
       this.pushEvent('fire', { owner: i, x: m.x, y: m.y, angle: tower.angle, shell: shell.id });
+      // The living world's escalade cannon may answer a real shot (lot 5 sync).
+      if (this.battlefield) this.battlefield.onArtilleryFired(i);
 
       for (let k = 0; k < shell.count; k += 1) {
         // Cluster spread + the hidden per-shot jitter (#4). Neither is sent to
@@ -357,6 +420,10 @@ export default class Simulation {
   }
 
   tick(dt) {
+    // The living world (when enabled) advances every tick, independently of the
+    // artillery phase (spec §5: artillery turn-by-turn, world in continuous
+    // time). It rides on the same heightfield/craters via the world adapter.
+    if (this.battlefield) { this.battlefield.step(dt); const bfe = this.battlefield.drainEvents(); for (let k = 0; k < bfe.length; k += 1) this.events.push(bfe[k]); }
     // Turbo keeps the wind flowing continuously across aiming and the brief
     // between-round pauses (classic randomizes once per turn instead).
     if (this.turbo && (this.phase === PHASE.AIMING || this.phase === PHASE.RESOLVING)) {
@@ -488,6 +555,15 @@ export default class Simulation {
       }
     }
 
+    // The Intendant is vulnerable to the players' artillery too, not just the
+    // living battlefield's own field cannon: his shield auto-parries the shell
+    // (and a direct hit wounds him once it is depleted). Independent of his
+    // alignment — in round 1 he is neutral, but still takes damage from anyone.
+    if (this.battlefield && this.battlefield.duelShellHitsIntendant(x0, y0, p.x, p.y, p.dmg)) {
+      p.alive = false;
+      return;
+    }
+
     if (rectContains(bounds(opponent), p.x, p.y)) {
       p.alive = false;
       // The struck player gains a round of the shell that just hit them.
@@ -511,9 +587,52 @@ export default class Simulation {
     if (p.y > 0 && pointSolid(this.heights, this.craters, p.x, p.y)) {
       p.alive = false;
       const r = Math.round(p.crater ?? CRATER_RADIUS);
-      this.craters.push({ x: Math.round(p.x), y: Math.round(p.y), r });
+      // Carve the SHARED heightfield (not just a Worms crater record) so the hole
+      // is real ground for the living battlefield: soldiers re-path around it and
+      // the Intendant's radar crest reflects the damage. (Previously the duel only
+      // pushed a crater record, leaving heights — and the pathfinder — untouched.)
+      this.carveTerrain(p.x, p.y, r);
       this.pushEvent('impact', { x: p.x, y: p.y, r });
     }
+  }
+
+  // Blast a crater into the shared heightfield (lab convention: raising heights[x]
+  // lowers the on-screen surface), record it, and make the living battlefield
+  // soldiers replan around the new hole.
+  carveTerrain(mx, my, r, vx, vy) {
+    if (vx === undefined) {
+      // Manual tool / duel shell: plain round bowl (unchanged).
+      for (let d = -r; d <= r; d += 1) {
+        const c = this.clampX(mx + d);
+        const fy = my + Math.sqrt(Math.max(0, r * r - d * d));
+        if (this.heights[c] < fy) this.heights[c] = Math.min(GAME_HEIGHT - 2, fy);
+      }
+    } else {
+      // Realistic "saucer" (B10/#8): wider than deep, elongated & offset downrange
+      // by the impact horizontality h=|vx|/speed (0 vertical→round, 1 grazing→ellipse),
+      // with an asymmetric ejecta lip. Mirrors the lab's carveCrater.
+      const sp = Math.hypot(vx, vy) || 1;
+      const h = Math.min(1, Math.abs(vx) / sp);
+      const sgn = Math.sign(vx) || 1;
+      const depth = r * 0.6 * (1 - 0.3 * h);
+      const rxF = r * (1 + 0.9 * h); const rxB = r * (1 + 0.2 * h);
+      const cx = mx + sgn * r * 0.3 * h;
+      const lipH = Math.min(6, depth * 0.22); const span = Math.max(3, r * 0.4);
+      const x0 = Math.floor(cx - rxB - span); const x1 = Math.ceil(cx + rxF + span);
+      for (let x = x0; x <= x1; x += 1) {
+        const c = this.clampX(x); const dd = x - cx; const rxs = (dd * sgn >= 0) ? rxF : rxB;
+        if (Math.abs(dd) <= rxs) {
+          const fy = my + depth * Math.sqrt(Math.max(0, 1 - (dd / rxs) * (dd / rxs)));
+          if (this.heights[c] < fy) this.heights[c] = Math.min(GAME_HEIGHT - 2, fy);
+        } else {
+          const over = Math.abs(dd) - rxs; const ll = (dd * sgn >= 0 ? lipH : lipH * 0.55);
+          const raise = ll * Math.max(0, 1 - over / span);
+          if (raise > 0.4) this.heights[c] = Math.max(2, this.heights[c] - raise);
+        }
+      }
+    }
+    this.craters.push({ x: Math.round(mx), y: Math.round(my), r });
+    if (this.battlefield) this.battlefield.navVer += 1;
   }
 
   // A tower is out once its accumulated damage reaches the match HP.
@@ -521,6 +640,21 @@ export default class Simulation {
 
   // The match is decided once a player reaches the agreed winning-round count.
   matchOver() { return Math.max(this.scores[0], this.scores[1]) >= this.winsNeeded; }
+
+  // A player abandons mid-match (disconnect grace expired, no replacement). The
+  // other duelist wins the match outright. In living-battlefield mode this also
+  // razes the quitter's tower so the horde gets its final run at the ruin (the
+  // Intendant's last chance to score a crossing) before the match freezes.
+  forfeit(loserIdx) {
+    if (this.phase === PHASE.MATCH_END) return;
+    const winner = 1 - loserIdx;
+    this.scores[winner] = Math.max(this.scores[winner], this.winsNeeded);
+    if (this.battlefield) this.battlefield.onTowerDestroyed(loserIdx);
+    this.projectiles = [];
+    this.phase = PHASE.MATCH_END;
+    this.pushEvent('destroyed', { tower: loserIdx });
+    this.pushEvent('matchEnd', { scores: this.scores.slice() });
+  }
 
   // Classic: settle a volley once all shells have landed.
   enterResolve() {
@@ -556,6 +690,13 @@ export default class Simulation {
     if (dead1) this.towers[1].ammo.shield += 1;
     if (dead0) this.pushEvent('destroyed', { tower: 0 });
     if (dead1) this.pushEvent('destroyed', { tower: 1 });
+    // Living world: a destroyed tower resolves the round → the horde charges the
+    // ruin (the Intendant scores if a soldier reaches it). The next round's
+    // newTerrain rebuilds a fresh battlefield.
+    if (this.battlefield) {
+      if (dead0) this.battlefield.onTowerDestroyed(0);
+      if (dead1) this.battlefield.onTowerDestroyed(1);
+    }
     if (dead0 && dead1) this.banner = 'Both towers fall!';
     else if (dead1) this.banner = `${this.names[0]} scores!`;
     else this.banner = `${this.names[1]} scores!`;
@@ -624,7 +765,7 @@ export default class Simulation {
   // the spectator TV never reveals what the players are setting; only the
   // ready flags and, once fired, the resulting projectiles are shared.
   snapshot() {
-    return {
+    const snap = {
       phase: this.phase,
       round: { current: this.currentRound, total: this.winsNeeded }, // `total` carries the win target (first-to-N)
       wind: this.wind,
@@ -655,5 +796,9 @@ export default class Simulation {
         .filter((p) => p.alive)
         .map((p) => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), owner: p.owner, shell: p.shellId })),
     };
+    // Living-world block is only present in the optional mode; legacy clients
+    // never see it (so the 2-player snapshot shape is unchanged when off).
+    if (this.battlefield) snap.battlefield = this.battlefield.snapshot();
+    return snap;
   }
 }

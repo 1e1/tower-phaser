@@ -14,13 +14,14 @@ import { BIOMES } from '../config/biomes.js';
 // decoded frame.
 export default class LocalServer {
   constructor(names = ['Player 1', 'Player 2']) {
-    this.config = { wins: 3, biomeId: BIOMES[0].id, hp: 1, turbo: false, cadence: 5 };
+    this.config = { wins: 3, biomeId: BIOMES[0].id, hp: 1, turbo: false, cadence: 5, livingBattlefield: false, seed: null };
     this.players = [
       { name: names[0] || 'Player 1', isConfigOwner: true },  // slot 0 owns the lobby first
       { name: names[1] || 'Player 2', isConfigOwner: false },
     ];
     this.sim = null;
     this.campChooser = -1;
+    this.campSide = -1;
     this.configDone = false;
     this.setup = true;
     this.postmatch = false;
@@ -59,6 +60,9 @@ export default class LocalServer {
       case 'aim': if (this.sim) this.sim.setAim(slot, payload.angle, payload.power); break;
       case 'ready': if (this.sim) this.sim.setReady(slot, payload.value !== false); break;
       case 'shell': if (this.sim) this.sim.setShell(slot, payload.id); break;
+      // Living-world third-player intents (no-op unless a livingBattlefield sim runs).
+      case 'intendant': if (this.sim && this.sim.battlefield) this.sim.battlefield.setIntendantInput(payload); break;
+      case 'intendantBuild': if (this.sim && this.sim.battlefield) { if (payload.type === 'stair') this.sim.battlefield.buildStair(); else if (payload.type === 'bridge') this.sim.battlefield.buildBridge(); } break;
       case 'name': this.rename(slot, payload.name); break;
       case 'sync': this.sendRoster(); break;
       case 'goHome': case 'leave': this.broadcast('roomClosed', {}); break;
@@ -83,6 +87,13 @@ export default class LocalServer {
     if (cfg.hp === 1 || cfg.hp === 2 || cfg.hp === 3) this.config.hp = cfg.hp;
     if (typeof cfg.turbo === 'boolean') this.config.turbo = cfg.turbo;
     if (Number.isFinite(cfg.cadence)) this.config.cadence = cfg.cadence;
+    // Without this the toggle never reaches the roster: the owner's own pad
+    // flips locally (so its portcullis animates) but the OTHER pad — which only
+    // learns the mode from the broadcast config — never updates. (Mirrors the
+    // networked Room.setConfig.)
+    if (typeof cfg.livingBattlefield === 'boolean') this.config.livingBattlefield = cfg.livingBattlefield;
+    // Replay a specific match seed (null clears it → next match mints a fresh one).
+    if (cfg.seed === null || Number.isFinite(cfg.seed)) this.config.seed = cfg.seed;
     this.sendRoster();
   }
 
@@ -97,10 +108,14 @@ export default class LocalServer {
   // Locally the seats are fixed (slot 0 = left pad/tower, slot 1 = right), so a
   // camp tap just records the claimant — no seat-swapping. First tap wins; only
   // the claimant may re-adjust (matches the networked "fastest wins" rule).
-  chooseCamp(slot, _side) {
+  chooseCamp(slot, side) {
     if (!this.setup && !this.postmatch) return;
     if (this.campChooser !== -1 && slot !== this.campChooser) return;
     this.campChooser = slot;
+    // The picked side (0 = blue, 1 = red) so the OTHER pad can wear the opposite
+    // colour instead of colliding on the same side. Cosmetic in local (the
+    // physical left/right towers keep their fixed colours).
+    this.campSide = (side === 0 || side === 1) ? side : slot;
     this.maybeStart();
     this.maybeRematch();
     this.sendRoster();
@@ -122,6 +137,14 @@ export default class LocalServer {
 
   start() {
     this.postmatch = false;
+    // Match seed: replay a chosen one (config.seed) or mint a fresh 32-bit seed.
+    // Logged so a match can be reproduced exactly by feeding it back as config.seed.
+    const seed = (this.config.seed != null)
+      ? (this.config.seed >>> 0 || 1)
+      : ((Math.random() * 0x100000000) >>> 0 || 1);
+    this.matchSeed = seed;
+    // eslint-disable-next-line no-console
+    console.log(`[match] seed=${seed}`);
     this.sim = new Simulation({
       names: [this.players[0].name, this.players[1].name],
       winsNeeded: this.config.wins,
@@ -129,6 +152,7 @@ export default class LocalServer {
       maxHp: this.config.hp,
       turbo: this.config.turbo,
       cadence: this.config.cadence,
+      seed,
     });
     this.sim.start();
     this.sendRoster();
@@ -153,6 +177,7 @@ export default class LocalServer {
     this.players.forEach((p, i) => { if (p) p.isConfigOwner = i === owner; });
     this.configDone = false;
     this.campChooser = -1;
+    this.campSide = -1;
     this.sendRoster();
   }
 
@@ -174,6 +199,7 @@ export default class LocalServer {
       setup: this.setup,
       configDone: this.configDone,
       campChooser: this.campChooser,
+      campSide: this.campSide,
       players: this.players.map((p) => ({
         name: p?.name || null,
         connected: true,

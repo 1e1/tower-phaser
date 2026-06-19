@@ -3,13 +3,20 @@ name: Deploy tutorial + playable game to GitHub Pages
 # Publishes the static site to GitHub Pages on every commit to main that
 # touches the tutorial OR the game source. Two things ship in one artifact —
 # GitHub Pages allows only one site per repo, so a single deploy owns it:
-#   /        -> the tutorial, GENERATED from docs-src/ by scripts/build-docs.mjs
-#   /play/   -> the LOCAL (two-players-on-one-screen) game, built by Vite
+#   /            -> the tutorial, GENERATED from docs-src/ by scripts/build-docs.mjs
+#   /play/       -> the LOCAL (two-players-on-one-screen) current game, built by Vite
+#   /play/lot1/  -> the FROZEN lot-1 build (chapter 1's playable artifact)
+#   /play/lot2/  -> the FROZEN lot-2 build (chapter 2's playable artifact)
 #
 # Only the local mode is playable here: it runs entirely in the browser
 # (src/net/LocalServer.js — no socket). The TV+phones multiplayer needs the
 # Node/ws server on /ws, which static Pages can't host, so it's intentionally
 # absent. Force local mode with the ?local flag: link to  …/play/?local .
+#
+# The lot1/lot2 archives are immutable builds of the lot-1/lot-2 git tags,
+# committed under docs-src/play-archive/ — they predate connected play, so they
+# are pure single-screen client builds (no server, no flag). They are NEVER
+# rebuilt here: history stays clean, the source-per-lot story stays intact.
 #
 # docs/ and dist/ are build artifacts (not committed). build:docs wipes docs/
 # before regenerating, so the game MUST be copied into docs/play/ afterwards.
@@ -55,6 +62,8 @@ jobs:
       - run: npm run build:docs -- --strict   # generates docs/; fails on any coverage gap
       - run: npm run build                     # builds the game into dist/
       - run: cp -r dist docs/play              # served at /play/ (enter with ?local)
+      - run: cp -r docs-src/play-archive/lot1 docs/play/lot1   # frozen lot-1 build → /play/lot1/
+      - run: cp -r docs-src/play-archive/lot2 docs/play/lot2   # frozen lot-2 build → /play/lot2/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

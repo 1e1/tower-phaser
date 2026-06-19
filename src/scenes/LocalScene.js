@@ -48,6 +48,11 @@ export default class LocalScene extends Phaser.Scene {
   }
 
   create() {
+    // Local mode is a single device permanently showing the battlefield band, so
+    // it counts as "in a match": no CRT bands here.
+    this.registry.get('screenFrame')?.setMatchActive(true);
+    this.events.once('shutdown', () => this.registry.get('screenFrame')?.setMatchActive(false));
+
     this.server = new LocalServer(this.names);
     this.tv = new LocalClient(this.server, 'tv');
     this.unsubs = [
@@ -61,6 +66,10 @@ export default class LocalScene extends Phaser.Scene {
     // gesture, and re-suspend when the page backgrounds — so re-arm all three on
     // every gesture and on returning to the foreground, not just the first tap.
     this.bfSfx = new Sfx();
+    // The shared-screen battlefield bus is the TV panel: full arena-wide stereo
+    // spatialization (pan + depth + timbre), like TvScene. Duel events are routed
+    // through bfSfx.spatial({x,y}) in processEvents.
+    this.bfSfx.setListener({ mode: 'tv', width: GAME_WIDTH });
     this.padSfx = [new Sfx(), new Sfx()];
     this.audioUnlock = () => [this.bfSfx, ...this.padSfx].forEach((s) => s.unlock());
     this.audioWake = () => { if (!document.hidden) this.audioUnlock(); };
@@ -355,25 +364,43 @@ export default class LocalScene extends Phaser.Scene {
   // configured biome (hidden) so the first match start doesn't stall (mirrors
   // TvScene). Only the first arena is prewarmed; later biome changes rebuild.
   onRoster(m) {
+    if (m.config) this.cfgLivingBattlefield = !!m.config.livingBattlefield; // drives the portcullis
     if (m.config && m.config.biomeId) this.prewarmArena(m.config.biomeId);
+    // Keep the TV scoreboard names in step with the pads: a rename rebroadcasts the
+    // roster, so adopt its names and repaint (no snapshot arrives until the match
+    // actually starts, so the lobby would otherwise show stale names).
+    if (Array.isArray(m.players)) {
+      const names = m.players.map((p, i) => (p && p.name) || this.names[i]);
+      if (names.length) { this.names = names; this.renderScore(); }
+    }
   }
 
+  // Doubles as the LOBBY PREVIEW: the prewarmed arena is now drawn VISIBLE (with
+  // two preview towers) so the battlefield band isn't blank before the match —
+  // and it still pays the canvas allocation up front. Adopted by buildArena.
   prewarmArena(biomeId) {
     if (this.built || this._warmBiomeId === biomeId) return;
     this.discardPrewarm();
     const biome = BIOMES.find((b) => b.id === biomeId) || BIOMES[0];
     this._warmBiomeId = biome.id;
-    this._warmBackground = new Background(this, biome).setVisible(false);
+    this._warmBackground = new Background(this, biome);
     this._warmTerrain = new Terrain(this, biome.terrain);
-    // Placeholder surface: pays the canvas allocation + texture upload now; the
-    // real seeded heightfield is a cheap redraw when the arena is adopted.
-    this._warmTerrain.setHeights(generateHeights(0, biome.roughness ?? 1, { centralRise: biome.centralRise ?? 0 }));
-    this._warmTerrain.image.setVisible(false);
+    const heights = generateHeights(0, biome.roughness ?? 1, { centralRise: biome.centralRise ?? 0 });
+    this._warmTerrain.setHeights(heights);
+    // Two preview towers (cosmetic; the match rebuilds the real ones from state).
+    const lx = 120; const rx = GAME_WIDTH - 120;
+    const gy = (x) => heights[Math.max(0, Math.min(heights.length - 1, Math.round(x)))];
+    this._warmTowers = [
+      new Tower(this, lx, gy(lx), COLORS.towerP1, 1),
+      new Tower(this, rx, gy(rx), COLORS.towerP2, -1),
+    ];
+    this._warmTowers.forEach((t) => { t.gfx.setDepth(1); t.maxHp = 1; t.hp = 1; t.draw(); });
   }
 
   discardPrewarm() {
     if (this._warmBackground) { this._warmBackground.destroy(); this._warmBackground = null; }
     if (this._warmTerrain) { this._warmTerrain.destroy(); this._warmTerrain = null; }
+    if (this._warmTowers) { this._warmTowers.forEach((t) => t.destroy()); this._warmTowers = null; }
     this._warmBiomeId = null;
   }
 
@@ -394,6 +421,7 @@ export default class LocalScene extends Phaser.Scene {
       this.terrain.image.setVisible(true);
       this._warmBackground = null;
       this._warmTerrain = null;
+      if (this._warmTowers) { this._warmTowers.forEach((t) => t.destroy()); this._warmTowers = null; }
       this._warmBiomeId = null;
     } else {
       this.discardPrewarm();
@@ -451,12 +479,12 @@ export default class LocalScene extends Phaser.Scene {
         this.flashEmitter.emitParticleAt(e.x, e.y, 1);
         this.sparkEmitter.emitParticleAt(e.x, e.y, 6);
         this.smokeEmitter.emitParticleAt(e.x, e.y, 2);
-        this.bfSfx.boom();
+        this.bfSfx.boomModern({}, this.bfSfx.spatial({ x: e.x, y: e.y }));
         this.cameras.main.shake(110, 0.004);
       } else if (e.type === 'impact') {
         this.dustEmitter.emitParticleAt(e.x, e.y, 9);
         this.gritEmitter.emitParticleAt(e.x, e.y, 11);
-        this.bfSfx.explosion();
+        this.bfSfx.explosionModern({}, this.bfSfx.spatial({ x: e.x, y: e.y }));
         this.cameras.main.shake(140, 0.005);
       } else if (e.type === 'hit') {
         this.explode(e.x, e.y, e.target === 0 ? COLORS.towerP1 : COLORS.towerP2);
@@ -494,7 +522,7 @@ export default class LocalScene extends Phaser.Scene {
     this.smokeEmitter.emitParticleAt(x, y, 5);
     this.debrisEmitter.emitParticleAt(x, y, 16);
     this.sparkEmitter.emitParticleAt(x, y, 18);
-    this.bfSfx.rubble(false);
+    this.bfSfx.rubbleModern({ vol: 0.7 }, this.bfSfx.spatial({ x, y }));
     this.cameras.main.shake(260, 0.012);
   }
 
@@ -511,7 +539,7 @@ export default class LocalScene extends Phaser.Scene {
     this.smokeEmitter.emitParticleAt(cx, cy, 7);
     this.debrisEmitter.emitParticleAt(cx, cy, 26);
     this.sparkEmitter.emitParticleAt(cx, cy, 20);
-    this.bfSfx.rubble(true);
+    this.bfSfx.rubbleModern({}, this.bfSfx.spatial({ x: cx, y: cy }));
     this.cameras.main.shake(420, 0.02);
     this.tweens.add({ targets: t.gfx, y: 26, alpha: 0.25, duration: 600, ease: 'Quad.easeIn' });
   }
@@ -570,6 +598,9 @@ export default class LocalScene extends Phaser.Scene {
     if (this.acc > STEP_DT) this.acc = 0; // shed the backlog after a long stall
 
     const renderDt = Math.min(frameDt, 0.05);
+    // Lobby preview: keep the prewarmed towers redrawing so their portcullis
+    // animates before the match starts (cheap — two towers).
+    if (!this.built && this._warmTowers) { this._warmBackground?.update?.(renderDt); this._warmTowers.forEach((t) => t.draw()); }
     if (this.background) this.background.update(renderDt);
     if (!this.panActive) this.drawMidWindsock(_time);
     this.animateShields(renderDt);

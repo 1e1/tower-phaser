@@ -1,0 +1,1211 @@
+<title>Battlefield Lab — Tower Duel</title>
+<style>
+  :root{--bg:#0e1320;--bg2:#141c2e;--ink:#e8eef7;--mut:#8a99b3;--line:#26324a;--gold:#f2c14e;--blue:#5aa9e6;--red:#e6685a;--accent:#7ee0c0;}
+  *{box-sizing:border-box} body{margin:0}
+  .lab{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink);background:linear-gradient(180deg,#0b0f1a,#0e1320 40%);min-height:100vh;padding:16px;display:flex;flex-direction:column;gap:12px;max-width:1100px;margin:0 auto;}
+  h1{font:600 16px/1.2 ui-sans-serif,system-ui,sans-serif;margin:0} h1 small{color:var(--mut);font-weight:400;font-size:12px}
+  .stage{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0a1020}
+  canvas{display:block;width:100%;height:auto} canvas.crater{cursor:crosshair}
+  .hud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;pointer-events:none;font-size:12px;text-shadow:0 1px 2px #000}
+  .hud .r{color:var(--red)} .hud .b{color:var(--blue)} .hud .g{color:var(--gold)} .hud .warn{color:var(--gold);font-weight:600}
+  .msg{position:absolute;top:34px;left:0;right:0;text-align:center;pointer-events:none;font:600 15px ui-sans-serif,system-ui;color:var(--gold);text-shadow:0 2px 6px #000}
+  .cols{display:block}
+  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--line)}
+  .tab{border-radius:8px 8px 0 0;background:#101a2e;border:1px solid var(--line);border-bottom:none;padding:9px 18px;margin-bottom:-1px;color:var(--mut)}
+  .tab:hover{border-color:var(--gold)} .tab.on{background:var(--gold);color:#1a1300;border-color:var(--gold);font-weight:600}
+  .card[data-tab]{display:none;margin-bottom:12px} .card[data-tab].show{display:block}
+  .subtabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 10px}
+  .subtab{font:inherit;font-size:11px;padding:5px 10px;border-radius:6px;background:#0c1424;border:1px solid var(--line);color:var(--mut);cursor:pointer}
+  .subtab:hover{border-color:var(--gold)} .subtab.on{background:#26324a;color:var(--ink);border-color:var(--gold);font-weight:600}
+  .subpanel{display:none}
+  .subpanel.show, #grp-int{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:0 22px;align-items:start}   /* éditeur condensé : une section = une cellule de grille */
+  .sec{margin:0 0 8px;min-width:0}          /* section d'éditeur (≠ .seg = groupe de boutons) ; min-width:0 → sliders rétrécissables */
+  .seg-h{font:600 10px/1 ui-sans-serif,system-ui;text-transform:uppercase;letter-spacing:.6px;color:var(--gold);margin:0 0 5px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .seg-note{font-size:11px;color:var(--mut);margin:3px 0 7px;line-height:1.4}
+  .card{border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:12px}
+  .card h2{font:600 12px/1 ui-sans-serif,system-ui;margin:0 0 10px;color:var(--accent);text-transform:uppercase;letter-spacing:.8px}
+  .row{display:grid;grid-template-columns:1fr 34px;align-items:center;column-gap:6px;row-gap:1px;margin:6px 0}   /* label au-dessus, slider + valeur en dessous */
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;margin:6px 0}   /* paire Dégât / Var. côte à côte */
+  .row2 .cell{display:grid;grid-template-columns:1fr 30px;align-items:center;column-gap:5px;row-gap:1px}
+  .row label,.row2 .cell label{grid-column:1/-1;color:var(--mut);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* libellé sur sa ligne ; texte complet = info-bulle (title) */
+  .row output,.row2 .cell output{text-align:right;font-size:11px}
+  #grp-all .sec{display:grid;grid-template-columns:1fr 1fr;column-gap:18px}   /* Monde : sliders sur 2 colonnes */
+  @media(max-width:680px){#grp-all .sec{grid-template-columns:1fr}}
+  input[type=range]{width:100%;accent-color:var(--gold)}
+  .keys{display:grid;gap:3px} .keys div{color:var(--mut)} .keys b{color:var(--ink)}
+  .kbd{display:inline-block;min-width:13px;padding:1px 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;background:#0c1424;color:var(--ink);font-size:11px}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  button{font:inherit;color:var(--ink);background:#1b2740;border:1px solid var(--line);border-radius:7px;padding:7px 11px;cursor:pointer}
+  button:hover{border-color:var(--gold)} button.on{background:var(--gold);color:#1a1300;border-color:var(--gold);font-weight:600}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden} .seg button{border:0;border-radius:0;background:#101a2e;padding:6px 11px} .seg button.on{background:var(--gold);color:#1a1300}
+  .note{color:var(--mut);font-size:11px;margin-top:8px}
+  textarea{width:100%;height:90px;margin-top:8px;background:#0a1020;color:var(--accent);border:1px solid var(--line);border-radius:7px;font:11px/1.3 ui-monospace,monospace;padding:8px;display:none}
+</style>
+
+<div class="lab">
+  <h1>Battlefield Lab <small>— v5 · propale bouclier magique de l'Intendant · 5 styles à comparer</small></h1>
+  <div class="stage">
+    <canvas id="cv" width="1060" height="460"></canvas>
+    <div class="hud">
+      <div><span class="b" id="cntB">0</span> vs <span class="r" id="cntR">0</span> · Intendant PV <span class="g" id="intHp">3</span> · <span id="wlabel">arc</span> · build <span id="build">∞</span> · manches <span class="g" id="score">0</span></div>
+      <div id="status"></div>
+    </div>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="sol">Soldats</button>
+    <button class="tab" data-tab="int">Intendant</button>
+    <button class="tab" data-tab="world">Monde</button>
+    <button class="tab" data-tab="parc">🥾 Parcours</button>
+  </div>
+  <div class="cols">
+    <div class="card show" data-tab="sol"><h2>Soldats</h2>
+      <div class="btns">
+        <span class="seg" id="spawnSeg"><button data-mode="manual">Manuel</button><button data-mode="auto" class="on">Auto</button></span>
+        <button id="emit">Émettre <span class="kbd">E</span></button>
+      </div>
+      <div class="subtabs">
+        <button class="subtab on" data-sub="common">Commun</button>
+        <button class="subtab" data-sub="mousq">Mousquetaire</button>
+        <button class="subtab" data-sub="gren">Grenadier</button>
+        <button class="subtab" data-sub="cata">Canon</button>
+        <button class="subtab" data-sub="eng">Ingénieur</button>
+      </div>
+      <div id="grp-sol-common" class="subpanel show"></div>
+      <div id="grp-sol-mousq" class="subpanel"></div>
+      <div id="grp-sol-gren" class="subpanel"></div>
+      <div id="grp-sol-cata" class="subpanel"></div>
+      <div id="grp-sol-eng" class="subpanel"></div>
+    </div>
+    <div class="card" id="cardInt" data-tab="int"><h2>Intendant</h2><div id="grp-int"></div>
+      <div class="btns">
+        <span class="seg" id="wSeg" title="arme automatique (indicateur)"><button data-w="sword">Épée</button><button data-w="bow" class="on">Arc</button></span>
+        <button id="presence" class="on">Présent <span class="kbd">P</span></button>
+        <button id="unlimBtn" class="on">Points ∞</button>
+      </div>
+      <div class="btns"><button id="shieldBtn" class="on">🛡 Bouclier</button><button id="shellBtn">Obus → Intendant <span class="kbd">B</span></button></div>
+      <div class="btns">Biome : <span class="seg" id="biomeSeg"></span></div>
+      <div class="btns">Style <small style="color:var(--mut);font-weight:400">(override)</small> : <span class="seg" id="shStyleSeg"></span></div>
+      <div class="btns"><span class="seg" id="iSeg"><button data-s="1" class="on">Robe</button><button data-s="2">Ouvrier</button><button data-s="3">Éclaireur</button><button data-s="4">Mascotte</button></span></div>
+      <div class="btns">Envahisseur : <span class="seg" id="invSeg"><button data-inv="-1" class="on">Trêve</button><button data-inv="0">Bleu</button><button data-inv="1">Rouge</button></span></div>
+    </div>
+    <div class="card" data-tab="world"><h2>Monde (tous)</h2><div id="grp-all"></div>
+      <div class="row"><label>Seed</label><input id="seedIn" type="number" value="12346" style="background:#0a1020;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px"><output></output></div>
+      <div class="btns"><button id="endRoundBtn">Fin de manche</button><button id="craterBtn">Outil cratère</button></div>
+      <div class="btns"><button id="dbgBtn">Debug chemins</button><button id="dbgFallBtn">Debug chutes</button><button id="cataBtn">Canon (test)</button></div>
+      <div class="btns"><button id="reTerrain">Nouveau terrain</button><button id="reset">Réinitialiser</button></div>
+      <div class="btns"><button id="exportBtn">Exporter JSON</button><button id="importBtn">Importer JSON</button></div>
+      <textarea id="exp" placeholder="Colle ici un JSON puis clique Importer JSON"></textarea>
+    </div>
+    <div class="card" data-tab="parc"><h2>🥾 Parcours <small style="color:var(--mut);font-weight:400">(étude traversée / chute / ingénieur)</small></h2>
+      <div class="btns"><button id="parcoursBtn">🥾 Mode parcours</button></div>
+      <div class="btns" id="parcoursOpts">Type : <span class="seg" id="kindSeg"><button data-k="" class="on">Aléatoire</button><button data-k="sword">Mousquet.</button><button data-k="bow">Grenadier</button><button data-k="cata">Canon</button><button data-k="engineer">Ingénieur</button></span></div>
+      <div class="btns" id="pownRow">Camp : <span class="seg" id="pownSeg"><button data-o="0" class="on">Gauche (bleu)</button><button data-o="1">Droite (rouge)</button></span></div>
+      <div class="btns"><button id="holeBtn">⛏ Trou (test pont)</button><button id="wallBtn">⛰ Ressaut (test échelle)</button></div>
+      <div class="btns"><button id="playBtn">🎮 Jouer un soldat</button> <small style="color:var(--mut)">←/→ bouge · <span class="kbd">Espace</span>/<span class="kbd">F</span> agit · <span class="kbd">↓</span> descend</small></div>
+      <div class="note" id="parcoursNote">Un seul camp émet → aucun combat. L'Intendant et le tir des tours sont retirés. Étude pure de la traversée et de la chute.</div>
+      <div class="note">🥾 <b>Ingénieur (propale)</b> : améliorateur de <b>portée</b>. À chaque spawn, on évalue si un ouvrage dans le <b>rayon d'alerte</b> de la tour ferait <b>progresser plus loin</b> les unités (DFS de portée). Si oui, un <b>ingénieur</b> (non-combattant) sort au lieu d'un combattant, pose un ouvrage <b>GRATUIT</b>, puis <b>déserte</b> — <b>trou/cratère → pont</b> (≤ 6 planches) ; <b>mur/ressaut raide (≥ ~60°) → échelle inclinée</b> (montée le long de la face, que les planches ne peuvent pas faire). Soldats <b>et</b> Intendant montent/descendent l'échelle (Intendant : ↑/↓ à son contact). Jamais « pour rien » : pente douce / descente survivable / obstacle déjà franchi → aucun ingénieur. Test : type <b>Aléatoire</b> ou <b>Ingénieur</b> + <b>⛏ Trou</b> (pont) ou <b>⛰ Ressaut</b> (échelle).</div>
+    </div>
+  </div>
+
+  <div class="card" data-tab="int"><h2>Contrôles Intendant <small style="color:var(--mut);font-weight:400">(joystick dans le jeu réel — ici clavier)</small></h2>
+    <div class="keys" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+      <div>Déplacer <b><span class="kbd">←</span><span class="kbd">→</span></b>/<span class="kbd">A</span><span class="kbd">D</span> · Sauter <b><span class="kbd">↑</span></b>/<span class="kbd">Espace</span> (dirigeable en l'air)</div>
+      <div>Planeur <b>automatique</b> (à la chute) · Descendre d'une structure <b><span class="kbd">↓</span></b></div>
+      <div>Creuser <b><span class="kbd">J</span>+dir</b> · Remblayer <b><span class="kbd">H</span>+dir</b> · Aplanir <b><span class="kbd">G</span></b> (égalise le terrain)</div>
+      <div>Escalier <b><span class="kbd">K</span></b> · Pont <b><span class="kbd">L</span></b> · Arme <b>automatique</b> (épée au contact, sinon arc en vue)</div>
+    </div>
+    <div class="note"><b>Attaque automatique</b> dès qu'un danger est en face. La crête est suivie naturellement (pas de téléportation verticale). Les soldats <b>apparaissent/disparaissent dans la porte</b>.</div>
+    <div class="note"><b>🛡 Bouclier magique (propale)</b> : un <b>obus d'artillerie</b> (canon de campagne) qui entre dans le <b>rayon</b> est intercepté — il impacte sur le dôme, pas sur l'avatar. <b>Auto tant qu'il reste des PV</b> : chaque <b>activation coûte 1 PV</b> et tient <b>1,5 s</b> (réglable) ; pendant la fenêtre, les obus suivants sont stoppés sans surcoût. PV épuisés → l'obus touche (peut tuer). Teste avec <b>Obus → Intendant</b> (<span class="kbd">B</span>), compare avec <b>🛡 Bouclier</b> ON/OFF, règle <b>Rayon</b>/<b>Durée</b> dans la colonne Intendant.</div>
+    <div class="note"><b>Style par biome (décidé)</b> : <b>Vortex</b> braise sur <b>Volcano</b>, <b>Égide</b> héraldique partout ailleurs. Le sélecteur <b>Biome</b> applique la règle ; le sélecteur <b>Style</b> reste un override manuel pour comparer les 5 rendus (Hexagonal / Orbe irisé / Runes / Vortex / Égide). Clique → aperçu immédiat (sans coût de PV) ; tire un obus (<span class="kbd">B</span>) pour l'impact réel.</div>
+  </div>
+</div>
+
+<script>
+(()=>{
+  const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,PLAT=130,platY=H-90,TLX=72,TRX=W-72,top=platY-96,SU=14;
+  const slitOf=T=>({x:T.x+T.facing*16,y:top+28});
+  const doorX=T=>T.x+T.facing*14;
+  const ICOL='#b483f0';   // couleur de camp de l'Intendant (outils, planeur, flèches)
+
+  const C={ v0:40,fallHmin:7,fallHmax:26,fallDmg:2.5,engage:12,sHp:4,spacing:18,spawnFreq:4.4,doorT:0.26,   // CHUTE : proba linéaire 0%→100% entre fallHmin et fallHmax (px de descente accumulée)
+    archerPct:0.12,arHp:2,arDmg:3,arRange:80,desertT:4,repTime:4,musRange:160,musDmg:3,chargeRange:70,   // repTime : durée (s) d'un combat stérile avant que le soldat se repositionne (poussée en avant)
+    ballDmg:4.5,splashFactor:0.5,   // EXPLOSIONS : boulet direct sur vivant = ballDmg plein (rayon corps, en PV pour l'Intendant) ; souffle = ×splashFactor (même nombre soldat & Intendant)
+    musAcc:0.78,musSpread:0.045,musMissSpread:0.22,musDmgVar:1.0,bowAcc:0.76,bowSpread:0.035,bowMissSpread:0.31,bowDmgVar:0.85,pathCongestion:3.5,pathJitter:0.4,   // backport moteur : charge baïonnette, dispersion/var des tirs, anti-bouchon du pathfinding
+    slopeFx:0.25,   // effet de pente sur la vitesse : facteur = clamp(1-|pente|·slopeFx, 0.4, 1.4) (jadis 0.25 figé ; remplace l'ancien slopeK mort)
+    ballSpeed:470,musSpeed:480,bowSpeed:440,boltSpeed:380,grenTime:0.6,grenLob:120,   // vitesses de projectiles (px/s) ; grenTime = temps de vol de la grenade (s) ; grenLob = portée de lob par défaut (px)
+    // PER-UNIT (léger) : multiplicateurs de déplacement par TYPE (×1 = hérite de la base globale v0/fallDmg/sJump). Le canon porte ses anciens facteurs codés en dur (×0.4 vitesse, ×2.5 chute, ×0 saut).
+    mqSpdMul:1,mqFallMul:1, grSpdMul:1.15,grFallMul:0.9, caSpdMul:0.4,caFallMul:2.5, enSpdMul:0.9,enFallMul:1.5,
+    sJump:10, mqJumpMul:1,grJumpMul:1,caJumpMul:0,enJumpMul:1,   // SAUT : marche d'escalade franchissable = SU(14) + sJump×coeff (px) ; canon ne saute pas (×0)
+    cataHp:5, engHp:3, engBridgeMax:6, engLadH:40, engLadRun:52,   // PV/longueurs jadis constantes (canon, ingénieur)
+    cataRange:240,   // canon : distance à la tour adverse en-deçà de laquelle il s'active et tire (jadis figé à 240)
+    towerDmg:99,towerBolts:4,   // TOUR : dégât par projectile (99 ≈ one-shot d'origine) ; nb max de projectiles par salve (1..towerBolts)
+    intSpeed:120,jumpV:240,glide:55,climbSpeed:10,swordR:28,swDmg:4,bowDmg:2.5,bowRange:210,digSpeed:40,digH:4,buildSteps:4,   // digH : profondeur/hauteur (px) d'un coup de creuse/remblai
+    grav:900,climbSlope:1.3,maxHp:3,towerWarn:150,towerFire:95,towerRate:1.6,craterR:24,   // craterR : rayon par défaut (outil cratère / test) & repli
+    ballCraterR:24,grenCraterR:9,   // rayons de cratère INDÉPENDANTS par munition : boulet (× handicap pente pour le canon) / grenade
+    shieldR:54,shieldDur:1.5,   // BOUCLIER MAGIQUE Intendant : rayon d'interception (px) + durée d'une activation (s)
+    // TIMINGS D'ACTION — chaque action : attente avant (Wind) → effet → attente après (Rec) ; +Dur pour les actions duratives.
+    bayoDmgVar:0.3,grenDmgVar:1.5,ballDmgVar:0.5,swDmgVar:0.45,   // variance de dégât (±moitié) — complète musDmgVar/bowDmgVar pour TOUTES les armes
+    bayoWind:0.15,bayoRec:0.45,bayoDmg:2,     // mousquetaire baïonnette (dégât PAR COUP)
+    musWind:0.6,musRec:1.6,                   // mousquetaire tir (visée + recharge)
+    grenWind:0.6,grenRec:0.15,                // grenadier (armement + après explosion)
+    cataWind:2,cataRec:1.6,                   // canon (pointage + après tir)
+    engWind:0.3,engRec:0.3,engDur:0.22,       // ingénieur (avant chantier, après, délai/planche)
+    swWind:0.2,swRec:0.3,                     // Intendant épée (dégât swDmg PAR COUP)
+    bowWind:0.25,bowRec:0.3,                  // Intendant arc
+    toolWind:0.18,toolRec:0.18,toolDur:0.12,  // Intendant modelage (creuse/remblai/aplanir)
+    buildWind:0.25,buildRec:0.3,buildDur:0.26 };   // Intendant construction (escalier/pont)
+  // PER-UNIT (léger) : type de soldat → clé de multiplicateur ; spdMul/fallMul renvoient 1 par défaut (horde sans kind incluse).
+  const _SPDMUL={sword:'mqSpdMul',bow:'grSpdMul',cata:'caSpdMul',engineer:'enSpdMul'};
+  const _FALLMUL={sword:'mqFallMul',bow:'grFallMul',cata:'caFallMul',engineer:'enFallMul'};
+  const _JUMPMUL={sword:'mqJumpMul',bow:'grJumpMul',cata:'caJumpMul',engineer:'enJumpMul'};
+  const spdMul=k=>C[_SPDMUL[k]]??1, fallMul=k=>C[_FALLMUL[k]]??1, jumpMul=k=>C[_JUMPMUL[k]]??1;
+  const climbStep=k=>SU+C.sJump*jumpMul(k);   // marche d'escalade franchissable par ce type (px)
+  // RNG seedé — INTERDICTION du vrai Math.random : tout dérive de la seed (mulberry32)
+  let seed=12346,rngState=12346;
+  function reseed(s){ seed=(s>>>0)||1; rngState=seed; }
+  function rnd(){ rngState=(rngState+0x6D2B79F5)|0; let t=Math.imul(rngState^(rngState>>>15),1|rngState); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }
+  // bruit déterministe par (soldat, colonne) ∈ [0,1) pour le jitter de chemin (miroir moteur hash2)
+  function hash2(a,b){ let h=(Math.imul(a>>>0,73856093)^Math.imul(b>>>0,19349663))>>>0; h=Math.imul(h^(h>>>13),0x85ebca6b); h=(h^(h>>>16))>>>0; return h/4294967296; }
+  // Spec d'un contrôle : [clé,label,min,max,pas]. Entrées spéciales : ['§','Titre'] = entête de section ; ['※','texte html'] = note read-only.
+  // Déplacement par UNITÉ = base globale (Commun) × multiplicateurs par type (§ Déplacement). « Effet pente » = C.slopeFx (facteur de vitesse vs pente, désormais réglable). Saut = SU + sJump×coeff.
+  const GROUPS={
+    'grp-sol-common':[
+      ['spacing','Espacement',6,42,1],['spawnFreq','Fréq. auto',.4,6,.1],['doorT','Durée porte',.1,.6,.02],['desertT','Délai désertion',1,12,.5],['repTime','Repositionnement (s)',0,12,.5],
+      ['§','Déplacement (base globale)'],
+      ['v0','Vitesse base',20,170,1],['slopeFx','Effet pente',0,1,.01],['sJump','Saut (base)',0,40,1],['fallHmin','Chute : hauteur min',0,80,1],['fallHmax','Chute : hauteur max',4,200,1],['fallDmg','Dégât chute / hauteur',0,30,.5]],
+    'grp-sol-mousq':[['sHp','PV',1,12,.5],
+      ['§','Déplacement'],['mqSpdMul','Vitesse ×',.2,2,.05],['mqJumpMul','Saut ×',0,2,.05],['mqFallMul','Dégât chute ×',0,4,.1],
+      ['§','Arme cac : baïonnette'],['chargeRange','Portée activation (charge)',20,140,5],['engage','Portée tir (frappe)',10,60,1],['bayoWind','Attente avant',0,1.5,.05],['bayoRec','Attente après',0,1.5,.05],
+      ['⇄',['bayoDmg','Dégât / coup',.5,8,.5],['bayoDmgVar','Var. dégât',0,1.5,.05]],
+      ['§','Arme tir : mousquet'],['musRange','Portée (activation = tir)',60,260,10],['musSpeed','Vitesse balle',200,800,10],['musWind','Visée (avant)',0,2,.05],['musRec','Recharge (après)',0,4,.05],
+      ['⇄',['musDmg','Dégât / coup',1,8,.5],['musDmgVar','Var. dégât',0,1.5,.05]],
+      ['musAcc','Précision',0,1,.02],['musSpread','Disp. visée',0,.2,.005],['musMissSpread','Disp. raté',0,.5,.01],
+      ['※','Portées <b>emboîtées</b> : frappe (engage) ≤ activation baïonnette (charge) ≤ portée mousquet. Au-delà du mousquet → marche.']],
+    'grp-sol-gren':[['arHp','PV',1,8,.5],['archerPct','Proba grenadier',0,.5,.02],
+      ['§','Déplacement'],['grSpdMul','Vitesse ×',.2,2,.05],['grJumpMul','Saut ×',0,2,.05],['grFallMul','Dégât chute ×',0,4,.1],
+      ['§','Arme tir : grenade'],['arRange','Portée (activation = tir)',60,260,10],['grenTime','Temps de vol',.3,1.2,.05],['grenLob','Portée lob (défaut)',60,260,10],['grenCraterR','Rayon cratère',4,40,1],['grenWind','Visée (avant)',0,2,.05],['grenRec','Recharge (après)',0,2,.05],
+      ['⇄',['arDmg','Dégât / éclat',.5,5,.1],['grenDmgVar','Var. dégât',0,1.5,.05]],
+      ['※','Précision / dispersion : N/A (lob balistique, pas de visée dispersée).']],
+    'grp-sol-cata':[['cataHp','PV',1,16,1],
+      ['※','Apparition : <b>condition</b> — un allié tué sous le feu de la tour adverse (pas un réglage).'],
+      ['§','Déplacement'],['caSpdMul','Vitesse ×',.2,2,.05],['caJumpMul','Saut ×',0,2,.05],['caFallMul','Dégât chute ×',0,4,.1],
+      ['§','Arme tir : boulet'],['cataRange','Portée activation',80,400,10],['ballSpeed','Vitesse boulet',200,800,10],['ballCraterR','Rayon cratère',8,70,2],['cataWind','Pointage (avant)',0,2,.05],['cataRec','Après tir',0,4,.05],
+      ['⇄',['ballDmg','Dégât (direct)',0,12,.5],['ballDmgVar','Var. dégât',0,1.5,.05]],
+      ['※','Activation : à portée de la tour adverse (ci-dessus) ou si coincé. Éclat = rayon cratère & souffle → onglet <b>Monde</b>. Précision : jitter de pente (auto).']],
+    'grp-sol-eng':[['engHp','PV',1,8,.5],
+      ['※','Apparition : <b>condition</b> — un ouvrage (pont/échelle) étendrait la portée des unités (pas un réglage).'],
+      ['§','Déplacement'],['enSpdMul','Vitesse ×',.2,2,.05],['enJumpMul','Saut ×',0,2,.05],['enFallMul','Dégât chute ×',0,4,.1],
+      ['§','Outil : pont'],['engWind','Attente avant',0,2,.05],['engRec','Attente après',0,2,.05],['engDur','Délai / planche',.06,.6,.02],['engBridgeMax','Longueur max (planches)',1,12,1],
+      ['§','Outil : échelle'],['engLadH','Hauteur max',24,120,4],['engLadRun','Fuyant max',16,80,4],
+      ['※','Timing de l’échelle : <b>partagé avec le pont</b> (avant / après / délai ci-dessus).']],
+    'grp-int':[
+      ['§','Profil'],['intSpeed','Vitesse',60,280,5],['jumpV','Saut',220,640,10],['glide','Plané',20,130,5],['climbSpeed','Escalade',6,60,1],
+      ['※','PV = <b>PV des tours</b> (onglet Monde) — même réglage.'],
+      ['§','Arme cac : épée'],['swordR','Rayon (frappe)',14,52,1],['swWind','Attente avant',0,1.5,.05],['swRec','Attente après',0,1.5,.05],
+      ['⇄',['swDmg','Dégât / coup',1,10,.5],['swDmgVar','Var. dégât',0,1.5,.05]],
+      ['§','Arme tir : arc'],['bowRange','Portée (activation = tir)',80,360,10],['bowSpeed','Vitesse flèche',200,700,10],['bowWind','Visée (avant)',0,1.5,.05],['bowRec','Attente après',0,1.5,.05],
+      ['⇄',['bowDmg','Dégât / coup',1,10,.5],['bowDmgVar','Var. dégât',0,1.5,.05]],
+      ['bowAcc','Précision',0,1,.02],['bowSpread','Disp. visée',0,.2,.005],['bowMissSpread','Disp. raté',0,.5,.01],
+      ['§','Outil : modelage (creuse / remblai / aplanir)'],['digSpeed','Vitesse',15,140,5],['digH','Hauteur creuse/remblai',2,30,1],['toolWind','Attente avant',0,1,.02],['toolDur','Durée',.02,.6,.02],['toolRec','Attente après',0,1,.02],
+      ['§','Outil : construction (escalier / pont)'],['buildSteps','Longueur',3,16,1],['buildWind','Attente avant',0,1.5,.05],['buildDur','Délai / élément',.06,.6,.02],['buildRec','Attente après',0,1.5,.05],
+      ['§','Pouvoir : bouclier magique'],['shieldR','Rayon',16,100,2],['shieldDur','Durée',.4,4,.1]],
+    'grp-all':[['grav','Gravité',400,1500,20],['climbSlope','Seuil escalade',.5,1.8,.05],['maxHp','PV tours',1,10,1],
+      ['towerWarn','Tour: alerte',60,260,10],['towerFire','Tour: tir',40,180,5],['towerRate','Tour: cadence',.5,5,.1],
+      ['⇄',['towerDmg','Tour: dégât',1,99,1],['towerBolts','Tour: nb projectiles',1,8,1]],['boltSpeed','Tour: vitesse tir',200,700,10],['craterR','Rayon cratère (outil/défaut)',14,70,2],
+      ['pathCongestion','Anti-bouchon (coût densité)',0,10,.5],['pathJitter','Jitter chemin',0,1,.02],
+      ['splashFactor','Souffle (×dégât hors contact)',0,1,.05]],
+  };
+  // Info-bulles (title au survol) — description précise de chaque réglage. Fallback = le label.
+  const DESC={
+    spacing:'Distance min. entre deux soldats d’un même type sur une file ; en-deçà, le suiveur attend (et finit par déserter).',
+    spawnFreq:'Mode Auto : intervalle (s) entre deux émissions de soldats par camp.',
+    doorT:'Durée (s) de la sortie de porte avant que le soldat se mette en marche.',
+    desertT:'Temps (s) bloqué à l’arrêt avant qu’un soldat renonce et déserte.',
+    repTime:'Durée (s) d’un combat sans issue (tirs stériles) avant que le soldat se repositionne : courte poussée en avant + replanification pour chercher une meilleure position (0 = jamais).',
+    v0:'Vitesse de marche de base (px/s) sur plat, commune à tous ; modulée par la pente et le mult. par type.',
+    fallHmin:'Chute : hauteur de descente (px) en-dessous de laquelle aucune chute ne se déclenche (proba 0 %).',
+    fallHmax:'Chute : hauteur de descente (px) à partir de laquelle la chute est certaine (proba 100 %). Entre min et max, la proba croît linéairement.',
+    fallDmg:'Dégâts de base par unité de hauteur chutée (× hauteur × mult. par type).',
+    slopeFx:'Effet de la pente sur la vitesse : facteur = clamp(1 − |pente|·slopeFx, 0.4, 1.4). 0 = pente sans effet.',
+    sJump:'Saut (base, px) : marche d’escalade franchissable = SU(14) + sJump × coeff du type. Plus haut = franchit des ressauts plus hauts.',
+    mqJumpMul:'Mult. de saut du mousquetaire (×1 = base ; 0 = ne saute pas).', grJumpMul:'Mult. de saut du grenadier.', caJumpMul:'Mult. de saut du canon (0 par défaut : engin à roues).', enJumpMul:'Mult. de saut de l’ingénieur.',
+    musSpeed:'Vitesse de la balle de mousquet (px/s).', ballSpeed:'Vitesse du boulet de canon (px/s).', bowSpeed:'Vitesse de la flèche de l’Intendant (px/s).', boltSpeed:'Vitesse des projectiles de la tour (px/s).',
+    grenTime:'Temps de vol (s) de la grenade lobée — détermine la cloche de la trajectoire.', grenLob:'Portée de lob par défaut (px) quand le grenadier n’a pas de cible précise.',
+    towerDmg:'Dégâts d’un projectile de tour sur un soldat (99 ≈ one-shot d’origine ; plus bas = soldats survivent à un tir).', towerBolts:'Nombre max de projectiles par salve de tour (tirés 1..N, aléatoire).',
+    mqSpdMul:'Mult. de vitesse du mousquetaire (×1 = base globale).', mqFallMul:'Mult. de dégâts de chute du mousquetaire (×1 = base).',
+    grSpdMul:'Mult. de vitesse du grenadier (×1 = base globale).', grFallMul:'Mult. de dégâts de chute du grenadier (×1 = base).',
+    caSpdMul:'Mult. de vitesse du canon (×0.4 d’origine).', caFallMul:'Mult. de dégâts de chute du canon (×2.5 d’origine).',
+    enSpdMul:'Mult. de vitesse de l’ingénieur (×1 = base globale).', enFallMul:'Mult. de dégâts de chute de l’ingénieur (×1 = base).',
+    sHp:'Points de vie du mousquetaire.',
+    chargeRange:'Portée d’ACTIVATION de la baïonnette : à cette distance (mousquet non rechargé), le soldat charge au lieu de tirer.',
+    engage:'Portée de FRAPPE de la baïonnette : distance de contact où le coup porte.',
+    bayoWind:'Temps mort avant chaque coup de baïonnette (s).', bayoRec:'Temps mort après chaque coup de baïonnette (s).', bayoDmg:'Dégâts par coup de baïonnette.',
+    bayoDmgVar:'Variation aléatoire des dégâts de baïonnette (±moitié) autour du nominal.', swDmgVar:'Variation aléatoire des dégâts d’épée (±moitié).',
+    grenDmgVar:'Variation aléatoire des dégâts/éclat de grenade (±moitié).', ballDmgVar:'Variation aléatoire des dégâts du boulet (±moitié) — porte sur l’Intendant & le souffle (le boulet vaporise les soldats quoi qu’il arrive).',
+    musRange:'Portée du mousquet : distance d’acquisition de cible et de tir (activation = tir).',
+    musWind:'Temps de visée avant le tir (s).', musRec:'Temps de rechargement après le tir (s).', musDmg:'Dégâts d’une balle de mousquet au but.',
+    musAcc:'Probabilité (0–1) qu’un tir soit ajusté (faible dispersion) plutôt que raté (forte dispersion).',
+    musSpread:'Dispersion angulaire (rad) d’un tir ajusté.', musMissSpread:'Dispersion angulaire (rad) d’un tir raté.', musDmgVar:'Variation aléatoire des dégâts (±moitié) autour du nominal.',
+    arHp:'Points de vie du grenadier.', archerPct:'Probabilité qu’un soldat émis soit un grenadier plutôt qu’un mousquetaire.',
+    arRange:'Portée de lancer de la grenade (activation = tir).', grenWind:'Temps mort avant le lancer (s).', grenRec:'Temps mort après le lancer (s).', arDmg:'Dégâts / rayon d’éclat de la grenade.',
+    cataHp:'Points de vie du canon (engin à roues).', cataRange:'Portée d’activation : distance à la tour adverse en-deçà de laquelle le canon s’arrête et tire.', cataWind:'Temps de pointage avant le tir (s).', cataRec:'Temps de rechargement après le tir (s).', ballDmg:'Dégâts directs du boulet au contact (vaporise les soldats touchés).',
+    engHp:'Points de vie de l’ingénieur (non-combattant, fragile).', engWind:'Temps avant le chantier (s).', engRec:'Temps après le chantier (s).', engDur:'Délai de pose d’une planche / d’un échelon (s).',
+    engBridgeMax:'Longueur max du pont, en planches (~16px chacune).', engLadH:'Hauteur max d’une échelle inclinée (px).', engLadRun:'Fuyant max (avancée horiz.) d’une échelle (px) — règle l’inclinaison.',
+    intSpeed:'Vitesse de déplacement de l’Intendant (px/s).', jumpV:'Impulsion verticale du saut (px/s).', glide:'Vitesse de chute plafonnée en plané (px/s).', climbSpeed:'Vitesse d’escalade le long d’une échelle/pente raide (px/s).',
+    swordR:'Rayon de frappe de l’épée (contact).', swWind:'Temps mort avant un coup d’épée (s).', swRec:'Temps mort après un coup d’épée (s).', swDmg:'Dégâts par coup d’épée.',
+    bowRange:'Portée de l’arc (activation = tir).', bowWind:'Temps de visée avant la flèche (s).', bowRec:'Temps mort après la flèche (s).', bowDmg:'Dégâts d’une flèche au but.',
+    bowAcc:'Probabilité (0–1) qu’un tir d’arc soit ajusté plutôt que raté.', bowSpread:'Dispersion (rad) d’un tir ajusté.', bowMissSpread:'Dispersion (rad) d’un tir raté.', bowDmgVar:'Variation aléatoire des dégâts de flèche.',
+    digSpeed:'Vitesse de creusement / remblai du terrain (px/s).', digH:'Hauteur (px) qu’un coup de creuse abaisse / qu’un coup de remblai élève le terrain.', toolWind:'Temps avant un coup d’outil (s).', toolDur:'Durée d’un coup d’outil (s).', toolRec:'Temps après un coup d’outil (s).',
+    buildSteps:'Longueur d’un ouvrage construit par l’Intendant (nb d’éléments).', buildWind:'Temps avant le chantier (s).', buildDur:'Délai de pose par élément (s).', buildRec:'Temps après le chantier (s).',
+    shieldR:'Rayon d’interception du bouclier : les obus qui y entrent sont stoppés.', shieldDur:'Durée (s) d’une activation du bouclier.',
+    grav:'Gravité (px/s²) appliquée aux corps en l’air.', climbSlope:'Pente max franchissable à pied ; au-delà = mur (escalade/échelle requise).', maxHp:'PV des tours ET de l’Intendant — même réserve.',
+    towerWarn:'Rayon d’alerte de la tour : un ennemi entrant dedans est ciblé.', towerFire:'Rayon de tir effectif de la tour.', towerRate:'Cadence de tir de la tour (tirs/s).', craterR:'Rayon de cratère par DÉFAUT : outil cratère manuel & repli. Les munitions ont leur propre rayon (boulet / grenade).',
+    ballCraterR:'Rayon du cratère d’un boulet de canon (px). Le canon d’escalade le réduit selon la pente. Toutes les dimensions (largeur, profondeur, lèvre) sont proportionnelles.', grenCraterR:'Rayon du cratère d’une grenade (px), indépendant du boulet.',
+    pathCongestion:'Surcoût de pathfinding sur les colonnes saturées (anti-bouchon).', pathJitter:'Bruit par soldat sur le chemin → éventaillage des trajectoires.', splashFactor:'Fraction des dégâts d’explosion appliquée hors contact direct (souffle).',
+  };
+  // Registre SPATIAL : réglages dessinables (portée/rayon). a = ancrage (sol=soldats du type, int=Intendant, tower=tours). r = clé du rayon dans C.
+  const SPATIAL={
+    spacing:{r:'spacing',a:'sol',kinds:['sword','bow']}, chargeRange:{r:'chargeRange',a:'sol',kinds:['sword']}, engage:{r:'engage',a:'sol',kinds:['sword']}, musRange:{r:'musRange',a:'sol',kinds:['sword']},
+    arRange:{r:'arRange',a:'sol',kinds:['bow']}, cataRange:{r:'cataRange',a:'sol',kinds:['cata']}, swordR:{r:'swordR',a:'int'}, bowRange:{r:'bowRange',a:'int'}, shieldR:{r:'shieldR',a:'int'},
+    towerWarn:{r:'towerWarn',a:'tower'}, towerFire:{r:'towerFire',a:'tower'}, craterR:{r:'craterR',a:'int'},
+    fallHmin:{drop:'fallHmin'}, fallHmax:{drop:'fallHmax'},   // cône de chute sous chaque soldat (seuils min→max)
+    engLadH:{ladder:1}, engLadRun:{ladder:1},   // aperçu de l'échelle de l'ingénieur (hauteur × fuyant) sur le canvas
+  };
+  let rangeHi=null,rangeHiT=0; const LABELS={};   // surlignage transitoire : clé + temps restant (s)
+  const inputs={},updaters={};
+  // Crée un contrôle (slider + label + valeur) dans parent. compact=true → cellule étroite (paire ⇄ côte à côte).
+  function mkCtl(spec,parent,compact){ const [k,lab,mn,mx,st]=spec;
+    LABELS[k]=lab; const el=document.createElement('div');el.className=compact?'cell':'row';el.title=DESC[k]||lab;
+    el.innerHTML=`<label>${lab}</label><input type=range min=${mn} max=${mx} step=${st} value=${C[k]}><output></output>`;
+    const inp=el.querySelector('input'),out=el.querySelector('output');
+    const upd=()=>{C[k]=parseFloat(inp.value);out.textContent=inp.value;}; inp.addEventListener('input',upd);upd();
+    if(SPATIAL[k]){ const show=()=>{rangeHi=k;rangeHiT=1.6;}; inp.addEventListener('input',show); inp.addEventListener('pointerdown',show); inp.addEventListener('focus',show); }   // touche un curseur spatial → dessine sa portée
+    inputs[k]=inp;updaters[k]=upd; parent.appendChild(el); }
+  for(const [gid,list] of Object.entries(GROUPS)){ const host=document.getElementById(gid); if(!host)continue;
+    let seg=null; const into=()=>{ if(!seg){seg=document.createElement('div');seg.className='sec';host.appendChild(seg);} return seg; };   // section courante (.sec) — une cellule de la grille d'éditeur
+    for(const spec of list){ const k=spec[0];
+      if(k==='§'){ seg=document.createElement('div');seg.className='sec';const h=document.createElement('div');h.className='seg-h';h.textContent=spec[1];seg.appendChild(h);host.appendChild(seg);continue; }
+      if(k==='※'){ const n=document.createElement('div');n.className='seg-note';n.innerHTML=spec[1];into().appendChild(n);continue; }
+      if(k==='⇄'){ const r2=document.createElement('div');r2.className='row2';into().appendChild(r2);mkCtl(spec[1],r2,true);mkCtl(spec[2],r2,true);continue; }   // paire côte à côte (ex. Dégât / Var. dégât)
+      mkCtl(spec,into(),false); } }
+
+  // terrain
+  const heights=new Float32Array(W), fresh=new Float32Array(W); let fx=[];   // fresh : "fraîcheur" du terrain par colonne (terre récemment remuée) ; fx : particules de terre
+  function markFresh(a,b){ a=cX(a);b=cX(b); for(let x=a;x<=b;x++)fresh[x]=1; }
+  function spawnDirt(x,y,n,col,bias=0){ for(let i=0;i<n;i++){const a=(rnd()-0.5)*2.2,sp=20+rnd()*60; fx.push({x,y,vx:Math.cos(a-1.57)*sp+bias*70,vy:Math.sin(a-1.57)*sp-30,life:0.5+rnd()*0.4,col});} }   // bias : gerbe d'éjectas décalée vers l'aval (impact oblique)
+  function genTerrain(){ reseed(seed); const base=platY-26,hh=60+rnd()*60,ph=rnd()*6,f1=2+rnd()*2,f2=5+rnd()*3;
+    for(let x=0;x<W;x++){ let h; if(x<PLAT||x>W-PLAT)h=platY;
+      else{const t=(x-PLAT)/(W-2*PLAT); h=base+16*Math.sin(t*Math.PI*f1+ph)+8*Math.sin(t*Math.PI*f2+1.3)-hh*Math.exp(-((t-0.5)**2)/0.036);
+        const eb=Math.min(1,Math.min(t,1-t)*6); h=platY+(h-platY)*eb;}   // taper symétrique : le relief rejoint la plateforme à plat des DEUX côtés (cf. moteur terrain.js edgeBlend) → pas de falaise de jonction qui ne pénaliserait qu'un seul camp à la chute
+      heights[x]=h; }
+    for(let p=0;p<3;p++){const c=heights.slice();for(let x=1;x<W-1;x++)heights[x]=(c[x-1]+2*c[x]+c[x+1])/4;} }
+  const cX=x=>x<0?0:(x>W-1?W-1:x|0), terrAt=x=>heights[cX(Math.round(x))];
+
+  // structures (Lemmings)
+  let structures=[];
+  const supportAt=x=>{let y=terrAt(x);for(const p of structures){if(x>=p.x0&&x<=p.x1&&p.y<y)y=p.y;}return y;};
+  // surface la plus PROCHE de yRef et atteignable (pas de saut vertical vers une plateforme lointaine au-dessus)
+  function groundY(x,yRef){ const t=terrAt(x); let best=t,bd=(t<yRef-SU)?1e9:Math.abs(t-yRef);
+    for(const p of structures){ if(x<p.x0||x>p.x1||p.y<yRef-SU)continue; const d=Math.abs(p.y-yRef); if(d<bd){bd=d;best=p.y;} } return best; }
+  // ligne de vue : la cible est "en vue" si le segment ne passe pas sous la surface du terrain
+  function inSight(x0,y0,x1,y1){ const n=Math.max(2,Math.round(Math.hypot(x1-x0,y1-y0)/6)); for(let i=1;i<n;i++){const u=i/n,x=x0+(x1-x0)*u,y=y0+(y1-y0)*u; if(y>=terrAt(x)+1)return false;} return true; }
+  // surface de navigation des soldats : terrain par défaut ; une structure ne sert que de PONT/RAMPE quand le terrain est un mur (montée raide) ou un trou — elle ne bloque jamais
+  function navY(x,yRef){ const tA=terrAt(x), tUp=(yRef-tA)/4, drop=tA-yRef;
+    if(tUp>C.climbSlope || drop>8){ const sA=groundY(x,yRef); if(sA!==tA && (yRef-sA)/4<=C.climbSlope && Math.abs(sA-yRef)<Math.abs(tA-yRef)) return sA; }
+    return tA; }
+  // ---- PATHFINDING (graphe de navigation : terrain + ouvrages) ----
+  let navVer=1;   // incrémenté quand terrain/structures changent → replanification
+  function surfacesAt(x){ const t=terrAt(x), out=[t]; for(const p of structures){ if(x>=p.x0&&x<=p.x1&&p.y<=t+2) out.push(p.y); } return out; }   // surfaces praticables à l'abscisse x (sol + planches au-dessus)
+  function ladderAt(x,y){ for(const L of ladders){ const x0=Math.min(L.xb,L.xt)-5,x1=Math.max(L.xb,L.xt)+5,y0=Math.min(L.yb,L.yt)-6,y1=Math.max(L.yb,L.yt)+6; if(x>=x0&&x<=x1&&y>=y0&&y<=y1)return L; } return null; }   // échelle à portée de (x,y) (soldats + Intendant)
+  function findPath(sx,sy,goalX,opts={}){
+    const {density=null,congW=0,jseed=0,jitter=0,climb=SU}=opts;   // anti-bouchon : coût ∝ densité locale (congW) + jitter par soldat ; climb = marche d'escalade max (SU + saut du type)
+    const STEP=8, N=Math.floor((W-6)/STEP), gi=Math.max(0,Math.min(N,Math.round(goalX/STEP))), si=Math.max(0,Math.min(N,Math.round(sx/STEP)));
+    let startY=terrAt(si*STEP),bd=1e9; for(const y of surfacesAt(si*STEP)){const d=Math.abs(y-sy);if(d<bd){bd=d;startY=y;}}
+    const key=(i,y)=>i+'_'+Math.round(y), dist=new Map(), prev=new Map(), ny_=new Map(), done=new Set();
+    const sk=key(si,startY); dist.set(sk,0); prev.set(sk,null); ny_.set(sk,startY);
+    let guard=0;
+    while(guard++<6000){ let cur=null,cd=1e9; for(const [k,v] of dist){ if(!done.has(k)&&v<cd){cd=v;cur=k;} } if(cur==null)break; done.add(cur);
+      const ci=parseInt(cur), cy=ny_.get(cur);
+      if(ci===gi){ const path=[]; let k=cur; while(k){ path.push({x:parseInt(k)*STEP,y:ny_.get(k)}); k=prev.get(k); } return path.reverse(); }
+      for(const i2 of [ci-1,ci+1]){ if(i2<0||i2>N)continue; const x2=i2*STEP;
+        for(const y2 of surfacesAt(x2)){ const up=cy-y2; if(up>climb+1)continue;   // marche trop haute pour ce type (SU + saut) → infranchissable
+          const drop=y2-cy; let cost=STEP+(drop>SU?drop*0.6:0)+(up>0?up*0.25:0)+(up>SU?(up-SU)*0.8:0);   // surcoût d'un vrai saut (au-delà de SU)
+          if(density)cost+=(density[i2]||0)*congW;   // colonne saturée → plus chère
+          if(jitter)cost+=hash2(jseed,i2)*jitter*STEP;   // petit bruit stable par soldat → éventaillage
+          const k2=key(i2,y2), nd=cd+cost;
+          if(!dist.has(k2)||nd<dist.get(k2)){ dist.set(k2,nd); prev.set(k2,cur); ny_.set(k2,y2); } } }
+      for(const L of ladders){ const ib=Math.round(L.xb/STEP), it=Math.round(L.xt/STEP), cost0=cd+STEP+Math.abs(L.yt-L.yb)*0.5;   // ÉCHELLE inclinée : pied<->sommet (hors limite SU)
+        if(Math.abs(ib-ci)<=1&&Math.abs(cy-L.yb)<=SU){ const k2=key(it,L.yt); if(!dist.has(k2)||cost0<dist.get(k2)){dist.set(k2,cost0);prev.set(k2,cur);ny_.set(k2,L.yt);} }
+        if(Math.abs(it-ci)<=1&&Math.abs(cy-L.yt)<=SU){ const k2=key(ib,L.yb); if(!dist.has(k2)||cost0<dist.get(k2)){dist.set(k2,cost0);prev.set(k2,cur);ny_.set(k2,L.yb);} } } }
+    return null; }
+  // densité d'occupation par colonne (les deux camps + la horde : le bouchon est physique) — chaque corps déborde de moitié sur ses voisins
+  let densityArr=null;
+  function buildDensity(){ const STEP=8, N=Math.floor((W-6)/STEP), d=new Array(N+1).fill(0);
+    const add=x=>{ const i=Math.max(0,Math.min(N,Math.round(x/STEP))); d[i]+=1; if(i>0)d[i-1]+=0.5; if(i<N)d[i+1]+=0.5; };
+    for(const s of soldiers){ if(s.hp<=0||s.gone||s.deserter||s.st==='emerge'||s.st==='enter')continue; add(s.x); }
+    for(const s of horde){ if(s.hp<=0||s.gone||s.st==='emerge'||s.st==='enter')continue; add(s.x); }
+    return d; }
+
+  // entités
+  let soldiers=[],arrows=[],nextId=1,horde=[],bars=[],ladders=[],ruinT=0,ruinSide=-1,msg='',msgT=0,animClock=0,pendingCata=[false,false],loserOwner=-1,lastWinner=-1,roundScored=false;   // ladders : échelles {x,yb,yt} posées par l'ingénieur (montée quasi-verticale) ; loserOwner : camp dont la tour est détruite ; lastWinner : vainqueur
+  const towers=[{x:TLX,facing:1,owner:0,col:'#41618c',warn:false,warnA:0,aim:null,t:0,hp:3,flash:0},
+                {x:TRX,facing:-1,owner:1,col:'#8c5141',warn:false,warnA:0,aim:null,t:0,hp:3,flash:0}];
+  const I={x:W/2,y:0,vy:0,facing:1,onGround:true,hp:3,weapon:'bow',glide:false,dead:false,playable:true,job:null,bowT:0,iframe:0,hurt:0,dropT:0,score:0,attacking:false,style:1,step:0,walking:false,jumpY:-9999,bp:[2,2],shieldT:0,shieldHit:0,shieldFx:[]};   // bp = ressources par camp [bleu,rouge] ; playable=false en trêve/fin de manche/absent ; shieldT = temps de bouclier restant, shieldFx = impacts d'obus stoppés
+  let present=true,spawnMode='auto',spawnTimer=0,craterTool=false,unlimitedBuild=true,invader=-1,debugPath=false,dbgL=null,dbgR=null,dbgT=0,shieldEnabled=true;   // shieldEnabled : bouclier ON/OFF
+  let parcoursMode=false,forcedKind=null,parcoursOwner=0,debugFall=false
+  let playSoldier=false;   // mode JOUER UN SOLDAT : un soldat controle au clavier, seul sur le terrain   // MODE PARCOURS : un seul camp émet, type de soldat forcé, Intendant + tir des tours retirés → étude pure de la traversée/chute ; debugFall : overlay dégâts+proba de chute
+  // Le style de bouclier est une DONNÉE du biome (intendantShield), pas une conditionnelle sur le nom. Miroir de src/config/biomes.js.
+  // tint = teinte des particules du Vortex pour ce biome (braise sur Volcano, dérivée de ambientColor côté moteur).
+  const BIOMES_LAB=[
+    {id:'meadow', name:'Plaine',  intendantShield:'egide',  tint:'215,200,150'},
+    {id:'desert', name:'Désert',  intendantShield:'egide',  tint:'235,210,150'},
+    {id:'tundra', name:'Toundra', intendantShield:'egide',  tint:'200,225,245'},
+    {id:'volcano',name:'Volcano', intendantShield:'vortex', tint:'255,150,60'},
+    {id:'storm',  name:'Orage',   intendantShield:'egide',  tint:'159,180,224'},
+  ];
+  let biome=BIOMES_LAB[0], shieldStyle=biome.intendantShield;   // biome : objet courant ; shieldStyle dérivé de biome.intendantShield (override manuel possible)
+
+  // --- INGÉNIEUR/ENGINEER : améliorateur de PORTÉE de navigation. Il ne sort que si un
+  // ouvrage dans la zone d'alerte de sa tour ferait PROGRESSER ses unités plus loin :
+  //   • TROU/cratère  → PONT plat depuis la rive proche ;
+  //   • RESSAUT quasi-vertical (bas & haut quasi au même x, > pente franchissable)
+  //                   → ÉCHELLE (montée verticale, ~70-80°, que les planches ne
+  //                     peuvent pas représenter : la grille plafonne à ~60°).
+  // Le plan est calculé UNE FOIS à la décision de spawn (perf), puis exécuté tel quel.
+
+  // PORTÉE : progression max (px, vers la tour adverse) atteignable depuis la porte,
+  // dans la zone d'alerte. DFS grille (pas STEP=8) : on monte d'au plus SU, on tombe
+  // librement (comme findPath), et une ÉCHELLE relie base↔sommet à x quasi constant.
+  function navReach(owner, exP, exL){ const dir=owner===0?1:-1, xd=doorX(towers[owner]), span=C.towerWarn, STEP=8;
+    const planks=(exP&&exP.length)?structures.concat(exP):structures, lads=(exL&&exL.length)?ladders.concat(exL):ladders;
+    const surfAt=x=>{ const t=terrAt(x),o=[t]; for(const p of planks){ if(x>=p.x0&&x<=p.x1&&p.y<=t+2)o.push(p.y);} return o; };
+    let sY=platY,bd=1e9; for(const y of surfAt(xd)){const d=Math.abs(y-platY);if(d<bd){bd=d;sY=y;}}
+    const key=(x,y)=>x+'_'+Math.round(y), seen=new Set([key(xd,sY)]), st=[[xd,sY]];
+    let prog=0,guard=0;
+    while(st.length&&guard++<6000){ const [cx,cy]=st.pop(), p=dir*(cx-xd); if(p>prog)prog=p;
+      for(const nx of [cx+STEP,cx-STEP]){ const np=dir*(nx-xd); if(np<0||np>span||nx<6||nx>W-6)continue;
+        for(const ny of surfAt(nx)){ if(cy-ny>SU+1)continue; const k=key(nx,ny); if(seen.has(k))continue; seen.add(k); st.push([nx,ny]); } }
+      for(const L of lads){ const cb=Math.round(L.xb/STEP)*STEP, ct=Math.round(L.xt/STEP)*STEP;   // échelle inclinée : pied(xb,yb) <-> sommet(xt,yt)
+        if(Math.abs(L.xb-cx)<=STEP*1.5&&Math.abs(cy-L.yb)<=SU){const k=key(ct,L.yt);if(!seen.has(k)){seen.add(k);st.push([ct,L.yt]);}}
+        if(Math.abs(L.xt-cx)<=STEP*1.5&&Math.abs(cy-L.yt)<=SU){const k=key(cb,L.yb);if(!seen.has(k)){seen.add(k);st.push([cb,L.yb]);}} } }
+    return prog; }
+
+  // Première ARÊTE nette en suivant le sol RÉEL (terrain OU planches) depuis la porte,
+  // par pas de STEP=8 (cohérent avec la grille) : chute>SU → pont (rive) ; ressaut>SU →
+  // échelle (du pied jusqu'au sommet du plateau). null si aucun obstacle dans la zone.
+  function buildPlan(owner){ const dir=owner===0?1:-1, xd=doorX(towers[owner]), STEP=8; let x=xd, y=groundY(x,platY);
+    for(let k=0;k<C.towerWarn/STEP;k++){ const nx=x+dir*STEP, ny=groundY(nx,y);
+      if(ny-y>SU) return {type:'bridge', x0:x, y0:y, dir, max:C.engBridgeMax};                                  // rive de chute → pont plat
+      if(y-ny>SU){ let yt=y,xt=x; for(let d=4;d<=C.engLadRun;d+=4){const tx=x+dir*d,ty=terrAt(tx); if(ty<yt){yt=ty;xt=tx;}} return {type:'ladder', xb:x, yb:y, xt, yt:Math.max(yt,y-C.engLadH), dir}; }   // pied de ressaut → échelle inclinée (pied→sommet du plateau)
+      x=nx; y=ny; }
+    return null; }
+
+  // Décision : l'ouvrage candidat étend-il la portée ? Sinon pas d'ingénieur (jamais pour
+  // rien) — et un obstacle DÉJÀ franchi (pont/échelle en place) ne déclenche plus rien
+  // (la portée passe déjà → gain nul).
+  function planEngineer(owner){ const p=buildPlan(owner); if(!p) return null; const dir=p.dir, base=navReach(owner);
+    let rT; if(p.type==='bridge'){ const span=[]; for(let i=0;i<C.engBridgeMax;i++){const sx=p.x0+dir*(i*PW);span.push({x0:Math.min(sx,sx+dir*PW),x1:Math.max(sx,sx+dir*PW),y:p.y0});} rT=navReach(owner,span,null); }
+    else rT=navReach(owner,null,[{xb:p.xb,yb:p.yb,xt:p.xt,yt:p.yt}]);
+    if(rT<=base+8) return null;                                              // l'ouvrage n'étend pas la portée (> 1 maille) → pas d'ingénieur
+    return p; }
+  function hasEngineer(owner){ return soldiers.some(s=>s.kind==='engineer'&&s.owner===owner&&s.hp>0&&!s.deserter); }
+
+  function newSoldier(owner){ const dir=owner===0?1:-1,xd=doorX(towers[owner]); let kind,hp,plan=null;
+    if(pendingCata[owner]){pendingCata[owner]=false;kind='cata';hp=C.cataHp;}             // escalade : ce camp a perdu un soldat sous le feu de la tour
+    else if(parcoursMode&&forcedKind){kind=forcedKind;hp=kind==='cata'?C.cataHp:kind==='engineer'?C.engHp:kind==='bow'?C.arHp:C.sHp;if(kind==='engineer')plan=planEngineer(owner);}   // parcours : type imposé
+    else if(!hasEngineer(owner)&&(plan=planEngineer(owner))){kind='engineer';hp=C.engHp;}   // une construction étendrait la portée → un ingénieur sort (au lieu d'un combattant), puis déserte
+    else if(rnd()<C.archerPct){kind='bow';hp=C.arHp;} else {kind='sword';hp=C.sHp;}   // 1/~10 (seedé) : archer
+    const s={id:nextId++,owner,x:xd,y:platY,dir,kind,hp,ft:0,stuck:0,deserter:false,st:'emerge',t:C.doorT,age:0,fall:false,jseed:(rnd()*0x100000000)>>>0}; if(plan)s.plan=plan; return s; }
+  function spawnPair(){ if(loserOwner>=0)return;
+    if(parcoursMode){ soldiers.push(newSoldier(parcoursOwner)); return; }   // parcours : un seul camp émet (aucun adversaire → aucun combat)
+    if(!present)return; soldiers.push(newSoldier(0),newSoldier(1)); }   // une tour détruite → plus de production
+  function resetAll(){ soldiers=[];arrows=[];structures=[];horde=[];bars=[];ladders=[];nextId=1;ruinT=0;loserOwner=-1;lastWinner=-1;invader=-1;pendingCata=[false,false];towers[0].hp=towers[1].hp=C.maxHp;towers[0].flash=towers[1].flash=0;genTerrain();navVer++;
+    Object.assign(I,{x:W/2,y:-30,vy:0,onGround:false,jumpY:-9999,hp:C.maxHp,dead:false,playable:true,iframe:1.2,hurt:0,job:null,act:null,dropT:0,score:0,bp:[2,2],shieldT:0,shieldHit:0,shieldFx:[]});present=true;updPres();spawnTimer=0;  if(playSoldier)spawnPC(); }   // 1re apparition : entrée depuis le ciel (au centre), plane jusqu'au sol
+  function showMsg(t){msg=t;msgT=1.8;}
+  function endSequence(loserO){ if(loserOwner>=0)return; loserOwner=loserO; lastWinner=1-loserO; invader=-1; I.playable=false; ruinSide=loserO; ruinT=22; roundScored=false;   // une tour tombe : duel résolu ; la horde TENTE la traversée (cap large ; fin dès qu'elle est résolue)
+    for(const s of soldiers){if(s.owner===loserO&&!s.gone&&s.hp>0&&s.st!=='emerge'&&s.st!=='enter')s.deserter=true;}   // perdants → désertion immédiate
+    const xd=doorX(towers[lastWinner]),dir=lastWinner===0?1:-1,cnt=3+Math.floor(rnd()*6); for(let i=0;i<cnt;i++)horde.push({owner:lastWinner,x:xd,y:platY,dir,hp:999,st:'emerge',t:C.doorT,age:10,fall:false,horde:true,bg:i%2===0,delay:i*0.1+rnd()*0.25,jseed:(rnd()*0x100000000)>>>0});   // horde 3-8, sortie chaotique, moitié au second plan
+    showMsg('Fin de manche — la horde tente d\'atteindre la ruine…'); }   // succès évalué à l'ARRIVÉE réelle (cf. update)
+  function nextRound(){ soldiers=[];horde=[];arrows=[];bars=[];structures=[];ladders=[];fx=[];fresh.fill(0);genTerrain();navVer++; loserOwner=-1;ruinSide=-1;ruinT=0;pendingCata=[false,false];towers[0].hp=towers[1].hp=C.maxHp;towers[0].flash=towers[1].flash=0;
+    Object.assign(I,{x:W/2,y:terrAt(W/2),vy:0,onGround:true,playable:true,dead:false,hp:C.maxHp,iframe:0,job:null,act:null,shieldT:0,shieldHit:0,shieldFx:[]});invader=(lastWinner>=0?lastWinner:-1); }   // 5.c : Intendant déjà en place au sommet (pas du ciel) ; alignement = vainqueur précédent
+
+  // input
+  const keys={};const PV=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space']);
+  addEventListener('keydown',e=>{ if(PV.has(e.code))e.preventDefault();
+    if(!e.repeat){ if(e.code==='KeyE')spawnPair(); if(e.code==='KeyP')togglePres();
+      if(e.code==='KeyK')startBuild('stair'); if(e.code==='KeyL')startBuild('bridge'); if(e.code==='KeyB')testShell(); }   // arme = auto (épée si contact, sinon arc en vue) ; B = obus de test sur l'Intendant
+    keys[e.code]=true; });
+  addEventListener('keyup',e=>keys[e.code]=false);
+  const L=()=>keys['ArrowLeft']||keys['KeyA'],R=()=>keys['ArrowRight']||keys['KeyD'],DN=()=>keys['ArrowDown']||keys['KeyS'],UP=()=>keys['ArrowUp']||keys['KeyW'],JUMP=()=>keys['ArrowUp']||keys['Space'];
+
+  // build & terraform
+  const PW=16,SW=11,SH=5;   // marches fines : faible hauteur → franchissables par les soldats
+  // INGÉNIEUR : PV/longueurs désormais réglables → C.engHp, C.engBridgeMax (pont, planches), C.engLadH/C.engLadRun (échelle inclinée ≥ ~60°). Non-combattant fragile.
+  const BUILD_COST=5;   // forfait par ouvrage (pont OU escalier) : 5 bleu + 5 rouge
+  const hasPoints=()=>unlimitedBuild||(I.bp[0]>=BUILD_COST&&I.bp[1]>=BUILD_COST);
+  function startBuild(type){ if(I.job||I.dead||!I.onGround||keys['KeyJ']||keys['KeyH'])return; if(!hasPoints()){showMsg('✗ besoin de '+BUILD_COST+' bleu + '+BUILD_COST+' rouge');return;} if(!unlimitedBuild){I.bp[0]-=BUILD_COST;I.bp[1]-=BUILD_COST;} I.job={type,i:0,max:C.buildSteps,t:0,x0:I.x,y0:I.y,f:I.facing}; }   // coût payé au départ
+  function finishBuild(j){ if(j.i<1)return; if(j.type==='bridge')addBridgeSupports(j); else addStairSupports(j); }
+  function stepBuild(dt){ const j=I.job;if(!j)return; if(j.ph==null)j.ph=0; j.t+=dt;
+    if(j.ph===0){ if(j.t<C.buildWind)return; j.t=0; j.ph=1; }   // attente avant chantier
+    if(j.ph===2){ if(j.t<C.buildRec)return; I.job=null; return; }   // attente apres chantier -> libre
+    if(j.t<C.buildDur)return; j.t-=C.buildDur;   // un element tous les buildDur
+    let sx,sy,x0,x1;
+    if(j.type==='stair'){ sx=j.x0+j.f*(j.i*SW); sy=j.y0-j.i*SH; x0=Math.min(sx,sx+j.f*SW);x1=Math.max(sx,sx+j.f*SW); }
+    else{ sx=j.x0+j.f*(j.i*PW); sy=j.y0; x0=Math.min(sx,sx+j.f*PW);x1=Math.max(sx,sx+j.f*PW); }
+    if(sx<6||sx>W-6||sy<12||sy>terrAt(sx)+3){ finishBuild(j); j.ph=2; j.t=0; return; }   // hors-cadre / enterré → interrompt (attente apres)
+    structures.push({x0,x1,y:sy}); navVer++; if(j.type==='stair'&&j.i>0)pushBar(sx,sy,sx,sy+SH);   // contremarche → pente continue ; invalide les chemins
+    I.x=sx;I.y=sy; I.vy=0;I.onGround=true; j.i++;   // (coût déjà payé au départ : 5+5)
+    if(j.i>=j.max){ finishBuild(j); j.ph=2; j.t=0; } }   // dernier element -> attente apres (buildRec)
+  function addStairSupports(j){ const i=j.i, topSx=j.x0+j.f*((i-1)*SW), ax=topSx+j.f*(SW/2), topY=j.y0-(i-1)*SH;   // 1 seul pilier au milieu de la plus haute marche
+    const connected=(terrAt(ax)-topY)<8, groundB=Math.max(terrAt(ax),topY+10);
+    if(connected){const len=Math.max(12,groundB-topY); pushBar(ax,topY,ax+j.f*len,topY+len);} else pushBar(ax,topY,ax,groundB); }
+  function pushBar(x1,y1,x2,y2){ const n=Math.max(2,Math.round(Math.hypot(x2-x1,y2-y1)/4)); for(let i=0;i<=n;i++){const u=i/n; bars.push({x:x1+(x2-x1)*u,y:y1+(y2-y1)*u});} }
+  function addBridgeSupports(j){ const by=j.y0, ends=[j.x0,j.x0+j.f*j.i*PW], Lx=Math.min(...ends),Rx=Math.max(...ends);
+    for(const [ex,sgn] of [[Lx,-1],[Rx,1]]){ const ax=ex-sgn*PW;                       // barre à 1 unité de build du bord
+      const connected=(terrAt(ex)-by)<8;                                               // bord raccordé au sol ?
+      const groundB=Math.max(terrAt(ax),by+10);
+      if(connected){ const len=Math.max(12,groundB-by); pushBar(ax,by,ax+sgn*len,by+len); }  // pilier oblique 45° vers extérieur-bas
+      else pushBar(ax,by,ax,groundB); } }                                              // pilier vertical vers le bas
+  function craterStructures(mx,my,r){ const out=[];
+    for(const p of structures){ const dy=Math.abs(p.y-my); if(dy>=r){out.push(p);continue;} const dx=Math.sqrt(r*r-dy*dy),cl=mx-dx,cr=mx+dx;
+      if(cr<=p.x0||cl>=p.x1){out.push(p);continue;} if(cl>p.x0)out.push({x0:p.x0,x1:Math.min(p.x1,cl),y:p.y}); if(cr<p.x1)out.push({x0:Math.max(p.x0,cr),x1:p.x1,y:p.y}); }
+    structures=out.filter(p=>p.x1-p.x0>1); bars=bars.filter(b=>Math.hypot(b.x-mx,b.y-my)>=r);
+    ladders=ladders.filter(L=>{ const x0=Math.min(L.xb,L.xt),x1=Math.max(L.xb,L.xt),y0=Math.min(L.yb,L.yt),y1=Math.max(L.yb,L.yt); return mx+r<x0||mx-r>x1||my+r<y0||my-r>y1; }); }   // échelle dans le cratère → détruite
+  function toolAim(defY){ let dx=(R()?1:0)-(L()?1:0),dy=(DN()?1:0)-(UP()?1:0); if(!dx&&!dy){dx=0;dy=defY;} const m=Math.hypot(dx,dy)||1; return {ox:dx/m,oy:dy/m}; }   // sans direction : creuser→bas, remblayer→haut
+  function smoothRange(a,b,k){ a=cX(a-3);b=cX(b+3); const c=Float32Array.from(heights.subarray(a,b+1)); for(let x=a+1;x<b;x++){const avg=(c[x-1-a]+c[x+1-a])/2; heights[x]=heights[x]*(1-k)+avg*k;} }
+  function digDir(dt){ const {ox,oy}=toolAim(1);
+    if(Math.abs(ox)>Math.abs(oy)*1.2){                                                  // BASHER horizontal : ouvre un couloir au niveau du pied (pas d'effondrement / pas de Solidité 2D)
+      const dir=Math.sign(ox)||I.facing, foot=I.y, reach=16;
+      for(let d=0;d<=reach;d++){const c=cX(I.x+dir*d); if(heights[c]<foot)heights[c]=Math.min(foot,heights[c]+C.digSpeed*dt*2.4);}
+      I.x=Math.max(8,Math.min(W-8,I.x+dir*Math.min(C.digSpeed,38)*dt)); I.facing=dir; I.y=groundY(I.x,I.y);
+      smoothRange(I.x-reach-3,I.x+reach+3,0.4); markFresh(I.x-reach,I.x+reach); if(rnd()<dt*30)spawnDirt(I.x+dir*8,I.y,2,FRESHCOL);
+    } else {                                                                            // DIGGER : puits ; profondeur AU CENTRE = digH px sous le REBORD (référence stable hors du trou → l'Intendant peut s'y enfoncer sans creuser à l'infini)
+      const tx=I.x+ox*12,rr=11, ref=Math.min(terrAt(tx-rr-6),terrAt(tx+rr+6));
+      for(let d=-rr;d<=rr;d++){const w=0.5+0.5*Math.cos(Math.PI*d/rr),c=cX(tx+d),fy=ref+w*C.digH; if(heights[c]<fy)heights[c]=Math.min(H-2,heights[c]+C.digSpeed*dt*w);}
+      smoothRange(tx-rr,tx+rr,0.4); markFresh(tx-rr,tx+rr); if(rnd()<dt*30)spawnDirt(tx,I.y,2,FRESHCOL); } }
+  function fillDir(dt){ const {ox}=toolAim(-1),tx=I.x+ox*16,rr=13;   // REMBLAI : monticule devant ; hauteur AU CENTRE = digH px au-dessus des pieds
+    for(let d=-rr;d<=rr;d++){const w=0.5+0.5*Math.cos(Math.PI*d/rr),c=cX(tx+d),tp=Math.max(0,I.y-w*C.digH); if(heights[c]>tp)heights[c]=Math.max(tp,heights[c]-C.digSpeed*dt*w);}
+    smoothRange(tx-rr,tx+rr,0.5); markFresh(tx-rr,tx+rr); if(rnd()<dt*30)spawnDirt(tx,I.y,2,FRESHCOL); }
+  const FRESHCOL='#b89a63';   // terre fraîche (dérivée + claire que la crête)
+  function flattenStep(dt){ const {ox}=toolAim(0), tx=I.x+ox*16, rr=20;   // APLANIR : transforme la zone en PENTE DROITE entre ses 2 bords (continuité conservée, pas d'angle apparent) ; un peu large pour rendre un chemin praticable
+    const xl=cX(tx-rr), xr=cX(tx+rr), yl=terrAt(xl), yr=terrAt(xr);
+    for(let x=xl;x<=xr;x++){ const t=(x-xl)/Math.max(1,xr-xl), target=yl+(yr-yl)*t; heights[x]+=(target-heights[x])*Math.min(1,C.digSpeed*0.06*dt); }
+    smoothRange(xl-2,xr+2,0.2); markFresh(xl,xr); if(rnd()<dt*30)spawnDirt(tx,I.y,2,FRESHCOL); }
+  const STROKE=0.32;   // quantité d'un "coup" d'outil (creuser/remblayer/aplanir = actions oneshot)
+  function doStroke(kind){ if(kind==='dig')digDir(STROKE); else if(kind==='fill')fillDir(STROKE); else flattenStep(STROKE); I.y=terrAt(I.x); I.onGround=true; }
+  // Cratère réaliste (approx) : bol évasé « saucer » (plus large que profond), allongé & décalé vers l'AVAL selon l'horizontalité de l'impact, avec lèvre d'éjectas asymétrique. vx/vy = vitesse de l'obus à l'impact (défaut = vertical → quasi rond).
+  function carveCrater(mx,my,r,vx=0,vy=1){ r=r||C.craterR;
+    const sp=Math.hypot(vx,vy)||1, h=Math.min(1,Math.abs(vx)/sp), sgn=Math.sign(vx)||1;        // h : horizontalité (0 vertical → rond ; 1 rasant → ellipse) ; sgn : aval
+    const depth=r*0.6*(1-0.3*h), rxF=r*(1+0.9*h), rxB=r*(1+0.2*h), cx=mx+sgn*r*0.3*h;           // bol : profondeur < largeur ; demi-largeur aval (rxF) > amont (rxB) ; centre décalé aval
+    const lipH=Math.min(6,depth*0.22), span=Math.max(3,r*0.4);                                  // lèvre d'éjectas (surélévation au bord, + marquée vers l'aval)
+    const x0=Math.floor(cx-rxB-span), x1=Math.ceil(cx+rxF+span);
+    for(let x=x0;x<=x1;x++){ const c=cX(x), dd=x-cx, rxs=(dd*sgn>=0)?rxF:rxB;
+      if(Math.abs(dd)<=rxs){ const fy=my+depth*Math.sqrt(Math.max(0,1-(dd/rxs)*(dd/rxs))); if(heights[c]<fy)heights[c]=Math.min(H-2,fy); }   // creuse le bol elliptique
+      else { const over=Math.abs(dd)-rxs, ll=(dd*sgn>=0?lipH:lipH*0.55), raise=ll*Math.max(0,1-over/span); if(raise>0.4)heights[c]=Math.max(2,heights[c]-raise); } }   // soulève la lèvre
+    smoothRange(cx-rxB-span,cx+rxF+span,0.3); craterStructures(mx,my,r); navVer++; markFresh(cx-rxF,cx+rxF); spawnDirt(mx,my,12,FRESHCOL,sgn*h); }
+  // DÉTONATION (obus ou grenade) — DEUX échelles de PV :
+  //   • TOUCHE DIRECTE (projectile, arg `hit`) : obus → échelle PLAYER (PV Intendant ; un soldat n'a ~0,01 PV player → ONE-SHOT) ; grenade → échelle SOLDAT (PV soldat ; Intendant → ressource).
+  //   • SOUFFLE (zone, dans blastR) : TOUJOURS échelle SOLDAT (PV soldat ; Intendant → ressource, jamais de PV). La balle n'a pas de souffle.
+  function explodeBall(a,ix,iy,blastR,baseDmg,active,hit){ carveCrater(ix,iy,blastR,a.vx,a.vy);   // forme orientée par la trajectoire de l'obus
+    if(hit&&hit.type==='soldier'){ if(a.gren)hit.s.hp-=baseDmg; else hit.s.hp=0; hit.s.combat=true; }   // grenade=plein soldat ; obus=échelle player → annihile (0,01 PV player)
+    else if(hit&&hit.type==='int'&&active&&!I.dead){ if(a.gren){ I.hurt=.4; I.bp[a.owner]=Math.max(0,I.bp[a.owner]-1); } else { I.hp-=baseDmg; I.hurt=.4; if(I.hp<=0){I.dead=true;I.hp=0;} } }   // grenade=ressource ; obus=PV player (baseDmg = ballDmg jitté)
+    const splash=baseDmg*C.splashFactor;   // SOUFFLE : échelle soldat pour tous
+    for(const s of soldiers){ if(s.hp<=0||s.owner===a.owner||(hit&&hit.s===s))continue; if(Math.hypot(s.x-ix,s.y-iy)<blastR){ s.hp-=splash; s.combat=true; } }
+    if(active&&!I.dead&&!(hit&&hit.type==='int')){ if(Math.hypot(I.x-ix,I.y-iy)<blastR){ I.hurt=.3; I.bp[a.owner]=Math.max(0,I.bp[a.owner]-1); } } }   // souffle Intendant = ressource (jamais PV)
+
+  function setWeapon(w){I.weapon=w;document.querySelectorAll('#wSeg button').forEach(b=>b.classList.toggle('on',b.dataset.w===w));document.getElementById('wlabel').textContent=w==='sword'?'épée':'arc';}
+  function togglePres(){ present=!present;   // simule une déconnexion >10s : trêve + l'Intendant reste sur le champ mais injouable + les soldats désertent
+    if(!present){ invader=-1; I.playable=false; }
+    else { I.playable=true; if(I.dead){I.dead=false;I.hp=C.maxHp;I.x=W/2;I.y=-30;I.vy=0;I.onGround=false;I.iframe=1.2;} }
+    updPres(); }
+  const presBtn=document.getElementById('presence');
+  function updPres(){presBtn.classList.toggle('on',present);presBtn.firstChild.textContent=present?'Présent ':'Absent ';}
+
+  // traversée + horde
+  function crossPath(dir){ const sx=dir>0?TLX+14:TRX-14, gx=dir>0?TRX-14:TLX+14; return findPath(sx,terrAt(sx),gx); }   // utilise le VRAI pathfinder (prend en compte les ouvrages de l'Intendant)
+  function canCross(dir){ return crossPath(dir)!=null; }
+  function endRound(){ if(loserOwner>=0)return; towers[rnd()<0.5?0:1].hp=0; }   // [lab] simule une fin de manche : détruit une tour (seedé) → endSequence
+  function testShell(){ if(I.dead)return; const fromLeft=rnd()<0.5, sx=fromLeft?44:W-44, sy=70, t=0.65, dx=I.x-sx, dy=(I.y-14)-sy;   // [lab] tire un obus d'artillerie balistique droit sur l'Intendant pour tester le bouclier
+    arrows.push({x:sx,y:sy,vx:dx/t,vy:dy/t-0.5*C.grav*t,life:5,ball:true,owner:fromLeft?0:1,cr:C.ballCraterR,pw:1}); showMsg('Obus d\'artillerie → Intendant'); }
+  function endRoundOLD(){ let dir=canCross(1)?1:(canCross(-1)?-1:0); if(!dir){showMsg('✗ Battlefield infranchissable');return;}
+    I.score++; ruinSide=dir>0?1:0; ruinT=9; soldiers=[];arrows=[];                    // cutscene jusqu'à l'arrivée de la horde sur la ruine
+    const owner=dir>0?0:1, xd=doorX(towers[owner]), cnt=6+Math.floor(rnd()*7);   // horde de 6 à 12 (seedé)
+    horde=[]; for(let i=0;i<cnt;i++) horde.push({owner,x:xd,y:platY,dir,hp:999,st:'emerge',t:C.doorT,age:10,fall:false,horde:true,delay:i*0.1});
+    showMsg('✓ Traversée — +1 manche pour l\'Intendant'); }
+
+  // update
+  function update(dt){
+    animClock+=dt;
+    if(rangeHiT>0)rangeHiT-=dt;   // surlignage de portée : fondu après la dernière interaction
+    densityArr=buildDensity();   // densité d'occupation par colonne, recalculée une fois par step → lue par findPath (anti-bouchon)
+    if(debugPath){ dbgT+=dt; if(dbgT>0.4){dbgT=0; dbgL=crossPath(1); dbgR=crossPath(-1);} } else {dbgL=dbgR=null;}   // debug : recalcule les chemins gauche→droite et droite→gauche
+    for(let x=0;x<W;x++)if(fresh[x]>0)fresh[x]-=dt*0.25;   // le terrain frais redevient normal en ~4s
+    for(const p of fx){ p.vy+=C.grav*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; } fx=fx.filter(p=>p.life>0);
+    if(I.shieldT>0)I.shieldT-=dt; if(I.shieldHit>0)I.shieldHit-=dt*2.5;   // BOUCLIER : l'activation dure shieldDur ; shieldHit = flash visuel à l'impact (toujours décompté, même injouable)
+    for(const f of I.shieldFx)f.t-=dt; if(I.shieldFx.length)I.shieldFx=I.shieldFx.filter(f=>f.t>0);
+    if(msgT>0)msgT-=dt; if(ruinT>0){ruinT-=dt;if(ruinT<=0){ if(loserOwner>=0){ if(!roundScored)showMsg('✗ Intendant échoue — aucun soldat n\'a atteint la ruine'); nextRound(); } else {horde=[];ruinSide=-1;} }}
+    if(I.hp>C.maxHp)I.hp=C.maxHp;
+    const active=!parcoursMode&&present&&!I.dead;          // Intendant actif (jamais en mode parcours)
+    const soldiersActive=parcoursMode||active;             // en parcours les soldats marchent sans jamais déserter
+    if(soldiersActive&&spawnMode==='auto'&&!playSoldier){spawnTimer+=dt;if(spawnTimer>=C.spawnFreq){spawnTimer-=C.spawnFreq;spawnPair();}}
+
+    if(!parcoursMode&&!I.dead){   // l'Intendant est sur le champ (même absent/injouable : la PHYSIQUE s'applique)
+      const ctrl=present&&I.playable;   // peut AGIR (sinon : immobile, mais gravité + plané auto continuent)
+      I.glide=!I.onGround&&I.vy>0&&I.y>(I.jumpY!=null?I.jumpY:I.y)+4;   // PLANEUR AUTO : se déploie sous le point de départ de saut
+      let climbing=false,busy=false;
+      if(ctrl){
+        stepBuild(dt);
+        const wantKind=(!I.job&&!I.glide)?(keys['KeyJ']?'dig':keys['KeyH']?'fill':keys['KeyG']?'flat':null):null;   // outils oneshot (effort avant/après)
+        if(!I.act&&wantKind)I.act={kind:wantKind,ph:0,t:C.toolWind};   // MODELAGE : attente avant (toolWind) -> effet tenu (toolDur) -> attente apres (toolRec)
+        if(I.act){ I.act.t-=dt;
+          if(I.act.ph===0&&I.act.t<=0){ doStroke(I.act.kind); I.act.ph=1; I.act.t=C.toolDur; }   // fin attente avant -> applique le modelage, tient toolDur
+          else if(I.act.ph===1&&I.act.t<=0){ I.act.ph=2; I.act.t=C.toolRec; }                      // fin duree -> attente apres
+          else if(I.act.ph===2&&I.act.t<=0){ const held=(I.act.kind==='dig'&&keys['KeyJ'])||(I.act.kind==='fill'&&keys['KeyH'])||(I.act.kind==='flat'&&keys['KeyG']); I.act=(held&&!I.job&&!I.glide)?{kind:I.act.kind,ph:0,t:C.toolWind}:null; } }
+        busy=!!I.act;
+        if(!I.job&&!busy&&!I.atk){   // immobile pendant une action (attente avant/apres)
+          const mv=(R()?1:0)-(L()?1:0); if(mv)I.facing=mv;
+          const lad=ladderAt(I.x,I.y);
+          if(lad&&(UP()||DN())){   // ÉCHELLE : ↑ monte vers le sommet, ↓ descend vers le pied (gravité suspendue)
+            climbing=true; const up=UP(), tx=up?lad.xt:lad.xb, ty=up?lad.yt:lad.yb;
+            const gx=tx-I.x,gy=ty-I.y,m=Math.hypot(gx,gy)||1,sp=C.climbSpeed*1.8*dt;
+            I.x+=gx/m*Math.min(m,sp); I.y+=gy/m*Math.min(m,sp); I.vy=0; I.onGround=false; I.facing=Math.sign(lad.xt-lad.xb)||I.facing;
+          } else {
+            if(DN()&&I.onGround&&supportAt(I.x)<terrAt(I.x)-1){I.onGround=false;I.dropT=.28;I.y+=2;}
+            if(mv){ if(I.onGround){ const ahead=groundY(I.x+mv*4,I.y),rise=(I.y-ahead)/4;
+                if(rise>C.climbSlope){climbing=true;I.x+=mv*C.climbSpeed*dt;I.y=groundY(I.x,I.y);}
+                else { const sf=Math.max(0.3,1-Math.abs(rise)*0.45); I.x+=mv*C.intSpeed*sf*dt; } }   // vitesse pénalisée par la pente
+              else I.x+=mv*C.intSpeed*dt; }                          // contrôle aérien
+            I.x=Math.max(8,Math.min(W-8,I.x));
+            if(JUMP()&&I.onGround){I.vy=-C.jumpV;I.onGround=false;I.jumpY=I.y;}
+          }
+        }
+      } else I.act=null;
+      // GRAVITÉ + SOL + PLANÉ : TOUJOURS (immobile/injouable/occupé y compris), sauf en escalade
+      if(!climbing){ if(I.dropT>0)I.dropT-=dt; I.vy+=C.grav*dt; if(I.glide)I.vy=Math.min(I.vy,C.glide); I.y+=I.vy*dt;
+        const g=I.dropT>0?terrAt(I.x):groundY(I.x,I.y);
+        if(I.y>=g){I.y=g;I.vy=0;I.onGround=true;}else I.onGround=false;
+        if(I.onGround)I.jumpY=I.y;
+        if(I.onGround&&!JUMP()){ const gg=I.dropT>0?terrAt(I.x):groundY(I.x,I.y); if(gg<I.y&&I.y-gg<=SU)I.y=gg; } }
+      if(!climbing&&terrAt(I.x)<I.y-0.5){ I.y=terrAt(I.x); if(I.vy>0)I.vy=0; I.onGround=true; }   // anti-enterrement (suspendu pendant l'escalade d'échelle)
+      if(ctrl&&!I.job&&!busy&&!I.glide) autoAttack(dt); else { I.attacking=false; I.atk=null; }
+      if(I.iframe>0)I.iframe-=dt; if(I.hurt>0)I.hurt-=dt;
+      if(ctrl&&I.iframe<=0&&invader>=0){for(const s of soldiers){if(s.hp<=0||s.deserter||s.st==='emerge'||s.st==='enter'||s.owner!==invader)continue;if(Math.hypot(s.x-I.x,s.y-I.y)<14){I.bp[invader]=Math.max(0,I.bp[invader]-1);I.iframe=.6;I.hurt=.4;break;}}}   // contact soldat → draine 1 ressource
+      if(I.hp<=0){I.dead=true;I.hp=0;}
+      I.walking=ctrl&&I.onGround&&!I.job&&(((R()?1:0)-(L()?1:0))!==0); if(I.walking)I.step+=dt*11;
+    }
+
+    for(const T of towers){ if(T.hp<=0){ if(loserOwner<0)endSequence(T.owner); for(const s of soldiers){ if(s.owner===T.owner&&!s.deserter&&!s.gone&&s.hp>0&&s.st!=='emerge'&&s.st!=='enter')s.deserter=true; } } }   // tour détruite → fin de manche (endSequence) ; perdants désertent
+    stepSoldiers(soldiers,dt,soldiersActive,true);
+    stepSoldiers(horde,dt,true,false);
+    if(loserOwner>=0&&!roundScored&&horde.some(h=>h.st==='arrived')){ roundScored=true; I.score++; showMsg('✓ Intendant réussit — un soldat a atteint la ruine'); }   // SUCCÈS = arrivée réelle d'un soldat de la horde
+    if(ruinT>0&&horde.length>0&&horde.every(h=>h.st==='arrived'||h.hp<=0))ruinT=Math.min(ruinT,1.0);   // horde résolue (arrivée ou morte) → courte tenue puis fin
+
+    for(const T of towers){ T.warn=false;T.aim=null; if(T.flash>0)T.flash-=dt;
+      const ruined=ruinT>0&&((ruinSide===1&&T.owner===1)||(ruinSide===0&&T.owner===0));
+      if(!parcoursMode&&!ruined&&ruinT<=0&&T.hp>0){ const sl=slitOf(T); let tgt=null,bd=C.towerWarn+1;
+        if(active){const d=Math.hypot(I.x-sl.x,I.y-sl.y);if(d<bd){bd=d;tgt={x:I.x,y:I.y};}}
+        for(const s of soldiers){if(s.owner===T.owner||s.hp<=0||s.deserter||s.st==='emerge'||s.st==='enter')continue;const d=Math.hypot(s.x-sl.x,s.y-sl.y);if(d<bd){bd=d;tgt={x:s.x,y:s.y};}}
+        if(tgt){T.warn=true;T.aim=tgt;
+          if(bd<C.towerFire){T.t+=dt;if(T.t>=1/C.towerRate){T.t=0;T.flash=0.12;const base=Math.atan2(tgt.y-sl.y,tgt.x-sl.x),n=1+Math.floor(rnd()*C.towerBolts);for(let k=0;k<n;k++){const off=(k-(n-1)/2)*0.12;arrows.push({x:sl.x,y:sl.y,vx:Math.cos(base+off)*C.boltSpeed,vy:Math.sin(base+off)*C.boltSpeed,life:1.4,owner:T.owner,bolt:true});}}}else T.t=0;
+        }else T.t=0; }
+      T.warnA+=((T.warn?1:0)-T.warnA)*Math.min(1,dt*9); }
+
+    for(const a of arrows){ if(a.ball)a.vy+=C.grav*dt; a.x+=a.vx*dt;a.y+=a.vy*dt;a.life-=dt;
+      if(a.ball){ const cr0=a.cr||C.craterR, baseDmg=a.gren?(a.dmg!=null?a.dmg:C.arDmg):(a.dmg!=null?a.dmg:C.ballDmg);
+        if(!a.gren&&active&&!I.dead){ const d=Math.hypot(a.x-I.x,a.y-I.y);
+          // BOUCLIER MAGIQUE : un obus d'artillerie entrant dans le rayon est INTERCEPTÉ (impact au contact du bouclier, pas sur l'avatar).
+          // Activation AUTO tant qu'il reste des PV → coûte 1 PV et dure shieldDur ; pendant cette fenêtre, tout obus est stoppé sans coût supplémentaire.
+          if(shieldEnabled && d<C.shieldR && (I.shieldT>0 || I.hp>0)){
+            if(I.shieldT<=0){ I.hp-=1; I.shieldT=C.shieldDur; if(I.hp<=0){I.dead=true;I.hp=0;} }   // ACTIVATION : −1 PV, démarre la fenêtre de 1,5 s
+            I.shieldHit=1;
+            const ux=(a.x-I.x)/(d||1),uy=(a.y-I.y)/(d||1), ix=I.x+ux*C.shieldR, iy=I.y+uy*C.shieldR;   // point d'impact sur le cercle du bouclier
+            I.shieldFx.push({t:0.45,a:Math.atan2(uy,ux)}); spawnDirt(ix,iy,7,'#cdb6ff');
+            a.life=0; continue;
+          }
+          if(d<12){ explodeBall(a,a.x,Math.min(a.y,terrAt(a.x)),cr0,baseDmg,active,{type:'int'}); a.life=0; continue; }   // boulet : touche directe sur le corps de l'Intendant → PV player
+        }
+        if(a.gren){ for(const s of soldiers){ if(s.hp<=0||s.owner===a.owner)continue; if(Math.hypot(a.x-s.x,a.y-s.y)<9){ explodeBall(a,a.x,a.y,cr0,baseDmg,active,{type:'soldier',s}); a.life=0; break; } } if(a.life<=0)continue; }   // grenade : détone au contact d'un soldat
+        else { for(const s of soldiers){ if(s.hp<=0||s.owner===a.owner)continue; if(Math.hypot(a.x-s.x,a.y-s.y)<9){ s.hp=0; s.combat=true; } } }   // OBUS : vaporise les soldats traversés (échelle player) SANS détoner → il poursuit sa course
+        for(const T of towers){ if(T.hp>0&&Math.abs(a.x-T.x)<30&&a.y>top-6&&a.y<platY){ if(!a.gren)T.hp-=(a.pw!=null?a.pw:1); explodeBall(a,a.x,Math.min(a.y,platY),cr0,baseDmg,active,null); a.life=0; break; } } if(a.life<=0)continue; }   // cible tour : PV tour (obus seul ; grenade=échelle soldat → ~0) + souffle soldat
+      { const surf=a.ball?supportAt(a.x):terrAt(a.x);   // DÉCOR : l'obus/grenade détone sur le sol OU un pont/escalier (supportAt) ; balles/flèches : terrain seul
+        if(a.y>=surf||a.x<5||a.x>W-5){ if(a.ball){ explodeBall(a,a.x,Math.min(a.y,surf),a.cr||C.craterR,a.gren?(a.dmg!=null?a.dmg:C.arDmg):(a.dmg!=null?a.dmg:C.ballDmg),active,null); }
+          a.life=0; continue; } }
+      if(a.ball) continue;   // boulet/grenade : ne touchent qu'au sol
+      if(a.fromI){for(const s of soldiers){if(s.hp<=0)continue;if(Math.hypot(a.x-s.x,a.y-s.y)<9){s.hp-=(a.dmg!=null?a.dmg:C.bowDmg);if(s.hp<=0)s.byInt=true;a.life=0;break;}}}   // arc : dégât jitté (fallback bowDmg)
+      else{ if(active&&!I.dead&&Math.hypot(a.x-I.x,a.y-I.y)<11){I.hurt=.3;a.life=0;if(a.owner!=null)I.bp[a.owner]=Math.max(0,I.bp[a.owner]-1);}   // tir de soldat/tour → draine 1 ressource (jamais de PV)
+        for(const s of soldiers){if(s.owner===a.owner||s.hp<=0)continue;if(Math.hypot(a.x-s.x,a.y-s.y)<9){ if(a.soldier)s.hp-=a.dmg; else {s.hp-=C.towerDmg; if(s.hp<=0)pendingCata[s.owner]=true;} s.combat=true; a.life=0; break;}} } }   // tour : dégât towerDmg (≈ one-shot par défaut) → catapulte au camp du tué
+    for(const s of soldiers){ if(s.hp<=0&&!s.gone&&!s.counted){ s.counted=true; I.bp[s.owner]+=(s.byInt?6:(s.combat?1:0)); if(!s.dyingT)s.dyingT=DEATH_DUR; } }
+    for(const s of horde){ if(s.hp<=0&&!s.gone&&!s.dyingT)s.dyingT=DEATH_DUR; }   // ressource SEULEMENT pour une mort au combat (tir ennemi/Intendant) ; chute/suicide/tir allié → 0
+    soldiers=soldiers.filter(s=>(s.hp>0||s.dyingT>0)&&s.x>2&&s.x<W-2);
+    horde=horde.filter(s=>(s.hp>0||s.dyingT>0)&&s.x>2&&s.x<W-2);
+    arrows=arrows.filter(a=>a.life>0&&a.x>-10&&a.x<W+10&&a.y<H+10);
+  }
+
+  function autoAttack(dt){ const hostile=s=>(s.x-I.x)*I.facing>0&&s.st!=='emerge'&&s.st!=='enter'&&!s.deserter&&invader>=0&&s.owner===invader;   // n'attaque QUE l'envahisseur (jamais un déserteur)
+    // auto-switch : épée si envahisseur à portée d'épée, sinon arc si cible à portée ET en vue
+    // EPEE : attente avant (swWind) -> coup (swDmg PAR COUP) -> attente apres (swRec) ; combat sur I.atk (separe de I.act des outils)
+    let mfoe=null,md=C.swordR; for(const s of soldiers){if(s.hp<=0||!hostile(s))continue;const d=Math.hypot(s.x-I.x,s.y-I.y);if(d<md){md=d;mfoe=s;}}
+    if(mfoe||I.atk?.type==='sw'){ I.weapon='sword';I.attacking=true;I.aimAng=null;
+      actTick(I,'atk',dt,C.swWind,C.swRec,a=>{a.type='sw';a.foe=mfoe;},a=>{ const f=a.foe; if(f&&f.hp>0&&Math.hypot(f.x-I.x,f.y-I.y)<C.swordR+4){ f.hp-=C.swDmg*(1+(rnd()-0.5)*C.swDmgVar); if(f.hp<=0)f.byInt=true; } });
+      return; }
+    // ARC : visee (bowWind) -> tir -> attente apres (bowRec)
+    let tgt=null,bd=C.bowRange; for(const s of soldiers){if(s.hp<=0||!hostile(s))continue;const dx=(s.x-I.x)*I.facing;if(dx>0&&dx<bd&&Math.abs(s.y-I.y)<90&&inSight(I.x,I.y-12,s.x,s.y-6)){bd=dx;tgt=s;}}
+    if(tgt||I.atk?.type==='bow'){ I.weapon='bow';I.attacking=true; if(tgt)I.aimAng=Math.atan2(tgt.y-(I.y-12),tgt.x-I.x);
+      actTick(I,'atk',dt,C.bowWind,C.bowRec,a=>{a.aim=I.aimAng;a.type='bow';},a=>{ const err=(rnd()>C.bowAcc?(rnd()-0.5)*C.bowMissSpread:(rnd()-0.5)*C.bowSpread),fa=a.aim+err,dmg=C.bowDmg*(1+(rnd()-0.5)*C.bowDmgVar);arrows.push({x:I.x,y:I.y-12,vx:Math.cos(fa)*C.bowSpeed,vy:Math.sin(fa)*C.bowSpeed,life:1.2,fromI:true,dmg}); });
+      return; }
+    I.atk=null; I.attacking=false; I.aimAng=null; }
+
+  // INGÉNIEUR : exécute le PLAN précalculé (planEngineer). APPROCHE : marche jusqu'au point
+  // de départ. POSE GRATUITE : pont = planches plates à y0 jusqu'à la rive opposée ;
+  // échelle = barreaux qui montent verticalement (à x≈cst) du pied jusqu'au sommet.
+  // Puis déserte. Sans plan (ingénieur forcé sans obstacle) : il marche et déserte.
+  function stepEngineer(s,dt,active){
+    if(!active){ s.deserter=true; return; }                                  // trêve/absence → il abandonne aussi
+    const dir=s.owner===0?1:-1; s.dir=dir; const p=s.plan;
+    if(!p){ s.st='march'; s.y=groundY(s.x,s.y); s.x+=dir*C.v0*0.8*dt; if((dir>0&&s.x>=TRX-14)||(dir<0&&s.x<=TLX+14))s.deserter=true; return; }
+    if(!s.eng) s.eng={i:0,t:0,top:0,ph:0}; const e=s.eng;   // ph : 0=attente avant chantier (engWind), 1=construction (engDur/elem), 2=attente apres (engRec) puis deserte
+    if(p.type==='ladder'){                                                    // ÉCHELLE inclinée : rejoindre le pied puis la dresser progressivement
+      const foot=p.xb-dir*6, steps=Math.max(2,Math.round(Math.hypot(p.xt-p.xb,p.yt-p.yb)/8));
+      if((foot-s.x)*dir>1){ s.st='march'; s.y=groundY(s.x,s.y); s.x+=dir*Math.min(Math.abs(foot-s.x),C.v0*0.8*dt); return; }
+      s.st='build'; s.x=p.xb; s.y=p.yb;
+      if(e.ph===0){ e.t+=dt; if(e.t<C.engWind)return; e.t=0; e.ph=1; }        // attente avant chantier
+      if(e.ph===2){ e.t+=dt; if(e.t<C.engRec)return; ladders.push({xb:p.xb,yb:p.yb,xt:p.xt,yt:p.yt}); navVer++; s.deserter=true; s.eng=null; s.plan=null; return; }   // attente après → pose + déserte
+      e.t+=dt; if(e.t>=C.engDur){ e.t-=C.engDur; e.i++; }
+      e.f=Math.min(1, e.i/steps);                                            // fraction posée pied→sommet (pour le rendu)
+      if(e.f>=1){ e.ph=2; e.t=0; }
+      return; }
+    s.st='build'; const w=PW, baseX=p.x0+dir*(e.i*w);                         // PONT : planches plates depuis la rive
+    if((baseX-s.x)*dir>1){ s.y=groundY(s.x,s.y); s.x+=dir*Math.min(Math.abs(baseX-s.x),C.v0*0.8*dt); return; }   // approche / suit l'ouvrage
+    s.y=p.y0;
+    if(e.ph===0){ e.t+=dt; if(e.t<C.engWind)return; e.t=0; e.ph=1; }          // attente avant chantier
+    if(e.ph===2){ e.t+=dt; if(e.t<C.engRec)return; if(e.i>0)addBridgeSupports({x0:p.x0,y0:p.y0,f:dir,i:e.i}); navVer++; s.deserter=true; s.eng=null; s.plan=null; return; }   // attente apres -> consolide + deserte
+    e.t+=dt; if(e.t<C.engDur) return; e.t-=C.engDur;
+    const sx=p.x0+dir*(e.i*w), sy=p.y0;
+    if(e.i>=p.max||sx<6||sx>W-6||(e.i>0&&terrAt(sx)<=sy+SU)){ e.ph=2; e.t=0; return; }   // portee max / hors-cadre / rive opposee -> attente apres
+    structures.push({x0:Math.min(sx,sx+dir*w),x1:Math.max(sx,sx+dir*w),y:sy}); navVer++; e.i++; }   // planche posee (gratuite)
+
+  // FSM d'action chronométrée commune (soldats + Intendant) : attente avant (wind) → effet (onFire, une fois) → attente après (rec).
+  // L'état vit sur u[field]={ph,t,…}. onStart(a) capture la cible/visée au démarrage. L'unité reste ENGAGÉE (immobile) tant que u[field] existe.
+  function actTick(u,field,dt,wind,rec,onStart,onFire){ let a=u[field];
+    if(!a){ a=u[field]={ph:0,t:wind}; if(onStart)onStart(a); }
+    a.t-=dt;
+    if(a.ph===0){ if(a.t<=0){ onFire(a); a.ph=1; a.t=rec; } }   // fin attente avant → effet, puis attente après
+    else if(a.t<=0){ u[field]=null; } }                         // fin attente après → libre
+
+  const DEATH_DUR=0.5;   // duree de l animation de mort d un soldat (s) avant retrait
+// SOLDAT JOUE : controle clavier (<-/-> bouge, Espace/F agit). Ignore l IA ; ressent attente avant/apres.
+  function stepPlayer(s,dt){ s.deserter=false; s.fall=false;
+    const mv=(R()?1:0)-(L()?1:0); if(mv)s.dir=mv;
+    const fire=keys['Space']||keys['KeyF'];
+    if(fire||s.act){ s.st='fight';
+      if(s.kind==='cata'){ actTick(s,'act',dt,C.cataWind,C.cataRec,null,()=>{ const a0=Math.atan2(-335,s.dir*335),sp=C.ballSpeed; arrows.push({x:s.x,y:s.y-12,vx:Math.cos(a0)*sp,vy:Math.sin(a0)*sp,life:5,ball:true,owner:s.owner,cr:C.ballCraterR,pw:1,dmg:C.ballDmg*(1+(rnd()-0.5)*C.ballDmgVar)}); spawnDirt(s.x+s.dir*11,s.y-20,5,'rgba(150,140,130,.8)',s.dir*0.6); }); }   // bouffée de poudre à la bouche
+      else if(s.kind==='bow'){ actTick(s,'act',dt,C.grenWind,C.grenRec,null,()=>{ const t=C.grenTime,tx=s.x+s.dir*C.grenLob,dx=tx-s.x,dy=-(s.y-12)+s.y; arrows.push({x:s.x,y:s.y-12,vx:dx/t,vy:dy/t-0.5*C.grav*t,life:2,ball:true,gren:true,owner:s.owner,cr:C.grenCraterR,dmg:C.arDmg*(1+(rnd()-0.5)*C.grenDmgVar)}); }); }
+      else if(s.kind==='engineer'){ actTick(s,'act',dt,C.engWind,C.engRec,null,()=>{ const sx=s.x+s.dir*PW/2; structures.push({x0:Math.min(sx,sx+s.dir*PW),x1:Math.max(sx,sx+s.dir*PW),y:s.y}); navVer++; }); }
+      else { s.aim=s.dir>0?0:Math.PI; actTick(s,'act',dt,C.musWind,C.musRec,a=>{a.aim=s.dir>0?0:Math.PI;},a=>{ const err=(rnd()>C.musAcc?(rnd()-0.5)*C.musMissSpread:(rnd()-0.5)*C.musSpread),fa=a.aim+err,dmg=C.musDmg*(1+(rnd()-0.5)*C.musDmgVar); arrows.push({x:s.x,y:s.y-10,vx:Math.cos(fa)*C.musSpeed,vy:Math.sin(fa)*C.musSpeed,life:1,owner:s.owner,soldier:true,musket:true,dmg}); }); }
+      if(s.act){ s.y=groundY(s.x,s.y); return; } }   // immobile pendant l action
+    if(mv){ const sl=(groundY(s.x+mv*4,s.y)-s.y)/4, f=Math.max(.4,Math.min(1.4,1-Math.abs(sl)*C.slopeFx)); s.x=Math.max(8,Math.min(W-8,s.x+mv*C.v0*f*dt)); s.st='march'; } else s.st='wait';
+    if(DN()&&supportAt(s.x)<terrAt(s.x)-1) s.y=terrAt(s.x); else s.y=groundY(s.x,s.y); }
+
+  function stepSoldiers(arr,dt,active,interact){
+    for(const s of arr){
+      if(s.dyingT>0){ s.dyingT-=dt; continue; }   // soldat en train de mourir : on anime, plus de logique
+      if(s.pc){ stepPlayer(s,dt); continue; }   // soldat joue par l utilisateur
+      if(s.jvy!=null){   // SAUT en cours : arc balistique (gravité) jusqu'à l'atterrissage sur la corniche
+        s.x+=s.jdir*C.v0*0.7*dt; s.jvy+=C.grav*dt; s.y+=s.jvy*dt; s.st='jump';
+        const g=groundY(s.x,s.y); if(s.jvy>0&&s.y>=g){ s.y=g; s.jvy=null; s.stuck=0; }   // retombe → atterri
+        continue;
+      }
+      const xd=doorX(towers[s.owner]);
+      if(s.st==='arrived'){ if(s.ax!=null){const d=s.ax-s.x; if(Math.abs(d)>1){s.x+=Math.sign(d)*Math.min(Math.abs(d),C.v0*dt);s.y=groundY(s.x,s.y);}} continue; }   // rassemblement dispersé autour de la ruine
+      if(s.delay>0){ s.delay-=dt; s.x=xd; s.y=platY; continue; }               // sortie échelonnée (horde)
+      if(s.st==='emerge'){ s.t-=dt; const p=Math.max(0,s.t)/C.doorT; s.x=xd-s.dir*p*9; s.y=platY; if(s.t<=0){s.st='march';if(!s.horde)s.age=0;} continue; }
+      if(s.st==='enter'){ s.t-=dt; s.x+=s.dir*16*dt; s.y=platY; if(s.t<=0){s.gone=true;s.hp=0;} continue; }   // rentré à la tour (pas une mort)
+      if(s.deserter){ const home=doorX(towers[s.owner]);
+        if(towers[s.owner].hp>0){ s.dir=(home-s.x)>=0?1:-1; s.x+=s.dir*C.v0*dt; s.y=groundY(s.x,s.y); if(Math.abs(s.x-home)<8){s.gone=true;s.hp=0;} }   // rejoint sa tour d'origine
+        else { if(s.rdir==null)s.rdir=rnd()<0.5?-1:1; s.dir=s.rdir; s.x+=s.dir*C.v0*dt; s.y=groundY(s.x,s.y); if(s.x<5||s.x>W-5){s.gone=true;s.hp=0;} }   // tour détruite → fuit tous azimuts (seedé par soldat)
+        continue; }   // DÉSERTEUR : drapeau blanc (pas une mort)
+      if(s.recover>0){ s.recover-=dt; s.st='down'; s.y=groundY(s.x,s.y); continue; }   // récupération au sol après une chute (immobile)
+      if(s.fall)s.fall=false;   // récup terminée → on se relève
+      if(s.kind==='engineer'){ stepEngineer(s,dt,active); continue; }   // non-combattant : pose son pont, hors logique de combat
+      // REPOSITIONNEMENT : un combat qui s'éternise sans issue (tirs sans résultat) → courte poussée en avant pour chercher une meilleure position (rapprochement / contournement). Replanifie.
+      if(s.st==='fight') s.fightT=(s.fightT||0)+dt; else s.fightT=0;
+      if(C.repTime>0&&s.fightT>C.repTime){ s.fightT=0; s.pushT=0.7; s.path=null; s.act=null; }
+      const pushing=s.pushT>0; if(pushing)s.pushT-=dt;
+      if(interact&&!pushing){
+        if(!active){ s.deserter=true; continue; }   // Intendant absent (déco>10s) ou défait → désertion (plus de repli)
+        if(s.kind==='cata'){   // CANON : sensible au terrain ; NE déserte JAMAIS. Normal : tire à portée de la tour adverse (pointage cataWind → tir → cataRec). Parcours : tire vers l'avant en cadence, sans s'arrêter (observation).
+          const ex=s.owner===0?TRX:TLX, cdir=s.owner===0?1:-1;
+          if(s.cstuck){const slA=(terrAt(s.x+cdir*4)-s.y)/4; if(-slA<=C.climbSlope*0.5)s.cstuck=false;}   // terrain aplani devant -> le canon repart
+          const fireBall=()=>{ const slope=(navY(s.x+6,s.y)-navY(s.x-6,s.y))/12, pw=Math.max(0.3,1-Math.abs(slope)*0.7), jit=(rnd()-0.5)*(0.10+Math.abs(slope)*0.45),a0=Math.atan2(-335,s.dir*335)+jit,sp=C.ballSpeed; arrows.push({x:s.x,y:s.y-12,vx:Math.cos(a0)*sp,vy:Math.sin(a0)*sp,life:5,ball:true,owner:s.owner,cr:C.ballCraterR*pw,pw,dmg:C.ballDmg*(1+(rnd()-0.5)*C.ballDmgVar)}); spawnDirt(s.x+s.dir*11,s.y-20,5,'rgba(150,140,130,.8)',s.dir*0.6); };   // bouffée de poudre à la bouche
+          if(parcoursMode){ s.cataT=(s.cataT||0)+dt; if(s.cataT>=C.cataWind+C.cataRec){ s.cataT=0; fireBall(); } }   // observation : cadence libre, le canon continue d'avancer
+          else if(Math.abs(s.x-ex)<C.cataRange||s.cstuck||s.act){ s.st='fight';s.stuck=0; actTick(s,'act',dt,C.cataWind,C.cataRec,null,fireBall); continue; }
+        } else if(s.kind==='bow'){   // GRENADIER : armement (grenWind) -> lancer -> apres explosion (grenRec)
+          let tx=null,ty=0,bd=C.arRange;
+          for(const o of soldiers){if(o.owner===s.owner||o.hp<=0||o.deserter||o.st==='emerge'||o.st==='enter')continue;const dx=(o.x-s.x)*s.dir;if(dx>0&&dx<bd&&Math.abs(o.y-s.y)<70){bd=dx;tx=o.x;ty=o.y-6;}}
+          if(active&&!I.dead&&s.owner===invader){const dxI=(I.x-s.x)*s.dir;if(dxI>0&&dxI<bd&&Math.abs(I.y-s.y)<70){bd=dxI;tx=I.x;ty=I.y-8;}}
+          if(tx!=null||s.act){ s.st='fight';s.stuck=0;s.fall=false;
+            actTick(s,'act',dt,C.grenWind,C.grenRec,a=>{a.tx=tx;a.ty=ty;},a=>{ if(a.tx==null)return; const t=C.grenTime,dx=a.tx-s.x,dy=a.ty-(s.y-12);arrows.push({x:s.x,y:s.y-12,vx:dx/t,vy:dy/t-0.5*C.grav*t,life:2,ball:true,gren:true,owner:s.owner,cr:C.grenCraterR,dmg:C.arDmg*(1+(rnd()-0.5)*C.grenDmgVar)}); });
+            continue; }
+        } else {              // MOUSQUETAIRE : baionnette au contact (par coup), sinon mousquet ; charge sous chargeRange
+          let foe=null,fd=1e9;for(const o of soldiers){if(o.owner===s.owner||o.hp<=0||o.deserter||o.st==='retreat'||o.st==='emerge'||o.st==='enter')continue;const d=Math.abs(o.x-s.x);if(d<C.engage&&Math.abs(o.y-s.y)<22&&d<fd){fd=d;foe=o;}}
+          if(foe||s.act?.type==='bayo'){ s.st='fight';s.stuck=0;s.fall=false;s.combat=true;   // BAIONNETTE : avant (bayoWind) -> coup (bayoDmg) -> apres (bayoRec)
+            actTick(s,'act',dt,C.bayoWind,C.bayoRec,a=>{a.type='bayo';a.foe=foe;},a=>{ const f=a.foe; if(f&&f.hp>0&&Math.abs(f.x-s.x)<C.engage+6&&Math.abs(f.y-s.y)<24){ f.hp-=C.bayoDmg*(1+(rnd()-0.5)*C.bayoDmgVar); f.combat=true; } });
+            continue; }
+          let tx=null,ty=0,bd=C.musRange;   // mousquet : seulement au-dela de chargeRange (en-deca -> on charge)
+          for(const o of soldiers){if(o.owner===s.owner||o.hp<=0||o.deserter||o.st==='emerge'||o.st==='enter')continue;const dx=(o.x-s.x)*s.dir;if(dx>C.chargeRange&&dx<bd&&Math.abs(o.y-s.y)<50&&inSight(s.x,s.y-10,o.x,o.y-6)){bd=dx;tx=o.x;ty=o.y-6;}}
+          if(active&&!I.dead&&s.owner===invader){const dxI=(I.x-s.x)*s.dir;if(dxI>C.chargeRange&&dxI<bd&&Math.abs(I.y-s.y)<60&&inSight(s.x,s.y-10,I.x,I.y-8)){bd=dxI;tx=I.x;ty=I.y-8;}}
+          if(tx!=null||s.act?.type==='mus'){ s.st='fight';s.stuck=0;s.fall=false;   // MOUSQUET : visee (musWind) -> tir -> recharge (musRec)
+            actTick(s,'act',dt,C.musWind,C.musRec,a=>{a.type='mus';a.aim=Math.atan2(ty-(s.y-10),tx-s.x);},a=>{ const err=(rnd()>C.musAcc?(rnd()-0.5)*C.musMissSpread:(rnd()-0.5)*C.musSpread),fa=a.aim+err,dmg=C.musDmg*(1+(rnd()-0.5)*C.musDmgVar);arrows.push({x:s.x,y:s.y-10,vx:Math.cos(fa)*C.musSpeed,vy:Math.sin(fa)*C.musSpeed,life:1,owner:s.owner,soldier:true,musket:true,dmg}); });
+            if(s.act)s.aim=s.act.aim; continue; }
+        }
+      }
+      const sp=(s.horde||loserOwner>=0)?0:C.spacing;                           // horde/charge finale : plus d'espacement
+      let blk=false;for(const o of arr){if(o===s||o.owner!==s.owner||o.kind!==s.kind||o.hp<=0||o.deserter)continue;const a=(o.x-s.x)*s.dir;if(a>0&&a<sp){blk=true;break;}}
+      if(blk){ if(s.st!=='fight')s.st='wait'; s.stuck=(s.stuck||0)+dt; if(s.stuck>C.desertT)s.deserter=true; continue; }
+      // --- PATHFINDING A* : chemin vers la tour adverse via terrain + ouvrages (replanifie si terrain/structures changent) ---
+      const cata=s.kind==='cata';
+      if(cata){ s.path=null; }   // canon = engin à roue : pas d'A*/d'ouvrages, glouton sur le TERRAIN seul (escalade impossible)
+      else if(!s.path||s.navVer!==navVer||s.pi>=s.path.length||(s.rep=(s.rep||0)+dt)>0.7){ s.rep=0;s.navVer=navVer;
+        const goalX=s.horde?(ruinSide===1?TRX:TLX):(s.owner===0?TRX:TLX); s.path=findPath(s.x,s.y,goalX,{density:densityArr,congW:C.pathCongestion,jseed:s.jseed||0,jitter:C.pathJitter,climb:climbStep(s.kind)}); s.pi=1; s.goalX=goalX; }
+      if(!s.path){   // glouton vers le but (canon = terrain seul ; soldat = se bloque/déserte à un vrai mur)
+        const goalX=cata?(s.owner===0?TRX:TLX):(s.goalX!=null?s.goalX:(s.owner===0?TRX:TLX)), dir=Math.sign(goalX-s.x)||s.dir; s.dir=dir;
+        const surfY=x=>cata?terrAt(x):groundY(x,s.y), sl=(surfY(s.x+dir*4)-s.y)/4, lim=cata?C.climbSlope*0.5:C.climbSlope;
+        if(-sl>lim){ if(cata){s.cstuck=true;s.st='blocked';continue;} s.st='blocked'; s.stuck=(s.stuck||0)+dt; if(s.stuck>C.desertT)s.deserter=true; continue; }   // canon : se coince (tire sur place), ne déserte pas
+        const f2=Math.max(.4,Math.min(1.4,1-Math.abs(sl)*C.slopeFx))*spdMul(s.kind); s.x+=dir*C.v0*f2*dt; s.y=surfY(s.x); s.st='march'; s.stuck=0; if(cata)s.cstuck=false;
+        if((s.dir>0&&s.x>=TRX)||(s.dir<0&&s.x<=TLX)){ if(!cata){s.gone=true;s.hp=0;} } continue; }
+      const prev=s.path[Math.max(0,s.pi-1)], wp=s.path[Math.min(s.pi,s.path.length-1)], dir=Math.sign(wp.x-s.x)||s.dir; s.dir=dir;
+      const onLad=(n,lx,ly)=>Math.abs(n.x-lx)<=8&&Math.abs(n.y-ly)<2;   // un segment du chemin est-il une ÉCHELLE (pied↔sommet) ? — sinon une grosse chute reste une chute
+      const ladSeg=ladders.length?ladders.find(L=>(onLad(prev,L.xb,L.yb)&&onLad(wp,L.xt,L.yt))||(onLad(prev,L.xt,L.yt)&&onLad(wp,L.xb,L.yb))):null;
+      if(ladSeg){   // segment d'ÉCHELLE → montée/descente le long de l'échelle (gravité ignorée, pas de chute)
+        s.st='climb'; s.dir=Math.sign(wp.x-prev.x)||s.dir; const sp=C.v0*0.7*dt;
+        s.x+=Math.sign(wp.x-s.x)*Math.min(Math.abs(wp.x-s.x),sp); s.y+=Math.sign(wp.y-s.y)*Math.min(Math.abs(wp.y-s.y),sp);
+        if(Math.abs(wp.x-s.x)<1.5&&Math.abs(wp.y-s.y)<2)s.pi++; continue; }
+      const aheadSurf=groundY(s.x+dir*5,s.y), rise=s.y-aheadSurf;   // ressaut montant juste devant
+      if(!cata&&jumpMul(s.kind)>0&&rise>SU&&rise<=climbStep(s.kind)+2){   // trop haut pour marcher mais à portée de saut → impulsion de SAUT vers la corniche
+        s.jvy=-Math.sqrt(2*C.grav*(rise+8)); s.jdir=dir; s.st='jump'; s.stuck=0; s.descAcc=0; continue;
+      }
+      const segSlope=(wp.y-prev.y)/Math.max(8,Math.abs(wp.x-prev.x));
+      const ramp=Math.min(1,(s.age||0)/Math.max(.001,C.doorT)); s.age=(s.age||0)+dt;
+      const vmul=spdMul(s.kind)*(s.horde?1.8:1);
+      const f=Math.max(.4,Math.min(1.4,1-Math.abs(segSlope)*C.slopeFx))*ramp*vmul;
+      s.x+=dir*C.v0*f*dt;
+      const tt=(wp.x!==prev.x)?Math.max(0,Math.min(1,(s.x-prev.x)/(wp.x-prev.x))):1, plannedY=prev.y+(wp.y-prev.y)*tt;
+      let ny=plannedY,bd=1e9; for(const yy of surfacesAt(s.x)){const d=Math.abs(yy-plannedY);if(d<bd){bd=d;ny=yy;}}   // colle à la surface réelle la plus proche du profil planifié → pas de survol
+      const drop=ny-s.y;
+      if(drop>1.5)s.descAcc=(s.descAcc||0)+drop;   // accumule la descente rapide (pente raide OU saut d'un pont/escalier)
+      else if(s.descAcc>0){   // la descente s'achève → atterrissage
+        const prob=Math.max(0,Math.min(1,(s.descAcc-C.fallHmin)/Math.max(1,C.fallHmax-C.fallHmin)));   // proba linéaire : 0% à fallHmin, 100% à fallHmax
+        if(rnd()<prob){   // tirage défavorable → culbute
+          s.hp-=C.fallDmg*s.descAcc*0.1*fallMul(s.kind); s.recover=Math.min(2.2,s.descAcc*0.03); s.fall=true;   // dégâts ∝ hauteur × mult. par type + récup ; chute = suicide (pas de ressource)
+        }   // sinon : descente maîtrisée → aucun dégât
+        s.descAcc=0; }
+      s.y=ny; s.st='march'; s.stuck=0;
+      if(Math.abs(wp.x-s.x)<6)s.pi++;
+      if((s.dir>0&&s.x>=TRX)||(s.dir<0&&s.x<=TLX)){ if(s.horde||(loserOwner>=0&&s.owner!==loserOwner)){ if(s.st!=='arrived'){const rx=s.horde?(ruinSide===1?TRX:TLX):(loserOwner>=0?towers[loserOwner].x:(s.owner===0?TRX:TLX)); s.ax=rx+(rnd()-0.5)*72;} s.st='arrived'; } else if(s.kind!=='cata'){s.gone=true;s.hp=0;} }   // gagnants : rassemblement dispersé autour de la ruine
+    }
+  }
+
+  // ---- rendu ----
+  function pal(hex){const n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255,mk=f=>`rgb(${r*f|0},${g*f|0},${b*f|0})`;return{body:hex,mortar:mk(.55),lit:mk(1.35),dark:mk(.7)};}
+  function rr(x,y,w,h,r,flatTop){ctx.beginPath();
+    if(flatTop){ctx.moveTo(x,y);ctx.lineTo(x+w,y);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y);}
+    else{ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);}ctx.closePath();}
+  function rock(x,y,s,col){ctx.fillStyle=col;ctx.beginPath();for(let k=0;k<5;k++){const a=k/5*6.28+x;const r=s*(.6+0.3*Math.abs(Math.sin(x+k)));k?ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.78):ctx.moveTo(x+Math.cos(a)*r,y+Math.sin(a)*r*.78);}ctx.closePath();ctx.fill();}
+  function drawRuin(T){const p=pal(T.col),cx=T.x;for(let i=0;i<14;i++){const dx=Math.sin(i*5.1)*.5*70,s=9+Math.abs(Math.sin(i*3))*11,heap=Math.max(0,1-Math.abs(dx)/40);rock(cx+dx,platY-heap*22-s*.3,s,p.mortar);}}
+  function drawTower(T){
+    if(T.hp<=0||(ruinT>0&&((ruinSide===1&&T.owner===1)||(ruinSide===0&&T.owner===0)))){drawRuin(T);return;}
+    const x=T.x,p=pal(T.col),bx=x-28,bw=56;
+    ctx.fillStyle=p.body;rr(bx,top,bw,96,6);ctx.fill();
+    ctx.strokeStyle=p.mortar;ctx.lineWidth=1.5;
+    for(let r=1;r<6;r++){const y=top+r*16;ctx.beginPath();ctx.moveTo(bx,y);ctx.lineTo(bx+bw,y);ctx.stroke();}
+    for(let r=0;r<6;r++){const y=top+r*16,off=(r%2)*11;for(let vx=bx+off+11;vx<bx+bw-1;vx+=22){ctx.beginPath();ctx.moveTo(vx,y);ctx.lineTo(vx,Math.min(y+16,top+96));ctx.stroke();}}
+    ctx.fillStyle=p.lit;ctx.globalAlpha=.5;ctx.fillRect(bx,top,bw,4);ctx.globalAlpha=1;
+    const mW=(bw-10)/5;ctx.fillStyle=p.dark;ctx.strokeStyle=p.mortar;for(let i=0;i<3;i++){const mx=bx+5+i*mW*2;ctx.fillRect(mx,top-16,mW,18);ctx.strokeRect(mx,top-16,mW,18);}
+    const dx=doorX(T)-8;ctx.fillStyle='#0a0810';rr(dx,platY-30,16,30,3,true);ctx.fill();ctx.strokeStyle=p.mortar;ctx.lineWidth=2;ctx.stroke();
+    const sl=slitOf(T),sx=sl.x-2,sy=sl.y-8;ctx.fillStyle=T.warn?'#1a0e0a':'#08060c';ctx.fillRect(sx,sy,4,16);
+    if(T.warnA>0.05&&T.aim){const a=Math.atan2(T.aim.y-sl.y,T.aim.x-sl.x),len=3+T.warnA*9;ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(a);   // CANON de mousquet qui pointe et sort de la meurtrière (partie extérieure seulement)
+      ctx.fillStyle='#2e2e2e';ctx.fillRect(0,-2,len,4); ctx.fillStyle='#444';ctx.fillRect(len-2,-2.4,2,4.8);   // tube + bouche
+      ctx.restore();}
+    ctx.save();ctx.translate(x,top);ctx.rotate(T.facing>0?-0.7:Math.PI+0.7);ctx.fillStyle='#6b7280';rr(0,-4,52,8,3);ctx.fill();ctx.restore();
+    ctx.fillStyle=p.lit;ctx.beginPath();ctx.arc(x,top,9,0,6.28);ctx.fill();ctx.fillStyle=p.mortar;ctx.beginPath();ctx.arc(x,top,6,0,6.28);ctx.fill();
+    if(T.flash>0&&T.aim){ const sl=slitOf(T),a=Math.atan2(T.aim.y-sl.y,T.aim.x-sl.x),fl=Math.min(1,T.flash*8); ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(a);
+      ctx.fillStyle='#2e2e2e';ctx.fillRect(0,-2,11,4);   // canon de mousquet qui dépasse de la meurtrière
+      ctx.fillStyle='rgba(255,210,120,'+fl+')';ctx.beginPath();ctx.moveTo(11,0);ctx.lineTo(11+10*fl,-4*fl);ctx.lineTo(11+15*fl,0);ctx.lineTo(11+10*fl,4*fl);ctx.closePath();ctx.fill();   // gerbe de feu
+      ctx.fillStyle='rgba(225,225,225,'+(fl*0.45)+')';ctx.beginPath();ctx.arc(13,0,5.5*fl,0,6.28);ctx.fill();   // fumée
+      ctx.restore(); }
+    const hpf=Math.max(0,T.hp)/Math.max(1,C.maxHp);ctx.fillStyle='#0008';ctx.fillRect(bx,top-25,bw,3);ctx.fillStyle=hpf>0.34?'#7ee0c0':'#e6685a';ctx.fillRect(bx,top-25,bw*hpf,3);   // PV tour
+  }
+  function drawSoldier(s){const col=s.owner===0?'#5aa9e6':'#e6685a',door=(s.st==='emerge'||s.st==='enter');
+    if(door){const T=towers[s.owner],xd=doorX(T);ctx.save();ctx.beginPath();ctx.rect(xd-8,platY-31,16,32);ctx.clip();}
+    if(s.dyingT>0){ const p=1-Math.max(0,s.dyingT)/DEATH_DUR;   // MORT : bascule au sol + fondu
+      ctx.save();ctx.translate(s.x,s.y);ctx.globalAlpha=Math.max(0,1-p*0.9);ctx.rotate((s.dir>0?1:-1)*p*1.5);
+      ctx.fillStyle=col;ctx.fillRect(-2.5,-12,5,9);ctx.beginPath();ctx.arc(0,-14,3,0,6.28);ctx.fill();ctx.restore();
+      if(p>0.3){ctx.fillStyle='rgba(180,150,110,'+(0.4*(1-p))+')';for(let k=0;k<3;k++)ctx.fillRect(s.x-7+k*5,s.y-3-(k%2),2,2);}   // poussiere
+      if(door)ctx.restore(); return; }
+    ctx.save();const y=s.fall?s.y-3:s.y;ctx.translate(s.x,y); if(s.deserter||s.bg){ctx.globalAlpha=.5;ctx.scale(.85,.85);}   // second plan (déserteurs + moitié de la horde) : estompé, plus petit
+    if(s.st==='down'){ ctx.fillStyle=col;ctx.fillRect(-6,-3,12,3);ctx.beginPath();ctx.arc(s.dir>0?-6:6,-2,2.6,0,6.28);ctx.fill(); ctx.fillStyle='rgba(180,150,110,.5)';for(let k=0;k<3;k++)ctx.fillRect(-7+k*5+(animClock*10%4),-5-(k%2),2,2); ctx.restore(); if(door)ctx.restore(); return; }   // à terre : récupération après chute (+ poussière)
+    if(s.fall&&!s.deserter)ctx.rotate((s.x*0.3)%6.28); if(s.st==='retreat')ctx.globalAlpha=.55;
+    if(s.kind==='cata'){   // petit canon à roulettes — roule (roues qui tournent) ; pointage (mèche) → tir (feu de bouche + recul) → recharge
+      const a=s.act, aim=(a&&a.ph===0&&C.cataWind>0)?1-Math.max(0,a.t)/C.cataWind:0, recoil=(a&&a.ph===1&&C.cataRec>0)?Math.max(0,a.t)/C.cataRec:0;
+      const rolling=s.st==='march', spin=s.x*0.45*s.dir, bounce=rolling?Math.abs(Math.sin(s.x*0.5))*0.6:0;   // rotation des roues ∝ distance parcourue ; petit cahot en roulant
+      ctx.save();ctx.translate(0,-bounce);                                                          // CAHOT : tout l'engin tressaute légèrement en roulant
+      const kick=-recoil*3*s.dir;                                                                  // RECUL d'ensemble : l'affût recule sur ses roues au tir, revient pendant la recharge
+      ctx.fillStyle=col;ctx.fillRect(-7+kick,-8,14,5);                                              // affût
+      for(const wx of [-4,4]){ ctx.save();ctx.translate(wx+kick,-1);                               // roues à rayons (la rotation se voit aux rayons)
+        ctx.fillStyle='#222';ctx.beginPath();ctx.arc(0,0,3,0,6.28);ctx.fill();
+        ctx.strokeStyle='#555';ctx.lineWidth=0.9;ctx.rotate(spin);for(let k=0;k<4;k++){const wa=k*1.5708;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(wa)*2.4,Math.sin(wa)*2.4);ctx.stroke();}
+        ctx.fillStyle='#444';ctx.beginPath();ctx.arc(0,0,0.9,0,6.28);ctx.fill();ctx.restore(); }   // moyeu
+      ctx.save();ctx.translate(kick,-7);ctx.rotate(Math.atan2(-1,s.dir));                           // repère du fût (+x = vers la bouche), aligné SUR l'angle de tir (atan2(-335,±335) = ±45°) ; suit le recul d'ensemble
+      if(recoil>0){ const age=1-recoil;ctx.fillStyle='rgba(122,124,132,'+0.4*(1-age)+')';            // FUMÉE : reste à la bouche, s'étire et s'efface
+        for(let k=0;k<3;k++)ctx.beginPath(),ctx.arc(16+age*9+k*2,-age*5,2.5+age*(5+k*2),0,6.28),ctx.fill(); }
+      ctx.save();ctx.translate(-recoil*4,0);                                                         // RECUL : le fût glisse en arrière au tir, revient pendant la recharge
+      ctx.fillStyle='#6b7280';ctx.fillRect(0,-2.5,15,5);                                             // fût
+      ctx.fillStyle='#4b525c';ctx.beginPath();ctx.arc(0,0,3,0,6.28);ctx.fill();                      // culasse
+      if(recoil>0.55){ const f=(recoil-0.55)/0.45;                                                   // FEU DE BOUCHE au départ du coup : explosion ronde de poudre + gerbe d'étincelles radiales (PAS une flèche)
+        ctx.fillStyle='rgba(255,150,40,'+0.7*f+')';ctx.beginPath();ctx.arc(15,0,5.5*f,0,6.28);ctx.fill();   // halo orange diffus
+        ctx.fillStyle='rgba(255,210,90,'+f+')';ctx.beginPath();ctx.arc(15,0,3.5*f,0,6.28);ctx.fill();       // cœur jaune vif
+        ctx.strokeStyle='rgba(255,200,80,'+f+')';ctx.lineWidth=1.4*f;ctx.lineCap='round';                   // gerbe d'étincelles dans plusieurs directions
+        for(let k=0;k<6;k++){const ang=(-Math.PI/2)+k*(Math.PI/5),len=6+(k%2)*4;ctx.beginPath();ctx.moveTo(15+3*f*Math.cos(ang),3*f*Math.sin(ang));ctx.lineTo(15+(3+len*f)*Math.cos(ang),(3+len*f)*Math.sin(ang));ctx.stroke();}
+        ctx.fillStyle='rgba(255,255,255,'+f+')';ctx.beginPath();ctx.arc(15,0,2.2*f,0,6.28);ctx.fill(); }    // noyau incandescent
+      ctx.restore();
+      if(aim>0){ ctx.fillStyle='rgba(255,150,60,'+(0.35+0.65*Math.abs(Math.sin(animClock*22)))*aim+')';ctx.beginPath();ctx.arc(-1,-3,1.2+aim*1.4,0,6.28);ctx.fill(); }   // MÈCHE allumée pendant le pointage
+      ctx.restore();                                                                                // ferme le repère du fût (861)
+      ctx.restore();                                                                                // ferme le cahot d'ensemble (854)
+      ctx.restore(); if(door)ctx.restore(); return; }                                               // ferme le repère soldat (848) + clip de porte
+    if(s.kind==='engineer'){   // INGÉNIEUR : ouvrier non-combattant — casque + ouvrage. Marche=planche à l'épaule ; chantier=martelage en cadence (pont martelé bas, échelle dressée bras hauts)
+      const e=s.eng, build=s.st==='build'&&e, ladder=build&&s.plan&&s.plan.type==='ladder';
+      // CADENCE : pendant la pose (ph===1) on synchronise le marteau sur e.t/engDur (0=armé haut → 1=frappe basse). Anticipation+détente nettes plutôt qu'un sinus symétrique.
+      const ph=build?e.ph:0, cyc=(build&&ph===1&&C.engDur>0)?(C.engDur-Math.max(0,e.t))/C.engDur:0;   // 0→1 sur chaque élément
+      const hit=cyc>0.78?(cyc-0.78)/0.22:0;                                                            // fenêtre d'impact (fin de descente)
+      const carry=!build;                                                                              // approche : porte la planche, pas de martelage
+      ctx.fillStyle=col;
+      if(build&&!ladder){ ctx.save();ctx.translate(0,1.5);ctx.fillRect(-2.5,-12,5,8);ctx.restore(); }  // pont : penché en avant (corps tassé)
+      else ctx.fillRect(-2.5,-12,5,9);                                                                 // corps
+      ctx.fillStyle='#f2c14e';ctx.beginPath();ctx.arc(0,-13,3.3,Math.PI,0);ctx.fill();ctx.fillRect(-3.3,-13,6.6,1.4);   // casque de chantier
+      ctx.save();ctx.scale(s.dir>0?1:-1,1);                                                    // repère orienté vers l'avant
+      if(carry){   // PLANCHE PORTÉE à l'épaule pendant la marche (léger ballant)
+        const sway=s.st==='march'?Math.sin(animClock*9)*0.06:0;
+        ctx.fillStyle='#9c6b3f';ctx.save();ctx.translate(-2,-11);ctx.rotate(-0.5+sway);ctx.fillRect(0,-1,11,2);ctx.fillStyle='#7a5630';ctx.fillRect(0,0.6,11,0.5);ctx.restore(); }
+      // MARTEAU : armé haut → abat. Pont = frappe basse (devant les pieds) ; échelle = bras levés (frappe en hauteur, le long de la face).
+      const restAng=ladder?-1.9:0.25, downAng=ladder?-0.55:-1.0, swing=build?(restAng+(downAng-restAng)*Math.min(1,cyc/0.78)):0.2;
+      const hx=ladder?1:2, hy=ladder?-13:-8;                                                  // ancrage du poignet (haut pour l'échelle)
+      ctx.save();ctx.translate(hx,hy);ctx.rotate(swing);
+      ctx.strokeStyle='#7a5630';ctx.lineWidth=1.6;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(7,0);ctx.stroke();   // manche
+      ctx.fillStyle='#9aa0a6';ctx.fillRect(6,-2.4,4,4.8);ctx.fillStyle='#c7ccd1';ctx.fillRect(9,-2.4,1.4,4.8);   // tête + reflet métal
+      ctx.restore();
+      if(ladder){   // ÉCHELLE en cours : barreau en main libre, monté progressivement (e.f) le long de la face
+        ctx.strokeStyle='#9c6b3f';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-1,-9-((e&&e.f||0)*3));ctx.lineTo(4,-12-((e&&e.f||0)*3));ctx.stroke(); }
+      if(build&&hit>0){   // étincelle à l'impact (au point frappé : bas pour le pont, en hauteur pour l'échelle)
+        const ix=ladder?(Math.cos(downAng)*9+hx):9, iy=ladder?(Math.sin(downAng)*9+hy):-3;
+        ctx.fillStyle='rgba(255,216,107,'+hit+')';ctx.beginPath();ctx.arc(ix,iy,1.8,0,6.28);ctx.fill();
+        ctx.strokeStyle='rgba(255,216,107,'+(0.7*hit)+')';ctx.lineWidth=0.8;for(let k=0;k<3;k++){const a=-0.7+k*0.7;ctx.beginPath();ctx.moveTo(ix,iy);ctx.lineTo(ix+Math.cos(a)*3,iy+Math.sin(a)*3);ctx.stroke();}}
+      ctx.restore();
+      ctx.restore(); if(door)ctx.restore(); return; }
+    ctx.fillStyle=col;ctx.fillRect(-2.5,-12,5,9);ctx.beginPath();ctx.arc(0,-14,3,0,6.28);ctx.fill();
+    const acc=s.owner===0?'#cfe6fb':'#fbd2cd';
+    if(s.deserter){ctx.strokeStyle='#cfd6e0';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(s.dir>0?2:-2,-11);ctx.lineTo(s.dir>0?2:-2,-21);ctx.stroke();ctx.fillStyle='#fff';ctx.fillRect(s.dir>0?2:-8,-21,6,4);}   // drapeau blanc
+    else if(s.kind==='bow'){ctx.fillStyle='#2a2a2a';ctx.beginPath();ctx.arc(s.dir>0?4:-4,-10,2.4,0,6.28);ctx.fill();ctx.fillStyle='#ff8c2a';ctx.fillRect((s.dir>0?4:-4)-0.5,-13.5,1,2);}   // grenadier : grenade à mèche
+    else{ctx.strokeStyle=acc;ctx.lineWidth=1.6; if(s.st==='fight'&&s.aim!=null){ctx.save();ctx.translate(0,-10);ctx.rotate(s.aim);ctx.beginPath();ctx.moveTo(-3,0);ctx.lineTo(10,0);ctx.stroke();ctx.restore();} else {ctx.beginPath();ctx.moveTo(s.dir>0?-1:1,-8);ctx.lineTo(s.dir>0?8:-8,-12);ctx.stroke();}}   // mousquetaire : mousquet orienté vers la cible quand il vise
+    ctx.restore();
+    if(s.st==='fight'){ctx.fillStyle='#ffd86b';ctx.beginPath();ctx.arc(s.x,s.y-7,2.5,0,6.28);ctx.fill();}
+    if(door)ctx.restore();}
+  const legA=(t,w,air,amp)=>air?amp*0.6:(w?Math.sin(t)*amp:0);
+  const BODY={
+   1:(t,w,air)=>{ const bob=w?Math.abs(Math.sin(t))*1.4:0; ctx.save();ctx.translate(0,-bob);   // Robe & capuche
+      ctx.fillStyle='#c2922f';ctx.beginPath();ctx.moveTo(-2.5,-15);ctx.lineTo(2.5,-15);ctx.lineTo(6,0);ctx.lineTo(-6,0);ctx.closePath();ctx.fill();
+      const sway=w?Math.sin(t)*2:0;ctx.fillStyle='#a87c28';ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(6,0);ctx.lineTo(6+sway,3);ctx.lineTo(-6+sway,3);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#f2c14e';ctx.beginPath();ctx.arc(0,-18,4.3,0,6.28);ctx.fill();
+      ctx.fillStyle='#a87c28';ctx.beginPath();ctx.arc(0,-19,5.4,Math.PI*1.02,Math.PI*1.98);ctx.fill();ctx.restore(); },
+   2:(t,w,air)=>{ const ls=legA(t,w,air,3),rs=-ls; ctx.lineCap='round';ctx.strokeStyle='#7a5b2a';ctx.lineWidth=2;   // Ouvrier (casque)
+      ctx.beginPath();ctx.moveTo(-1,-7);ctx.lineTo(-1+ls,0);ctx.moveTo(1,-7);ctx.lineTo(1+rs,0);ctx.stroke();
+      ctx.fillStyle='#f2c14e';ctx.fillRect(-3,-15,6,9);
+      const as=air?-3:Math.sin(t+Math.PI)*2.5;ctx.strokeStyle='#d9a93f';ctx.beginPath();ctx.moveTo(2,-13);ctx.lineTo(4+as,-8);ctx.stroke();
+      ctx.fillStyle='#ffe0a0';ctx.beginPath();ctx.arc(0,-18,3.5,0,6.28);ctx.fill();
+      ctx.fillStyle='#e6685a';ctx.beginPath();ctx.arc(0,-19,4.3,Math.PI,0);ctx.fill();ctx.fillRect(-4.3,-19,8.6,1.5); },
+   3:(t,w,air)=>{ const flap=w?Math.sin(t*1.4)*2:0;                                                                // Éclaireur (cape)
+      ctx.fillStyle='#7ee0c0';ctx.beginPath();ctx.moveTo(-1,-15);ctx.lineTo(-7,-9+flap);ctx.lineTo(-1,-5);ctx.closePath();ctx.fill();
+      const ls=legA(t,w,air,4),rs=-ls;ctx.lineCap='round';ctx.strokeStyle='#caa14a';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(ls,0);ctx.moveTo(0,-7);ctx.lineTo(rs,0);ctx.stroke();
+      ctx.fillStyle='#f2c14e';ctx.fillRect(-2.5,-16,5,10);
+      ctx.fillStyle='#ffe0a0';ctx.beginPath();ctx.arc(0,-19,3.6,0,6.28);ctx.fill();
+      ctx.fillStyle='#caa14a';ctx.beginPath();ctx.moveTo(-2,-20);ctx.lineTo(-5,-22);ctx.lineTo(-2,-17);ctx.closePath();ctx.fill(); },
+   4:(t,w,air)=>{ const sq=air?1.18:(w?1+Math.sin(t*2)*0.09:1);                                                    // Mascotte (squash)
+      ctx.save();ctx.scale(1/sq,sq);ctx.fillStyle='#f2c14e';ctx.beginPath();ctx.ellipse(0,-9,6,9,0,0,6.28);ctx.fill();ctx.restore();
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(2,-12,1.8,0,6.28);ctx.arc(-1.5,-12,1.8,0,6.28);ctx.fill();
+      ctx.fillStyle='#1a1300';ctx.beginPath();ctx.arc(2.4,-12,0.9,0,6.28);ctx.arc(-1.1,-12,0.9,0,6.28);ctx.fill();
+      const ls=legA(t,w,air,2);ctx.lineCap='round';ctx.strokeStyle='#caa14a';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.moveTo(-2,-1.5);ctx.lineTo(-2+ls,0);ctx.moveTo(2,-1.5);ctx.lineTo(2-ls,0);ctx.stroke(); },
+  };
+  // ---- BOUCLIERS MAGIQUES : 5 styles, MÊME mécanique (auto, −1 PV, durée 1,5 s, interception au rayon) ; chacun dessine en repère local centré (0,cy) ----
+  function shieldImpacts(sr,cy,fx,rgb){ for(const f of fx){ const fa=Math.min(1,f.t/0.45), ix=Math.cos(f.a)*sr, iy=cy+Math.sin(f.a)*sr;   // obus stoppé : flash blanc au point d'impact + onde sur le rebord
+    ctx.fillStyle='rgba(255,240,200,'+fa+')';ctx.beginPath();ctx.arc(ix,iy,3+6*(1-fa),0,6.28);ctx.fill();
+    ctx.strokeStyle='rgba('+rgb+','+fa+')';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(0,cy,sr,f.a-0.35-0.4*(1-fa),f.a+0.35+0.4*(1-fa));ctx.stroke(); } }
+  const SHIELDS={
+    hex:{label:'Hexagonal',draw(sr,cy,life,pulse,rot,fx){   // force-field sci-fi : coque facettée + rayons tournants
+      ctx.fillStyle='rgba(150,110,235,'+(0.10*life+0.18*pulse)+')';ctx.strokeStyle='rgba(180,131,240,'+(0.55*life+0.45*pulse)+')';ctx.lineWidth=2;
+      ctx.beginPath();for(let k=0;k<=24;k++){const a=k/24*6.283,rr=sr*(1+0.035*Math.sin(a*3+animClock*5));k?ctx.lineTo(Math.cos(a)*rr,cy+Math.sin(a)*rr):ctx.moveTo(Math.cos(a)*rr,cy+Math.sin(a)*rr);}ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.strokeStyle='rgba(214,194,255,'+(0.22*life+0.3*pulse)+')';ctx.lineWidth=1;
+      for(let k=0;k<6;k++){const a=k/6*6.283+rot;ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(Math.cos(a)*sr,cy+Math.sin(a)*sr);ctx.stroke();}
+      shieldImpacts(sr,cy,fx,'214,194,255'); }},
+    orbe:{label:'Orbe irisé',draw(sr,cy,life,pulse,rot,fx){   // bulle de savon : dégradé radial, rebord net, reflets spéculaires qui glissent
+      const grad=ctx.createRadialGradient(0,cy,sr*0.2,0,cy,sr);
+      grad.addColorStop(0,'rgba(126,224,192,0)');grad.addColorStop(0.72,'rgba(126,224,192,'+(0.05*life+0.12*pulse)+')');grad.addColorStop(1,'rgba(126,224,192,'+(0.24*life+0.32*pulse)+')');
+      ctx.fillStyle=grad;ctx.beginPath();ctx.arc(0,cy,sr,0,6.28);ctx.fill();
+      ctx.strokeStyle='rgba(180,245,225,'+(0.6*life+0.4*pulse)+')';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,cy,sr,0,6.28);ctx.stroke();
+      ctx.strokeStyle='rgba(255,255,255,'+(0.5*life)+')';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,cy,sr*0.82,rot-2.2,rot-1.4);ctx.stroke();
+      ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,cy,sr*0.9,rot+0.6,rot+1.05);ctx.stroke();
+      shieldImpacts(sr,cy,fx,'180,245,225'); }},
+    runique:{label:'Runes',draw(sr,cy,life,pulse,rot,fx){   // cercle d'invocation : 2 anneaux + glyphes radiaux qui tournent (arcane doré)
+      ctx.fillStyle='rgba(242,193,78,'+(0.06*life+0.12*pulse)+')';ctx.beginPath();ctx.arc(0,cy,sr,0,6.28);ctx.fill();
+      ctx.strokeStyle='rgba(242,193,78,'+(0.5*life+0.4*pulse)+')';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(0,cy,sr,0,6.28);ctx.stroke();ctx.beginPath();ctx.arc(0,cy,sr*0.78,0,6.28);ctx.stroke();
+      ctx.lineWidth=2;ctx.strokeStyle='rgba(255,224,160,'+(0.6*life+0.4*pulse)+')';
+      for(let k=0;k<8;k++){const a=k/8*6.283+rot,gx=Math.cos(a),gy=Math.sin(a),r1=sr*0.78,r2=sr;
+        ctx.beginPath();ctx.moveTo(gx*r1,cy+gy*r1);ctx.lineTo(gx*r2,cy+gy*r2);ctx.stroke();
+        const mx=gx*(r1+r2)/2,my=cy+gy*(r1+r2)/2,pa=a+1.57;
+        ctx.beginPath();ctx.moveTo(mx-Math.cos(pa)*2.6,my-Math.sin(pa)*2.6);ctx.lineTo(mx+Math.cos(pa)*2.6,my+Math.sin(pa)*2.6);ctx.stroke();}
+      shieldImpacts(sr,cy,fx,'255,224,160'); }},
+    vortex:{label:'Vortex',draw(sr,cy,life,pulse,rot,fx){   // tourbillon élémentaire : particules en orbite + traînées ; teinte pilotée par le biome (braise sur Volcano)
+      const cP=biome.tint||'150,220,255', cL=cP;
+      ctx.strokeStyle='rgba('+cL+','+(0.18*life+0.2*pulse)+')';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,cy,sr,0,6.28);ctx.stroke();
+      const N=18; for(let k=0;k<N;k++){ const a=k/N*6.283+rot*2.4, r=sr*(0.55+0.45*((k*0.137)%1)), x=Math.cos(a)*r, y=cy+Math.sin(a)*r*0.92;
+        const al=(0.4*life+0.5*pulse)*(0.45+0.55*Math.sin(a*2+animClock*6));
+        ctx.fillStyle='rgba('+cP+','+al+')';ctx.beginPath();ctx.arc(x,y,1.7,0,6.28);ctx.fill();
+        ctx.strokeStyle='rgba('+cL+','+(al*0.5)+')';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(Math.cos(a-0.3)*r,cy+Math.sin(a-0.3)*r*0.92);ctx.stroke(); }
+      shieldImpacts(sr,cy,fx,cP); }},
+    egide:{label:'Égide',draw(sr,cy,life,pulse,rot,fx){   // garde héraldique : anneau d'écus spectraux pointant vers l'extérieur (médiéval, bronze)
+      const N=10,al=0.5*life+0.4*pulse;
+      for(let k=0;k<N;k++){ const a=k/N*6.283+rot*0.5, x=Math.cos(a)*sr, y=cy+Math.sin(a)*sr, s=sr*0.46;
+        ctx.save();ctx.translate(x,y);ctx.rotate(a+1.57);
+        ctx.fillStyle='rgba(210,180,120,'+(0.16*life+0.2*pulse)+')';ctx.strokeStyle='rgba(240,210,150,'+al+')';ctx.lineWidth=1.4;
+        ctx.beginPath();ctx.moveTo(-s*0.5,-s*0.5);ctx.lineTo(s*0.5,-s*0.5);ctx.lineTo(s*0.5,s*0.1);ctx.quadraticCurveTo(s*0.5,s*0.6,0,s*0.82);ctx.quadraticCurveTo(-s*0.5,s*0.6,-s*0.5,s*0.1);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.beginPath();ctx.moveTo(0,-s*0.5);ctx.lineTo(0,s*0.5);ctx.moveTo(-s*0.5,-s*0.1);ctx.lineTo(s*0.5,-s*0.1);ctx.stroke();   // croix héraldique
+        ctx.restore(); }
+      shieldImpacts(sr,cy,fx,'240,210,150'); }},
+  };
+  function drawIntendant(){ if(parcoursMode||I.dead)return;
+    ctx.save();ctx.translate(I.x,I.y);if(I.hurt>0)ctx.globalAlpha=.55+.45*Math.sin(I.x*2);
+    // PLANEUR : voile incurvée, nervures + suspentes, léger flottement (couleur de camp)
+    if(I.glide){ const fl=Math.sin(animClock*6)*1.6; ctx.fillStyle='rgba(180,131,240,.22)';ctx.strokeStyle=ICOL;ctx.lineWidth=1.6;
+      ctx.beginPath();ctx.moveTo(-14,-29+fl);ctx.quadraticCurveTo(0,-41,14,-29-fl);ctx.quadraticCurveTo(0,-35,-14,-29+fl);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-7,-32);ctx.lineTo(-7,-29);ctx.moveTo(7,-32);ctx.lineTo(7,-29);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-9,-29+fl);ctx.lineTo(-2,-18);ctx.moveTo(9,-29-fl);ctx.lineTo(2,-18);ctx.stroke(); }
+    ctx.save();ctx.scale(I.facing,1);(BODY[I.style]||BODY[1])(I.step,I.walking,!I.onGround);ctx.restore();
+    // ÉPÉE : lame + garde, arc de frappe
+    if(I.attacking&&I.weapon==='sword'){ ctx.save();ctx.scale(I.facing,1);const sw=Math.sin(animClock*18)*0.5;
+      ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-10,C.swordR,-1+sw,1+sw);ctx.stroke();
+      ctx.save();ctx.translate(4,-12);ctx.rotate(sw);ctx.fillStyle='#8a6a3a';ctx.fillRect(-1,-1.5,3,3);ctx.fillStyle='#dfe6ee';ctx.fillRect(2,-1,12,2);ctx.fillStyle='#fff';ctx.fillRect(12,-0.7,3,1.4);ctx.restore();ctx.restore(); }
+    // ARC : monture, corde, flèche encochée si tir
+    if(I.weapon==='bow'){ const ang=I.aimAng!=null?I.aimAng:(I.facing>0?0:Math.PI);   // orienté vers la cible en vue, sinon défaut
+      ctx.save();ctx.translate(0,-12);ctx.rotate(ang);ctx.strokeStyle=ICOL;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,7,-1.25,1.25);ctx.stroke();const bx=Math.cos(1.25)*7,by=Math.sin(1.25)*7;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(bx,-by);ctx.lineTo(I.attacking?-2:0,0);ctx.lineTo(bx,by);ctx.stroke();
+      if(I.attacking){ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-2,0);ctx.lineTo(10,0);ctx.stroke();}ctx.restore(); }
+    // OUTILS : pelle (creuse) / truelle (remblai) orientées selon la visée, avec balancier
+    if(I.act){ const k=I.act.kind, av=(k==='dig')?toolAim(1):(k==='fill')?toolAim(-1):toolAim(0), swing=Math.sin(animClock*16)*(I.act.ph===0?0.5:0.25), ang=Math.atan2(av.oy,av.ox)+swing;
+      ctx.save();ctx.translate(0,-10);ctx.rotate(ang);ctx.strokeStyle='#8a6a3a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(11,0);ctx.stroke();ctx.fillStyle=ICOL;
+      if(k==='dig'){ctx.beginPath();ctx.moveTo(11,-3.5);ctx.lineTo(18,0);ctx.lineTo(11,3.5);ctx.closePath();ctx.fill();}   // pelle
+      else if(k==='fill'){ctx.fillRect(11,-3.5,6,7);}                                                                    // truelle
+      else{ctx.fillRect(9,-1.5,10,3);}                                                                                   // rateau (aplanir)
+      ctx.restore(); }
+    // BUILD : marteau qui tape
+    if(I.job){const tap=Math.abs(Math.sin(animClock*16))*3;ctx.save();ctx.translate(I.facing*5,-15-tap);ctx.fillStyle='#8a6a3a';ctx.fillRect(-1,-1,2,7);ctx.fillStyle='#9aa0a6';ctx.fillRect(-3,-3,7,3);ctx.restore();}
+    // BOUCLIER MAGIQUE : rendu délégué au style choisi (cf. SHIELDS), centré sur le buste, halo qui pulse à l'impact
+    if(I.shieldT>0){ const sr=C.shieldR, cy=-10, life=Math.min(1,I.shieldT/0.5), pulse=Math.max(0,I.shieldHit), rot=animClock*0.6;
+      ctx.save();ctx.globalAlpha=1;(SHIELDS[shieldStyle]||SHIELDS.hex).draw(sr,cy,life,pulse,rot,I.shieldFx);ctx.restore(); }
+    ctx.restore(); }
+
+  // ---- DEBUG CHUTES : marcheur virtuel fidèle (même pas/pente que les soldats) qui relève chaque atterrissage le long du terrain ----
+  const DMG_COLORS=['#5b6b7a','#7ee0c0','#9fd356','#f2c14e','#e6925a','#e6685a','#d05ae6'];   // index = PV perdus (arrondi) ; dernier palier = létal
+  function scanFalls(dir,cata){ const out=[]; const xEnd=dir>0?TRX-14:TLX+14;
+    let x=dir>0?TLX+14:TRX-14, y=cata?terrAt(x):groundY(x,terrAt(x)), acc=0, topY=y, startX=x;
+    for(let guard=0;guard<20000;guard++){ if(dir>0?x>=xEnd:x<=xEnd)break;
+      const ahead=cata?terrAt(x+dir*4):groundY(x+dir*4,y), seg=(ahead-y)/4, f=Math.max(.4,Math.min(1.4,1-Math.abs(seg)*C.slopeFx))*spdMul(forcedKind);
+      const nx=x+dir*C.v0*f*(1/60), ny=cata?terrAt(nx):groundY(nx,y), drop=ny-y;
+      if(drop>1.5){ if(acc===0){topY=y;startX=x;} acc+=drop; }                                  // descente rapide → on accumule
+      else if(acc>0){ const prob=Math.max(0,Math.min(1,(acc-C.fallHmin)/Math.max(1,C.fallHmax-C.fallHmin))), dmg=C.fallDmg*acc*0.1*fallMul(forcedKind);   // atterrissage : proba linéaire (fallHmin→fallHmax) + dégâts ∝ hauteur × mult. par type
+        out.push({startX,landX:x,topY,landY:y,height:acc,prob,dmg}); acc=0; }
+      x=nx; y=ny; }
+    return out; }
+
+  function render(){
+    const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#16233d');sky.addColorStop(1,'#0a1020');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+    ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<W;x++)ctx.lineTo(x,heights[x]);ctx.lineTo(W,H);ctx.closePath();
+    const g=ctx.createLinearGradient(0,platY-90,0,H);g.addColorStop(0,'#3a4d35');g.addColorStop(1,'#1c2a1a');ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle='#7fa86a';ctx.lineWidth=1.5;ctx.beginPath();for(let x=0;x<W;x++){x?ctx.lineTo(x,heights[x]):ctx.moveTo(x,heights[x]);}ctx.stroke();
+    for(let x=0;x<W;x++){ if(fresh[x]>0){ ctx.fillStyle='rgba(184,154,99,'+Math.min(0.85,fresh[x])+')'; ctx.fillRect(x,heights[x]-1,1,5); } }   // terre fraîchement remuée (impact/creuse)
+    for(const p of fx){ ctx.fillStyle=p.col; ctx.globalAlpha=Math.max(0,Math.min(1,p.life*2)); ctx.fillRect(p.x-1,p.y-1,2,2); } ctx.globalAlpha=1;   // particules de terre
+    ctx.fillStyle='#9a6b3a';ctx.strokeStyle='#5e3f20';ctx.lineWidth=1;for(const p of structures){ctx.fillRect(p.x0,p.y,p.x1-p.x0,4);ctx.strokeRect(p.x0,p.y,p.x1-p.x0,4);}
+    ctx.fillStyle='#7a5326';for(const b of bars)ctx.fillRect(b.x-1,b.y-1,2.4,2.4);   // barres de consolidation (traversables ; creusées par les cratères)
+    const drawLadder=(xb,yb,xt,yt)=>{ const dx=xt-xb,dy=yt-yb,len=Math.hypot(dx,dy)||1,nx=-dy/len*3,ny=dx/len*3;   // 2 montants (décalés par la normale) + barreaux perpendiculaires
+      ctx.strokeStyle='#8a5a28';ctx.lineWidth=1.6;
+      ctx.beginPath();ctx.moveTo(xb+nx,yb+ny);ctx.lineTo(xt+nx,yt+ny);ctx.moveTo(xb-nx,yb-ny);ctx.lineTo(xt-nx,yt-ny);ctx.stroke();
+      ctx.lineWidth=1.2;ctx.beginPath();const n=Math.max(2,Math.round(len/5));for(let i=1;i<n;i++){const u=i/n,rx=xb+dx*u,ry=yb+dy*u;ctx.moveTo(rx+nx,ry+ny);ctx.lineTo(rx-nx,ry-ny);}ctx.stroke(); };
+    for(const L of ladders)drawLadder(L.xb,L.yb,L.xt,L.yt);
+    for(const s of soldiers)if(s.kind==='engineer'&&s.plan&&s.plan.type==='ladder'&&s.eng&&s.eng.f)drawLadder(s.plan.xb,s.plan.yb,s.plan.xb+(s.plan.xt-s.plan.xb)*s.eng.f,s.plan.yb+(s.plan.yt-s.plan.yb)*s.eng.f);   // échelle en cours de pose (fraction)
+    for(const s of soldiers)if(s.deserter)drawSoldier(s);   // ARRIÈRE-PLAN (derrière les tours) : déserteurs
+    for(const s of horde)if(s.bg)drawSoldier(s);            // + moitié de la horde
+    for(const T of towers)drawTower(T);
+    for(const s of horde)if(!s.bg)drawSoldier(s);           // PREMIER PLAN : reste de la horde
+    for(const s of soldiers)if(!s.deserter)drawSoldier(s);
+    drawIntendant();
+    for(const a of arrows){ const m=Math.hypot(a.vx,a.vy)||1,ux=a.vx/m,uy=a.vy/m;
+      if(a.ball){ const r=a.gren?3:4.5;
+        if(!a.gren){ ctx.strokeStyle='rgba(255,170,80,0.40)';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(a.x-ux*16,a.y-uy*16);ctx.lineTo(a.x,a.y);ctx.stroke();   // BOULET : traînée chaude
+          ctx.fillStyle='#2c2c30';ctx.strokeStyle='#0a0a0c';ctx.lineWidth=1;ctx.beginPath();ctx.arc(a.x,a.y,r,0,6.28);ctx.fill();ctx.stroke();
+          ctx.fillStyle='#cfc9bd';ctx.beginPath();ctx.arc(a.x-r*0.32,a.y-r*0.32,r*0.42,0,6.28);ctx.fill(); }   // reflet → visible sur fond sombre
+        else { ctx.fillStyle='#1a1a1a';ctx.beginPath();ctx.arc(a.x,a.y,r,0,6.28);ctx.fill();
+          ctx.fillStyle='#ff8c2a';ctx.beginPath();ctx.arc(a.x-ux*r,a.y-uy*r,1.5,0,6.28);ctx.fill(); }   // GRENADE + mèche
+        continue; }
+      if(a.bolt){ ctx.fillStyle='#e7eaee';ctx.beginPath();ctx.arc(a.x,a.y,2.6,0,6.28);ctx.fill();ctx.fillStyle='rgba(190,190,190,.4)';ctx.beginPath();ctx.arc(a.x-ux*5,a.y-uy*5,2.2,0,6.28);ctx.fill();continue; }   // balle de mousqueterie (tour)
+      if(a.musket){ ctx.fillStyle=a.owner===0?'#cfe6fb':'#fbd2cd';ctx.beginPath();ctx.arc(a.x,a.y,2.2,0,6.28);ctx.fill();continue; }   // balle de mousquet (soldat)
+      const col=ICOL;   // flèche de l'Intendant (révolté à l'arc)
+      ctx.strokeStyle=col;ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(a.x-ux*9,a.y-uy*9);ctx.lineTo(a.x,a.y);ctx.stroke();
+      ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(a.x-ux*4-uy*2.4,a.y-uy*4+ux*2.4);ctx.lineTo(a.x-ux*4+uy*2.4,a.y-uy*4-ux*2.4);ctx.closePath();ctx.fill();
+      ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x-ux*9,a.y-uy*9);ctx.lineTo(a.x-ux*12-uy*2,a.y-uy*12+ux*2);ctx.moveTo(a.x-ux*9,a.y-uy*9);ctx.lineTo(a.x-ux*12+uy*2,a.y-uy*12-ux*2);ctx.stroke();}
+    ctx.setLineDash([3,5]);ctx.lineWidth=1;for(const T of towers){const sl=slitOf(T);ctx.strokeStyle=T.warn?'rgba(242,193,78,.4)':'rgba(255,255,255,.07)';ctx.beginPath();ctx.arc(sl.x,sl.y,C.towerFire,0,6.28);ctx.stroke();}ctx.setLineDash([]);
+    if(debugPath){   // DEBUG : chemins valides (vert) ; pentes infranchissables du terrain (rouge)
+      ctx.lineWidth=1.5;for(let x=PLAT;x<W-PLAT-4;x+=4){ const r=(terrAt(x)-terrAt(x+4))/4; if(Math.abs(r)>C.climbSlope){ctx.strokeStyle='rgba(230,90,90,.9)';ctx.beginPath();ctx.moveTo(x,terrAt(x));ctx.lineTo(x+4,terrAt(x+4));ctx.stroke();} }
+      for(const [pth,col] of [[dbgL,'#46e06a'],[dbgR,'#46b6e0']]){ if(!pth)continue; ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();pth.forEach((w,i)=>i?ctx.lineTo(w.x,w.y-2):ctx.moveTo(w.x,w.y-2));ctx.stroke(); ctx.fillStyle=col;for(const w of pth)ctx.fillRect(w.x-1,w.y-3,2,2); }
+      ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.fillText('chemin →: '+(dbgL?'OK ('+dbgL.length+')':'AUCUN')+'   ←: '+(dbgR?'OK':'AUCUN'),PLAT,18);
+    }
+    if(debugFall){   // DEBUG CHUTES : zones à risque (rouge ∝ proba) + dégâts au point d'atterrissage (1 couleur par PV perdu)
+      const dir=parcoursMode?(parcoursOwner===0?1:-1):1, cata=parcoursMode&&forcedKind==='cata', cliffs=scanFalls(dir,cata);
+      for(const c of cliffs){ const w=Math.max(2,Math.abs(c.landX-c.startX)), x0=Math.min(c.startX,c.landX);
+        if(c.prob>0){ ctx.fillStyle='rgba(230,90,90,'+(0.12+0.6*c.prob)+')'; ctx.fillRect(x0,c.topY,w,c.landY-c.topY); }   // gradient de proba : alpha ∝ fallProb
+        else { ctx.fillStyle='rgba(126,224,192,0.16)'; ctx.fillRect(x0,c.topY,w,Math.max(2,c.landY-c.topY)); } }            // descente sûre (sous le seuil) : vert pâle
+      for(const c of cliffs){ if(c.prob<=0)continue; const pv=Math.round(c.dmg), col=DMG_COLORS[Math.min(pv,DMG_COLORS.length-1)];
+        ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(c.landX,c.landY-13);ctx.lineTo(c.landX-5,c.landY-4);ctx.lineTo(c.landX+5,c.landY-4);ctx.closePath();ctx.fill();   // fanion coloré = dégâts à l'atterrissage
+        ctx.fillStyle='#0a1020';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText(c.dmg.toFixed(1),c.landX,c.landY-5);ctx.textAlign='left'; }
+      const lx=PLAT,ly=36; ctx.fillStyle='rgba(8,12,24,0.8)';ctx.fillRect(lx-8,ly-16,372,64);   // légende
+      ctx.font='10px monospace';ctx.fillStyle='#cfe6fb';
+      ctx.fillText('CHUTES '+(dir>0?'→':'←')+(cata?' (canon ×2.5)':'')+' · min '+C.fallHmin.toFixed(0)+'px (0%) → max '+C.fallHmax.toFixed(0)+'px (100%)',lx,ly);
+      for(let i=0;i<DMG_COLORS.length;i++){ ctx.fillStyle=DMG_COLORS[i];ctx.fillRect(lx+i*30,ly+8,12,11);ctx.fillStyle='#cfe6fb';ctx.fillText(i+(i===DMG_COLORS.length-1?'+':''),lx+i*30+15,ly+17); }
+      ctx.fillStyle='#cfe6fb';ctx.fillText('PV perdus',lx+DMG_COLORS.length*30+10,ly+17);
+      const gw=120,gx=lx,gy=ly+26,gg=ctx.createLinearGradient(gx,0,gx+gw,0);gg.addColorStop(0,'rgba(126,224,192,0.4)');gg.addColorStop(1,'rgba(230,90,90,0.95)');
+      ctx.fillStyle=gg;ctx.fillRect(gx,gy,gw,10);ctx.fillStyle='#cfe6fb';ctx.fillText('proba 0',gx,gy+20);ctx.fillText('1',gx+gw+6,gy+9);
+    }
+    if(rangeHiT>0&&SPATIAL[rangeHi]){   // RÉGLAGE EN COURS : visualisation sur le canvas (fondu via rangeHiT)
+      const m=SPATIAL[rangeHi], al=Math.min(1,rangeHiT/0.5);
+      ctx.font='bold 11px monospace';
+      if(m.drop){   // SEUIL DE CHUTE : CÔNE depuis les pieds — rayon hauteur min (0%) → rayon hauteur max (100%) ; angle = atan(hauteur / pas de réf.) ; secteur ombré = proba croissante
+        const R=42, L=70, aMin=Math.atan2(C.fallHmin,R), aMax=Math.atan2(C.fallHmax,R); let pts=[];
+        for(const s of soldiers){ if(s.hp<=0||s.gone||s.st==='emerge'||s.st==='enter')continue; pts.push({x:s.x,y:s.y,dir:s.dir||1,c:s.owner===0?'#7da6e0':'#e08a8a'}); }
+        if(!pts.length) pts=[{x:W/2,y:terrAt(W/2),dir:1,c:'#f2c14e'}];   // repli : aucune unité → repère au centre
+        for(const p of pts){ const d=p.dir, xmn=p.x+d*L*Math.cos(aMin),ymn=p.y+L*Math.sin(aMin), xmx=p.x+d*L*Math.cos(aMax),ymx=p.y+L*Math.sin(aMax);
+          ctx.globalAlpha=al*0.14;ctx.fillStyle=p.c;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(xmn,ymn);ctx.lineTo(xmx,ymx);ctx.closePath();ctx.fill();   // secteur = proba 0→100%
+          ctx.globalAlpha=al*0.85;ctx.strokeStyle=p.c;ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+          ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(xmn,ymn);ctx.stroke();   // rayon hauteur MIN (0%)
+          ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(xmx,ymx);ctx.stroke(); ctx.setLineDash([]); }   // rayon hauteur MAX (100%)
+        ctx.globalAlpha=1;
+        const p0=pts[0], txt='chute '+Math.round(aMin*180/Math.PI)+'°(0%)→'+Math.round(aMax*180/Math.PI)+'°(100%)';
+        ctx.font='bold 11px monospace';ctx.globalAlpha=al;ctx.fillStyle='rgba(8,12,24,0.78)';ctx.fillRect(p0.x+6,p0.y+22,txt.length*6.4+8,14);
+        ctx.fillStyle='#f2c14e';ctx.fillText(txt,p0.x+9,p0.y+33);
+        ctx.globalAlpha=1;
+      } else if(m.ladder){   // ÉCHELLE DE L'INGÉNIEUR : montants inclinés + barreaux + cotes (hauteur × fuyant), depuis chaque ingénieur ou un repère
+        const HH=C.engLadH, RUN=C.engLadRun; let bases=[];
+        for(const s of soldiers){ if(s.kind==='engineer'&&s.hp>0&&!s.gone&&s.st!=='emerge'&&s.st!=='enter') bases.push({x:s.x,y:s.y,dir:s.dir||1}); }
+        if(!bases.length) bases=[{x:Math.round(W*0.33),y:terrAt(W*0.33),dir:1}];   // repli : aucun ingénieur → repère à gauche du relief
+        for(const b of bases){ const d=b.dir, tx=b.x+d*RUN, ty=b.y-HH, dx=tx-b.x, dy=ty-b.y, len=Math.hypot(dx,dy)||1, ux=-dy/len, uy=dx/len;
+          ctx.setLineDash([3,3]);ctx.globalAlpha=al*0.5;ctx.lineWidth=1;ctx.strokeStyle='#9fd356';   // cotes : hauteur (verticale) + fuyant (horizontale)
+          ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x,ty);ctx.lineTo(tx,ty);ctx.stroke();ctx.setLineDash([]);
+          ctx.globalAlpha=al;ctx.strokeStyle='#f2c14e';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(tx,ty);ctx.stroke();   // montant
+          const n=Math.max(2,Math.round(len/9));ctx.lineWidth=1.5;ctx.globalAlpha=al*0.85;   // barreaux
+          for(let i=1;i<n;i++){ const t=i/n, rx=b.x+dx*t, ry=b.y+dy*t; ctx.beginPath();ctx.moveTo(rx-ux*4,ry-uy*4);ctx.lineTo(rx+ux*4,ry+uy*4);ctx.stroke(); } }
+        ctx.globalAlpha=1;
+        const b0=bases[0], deg=Math.round(Math.atan2(C.engLadH,C.engLadRun)*180/Math.PI), txt='échelle '+Math.round(HH)+'×'+Math.round(RUN)+'px · '+deg+'°';
+        ctx.font='bold 11px monospace';ctx.globalAlpha=al;ctx.fillStyle='rgba(8,12,24,0.78)';ctx.fillRect(b0.x+b0.dir*RUN-4,b0.y-C.engLadH-18,txt.length*6.4+8,14);
+        ctx.fillStyle='#f2c14e';ctx.fillText(txt,b0.x+b0.dir*RUN-1,b0.y-C.engLadH-7);
+        ctx.globalAlpha=1;
+      } else {   // PORTÉE : cercle(s) autour de l'ancrage (soldats du type / Intendant / tours)
+        const r=C[m.r]; let anchors=[];
+        if(m.a==='int'){ if(!I.dead) anchors=[{x:I.x,y:I.y-10,c:ICOL}]; }
+        else if(m.a==='tower'){ for(const T of towers) if(T.hp>0){const sl=slitOf(T);anchors.push({x:sl.x,y:sl.y,c:T.owner===0?'#7da6e0':'#e08a8a'});} }
+        else { for(const s of soldiers){ if(s.hp<=0||s.gone||s.st==='emerge'||s.st==='enter')continue; if(m.kinds&&!m.kinds.includes(s.kind))continue; anchors.push({x:s.x,y:s.y-7,c:s.owner===0?'#7da6e0':'#e08a8a'}); } }
+        if(!anchors.length) anchors=[{x:W/2,y:platY-50,c:'#f2c14e'}];   // repli : aucune unité → règle au centre
+        const fill=anchors.length<=3;
+        ctx.setLineDash([4,4]);ctx.lineWidth=1.5;
+        for(const an of anchors){ ctx.strokeStyle=an.c;ctx.globalAlpha=al*0.75;ctx.beginPath();ctx.arc(an.x,an.y,r,0,6.28);ctx.stroke(); if(fill){ctx.globalAlpha=al*0.10;ctx.fillStyle=an.c;ctx.fill();} }
+        ctx.globalAlpha=1;ctx.setLineDash([]);
+        const a0=anchors[0]; ctx.globalAlpha=al;
+        ctx.fillStyle='rgba(8,12,24,0.7)';ctx.fillRect(a0.x+5,a0.y-18,(LABELS[rangeHi]||rangeHi).length*6.4+44,14);
+        ctx.fillStyle='#f2c14e';ctx.fillText((LABELS[rangeHi]||rangeHi)+' : '+Math.round(r)+'px',a0.x+8,a0.y-7);
+        ctx.globalAlpha=1;
+      }
+    }
+  }
+
+  const elB=document.getElementById('cntB'),elR=document.getElementById('cntR'),elHp=document.getElementById('intHp'),elSt=document.getElementById('status'),elSc=document.getElementById('score'),elMsg=document.getElementById('msg'),elBuild=document.getElementById('build'),elWlab=document.getElementById('wlabel'),wsB=[...document.querySelectorAll('#wSeg button')];
+  function hud(){elB.textContent=soldiers.filter(s=>s.owner===0).length;elR.textContent=soldiers.filter(s=>s.owner===1).length;
+    elHp.textContent=Math.max(0,I.hp)+'/'+C.maxHp;elSc.textContent=I.score;elBuild.innerHTML='<span class="b">'+I.bp[0]+'</span>+<span class="r">'+I.bp[1]+'</span>'+(unlimitedBuild?' ∞':'');elMsg.textContent=msgT>0?msg:'';elMsg.style.opacity=Math.min(1,msgT*1.5);
+    elWlab.textContent=I.weapon==='sword'?'épée':'arc';wsB.forEach(b=>b.classList.toggle('on',b.dataset.w===I.weapon));
+    if(parcoursMode){ elSt.innerHTML='<span class="g">🥾 PARCOURS · '+(parcoursOwner===0?'gauche (bleu) →':'← droite (rouge)')+' · '+(forcedKind?{sword:'mousquetaire',bow:'grenadier',cata:'canon',engineer:'ingénieur'}[forcedKind]:'type aléatoire')+'</span>'; return; }
+    const sh=I.shieldT>0?'<span style="color:#b483f0;font-weight:600">🛡 bouclier '+I.shieldT.toFixed(1)+'s</span> ':'';
+    elSt.innerHTML=sh+(!present?'<span class="warn">ABSENT — repli</span>':I.dead?'<span class="warn">DÉFAIT</span>':I.job?'<span class="g">⛏ construction</span>':I.act?'<span class="g">'+(I.act.kind==='dig'?'creuse':I.act.kind==='fill'?'remblaie':'aplanit')+'…</span>':I.attacking?'<span class="g">⚔ attaque auto</span>':I.glide?'<span class="g">⛱ plané</span>':'');}
+
+  let last=performance.now(),acc=0;const STEP=1/60;
+  function loop(now){acc+=Math.min(.1,(now-last)/1000);last=now;while(acc>=STEP){update(STEP);acc-=STEP;}render();hud();requestAnimationFrame(loop);}
+
+  const seedIn=document.getElementById('seedIn');
+  function setSpawn(m){spawnMode=m;document.querySelectorAll('#spawnSeg button').forEach(x=>x.classList.toggle('on',x.dataset.mode===m));spawnTimer=0;}
+  document.getElementById('emit').onclick=spawnPair;presBtn.onclick=togglePres;
+  document.getElementById('reTerrain').onclick=()=>{reseed(seed+1);seedIn.value=seed;resetAll();};
+  document.getElementById('reset').onclick=resetAll;document.getElementById('endRoundBtn').onclick=endRound;
+  seedIn.onchange=()=>{reseed(parseInt(seedIn.value)||1);seedIn.value=seed;resetAll();};
+  document.getElementById('spawnSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>setSpawn(b.dataset.mode));
+  const iseg=document.querySelectorAll('#iSeg button');iseg.forEach(b=>b.onclick=()=>{I.style=+b.dataset.s;iseg.forEach(x=>x.classList.toggle('on',x===b));});
+  const invseg=document.querySelectorAll('#invSeg button');invseg.forEach(b=>b.onclick=()=>{invader=+b.dataset.inv;invseg.forEach(x=>x.classList.toggle('on',x===b));});
+  const cb=document.getElementById('craterBtn');cb.onclick=()=>{craterTool=!craterTool;cb.classList.toggle('on',craterTool);cv.classList.toggle('crater',craterTool);};
+  const db=document.getElementById('dbgBtn');db.onclick=()=>{debugPath=!debugPath;db.classList.toggle('on',debugPath);};
+  const dfb=document.getElementById('dbgFallBtn');dfb.onclick=()=>{debugFall=!debugFall;dfb.classList.toggle('on',debugFall);};
+  document.getElementById('cataBtn').onclick=()=>{pendingCata[0]=pendingCata[1]=true;spawnPair();showMsg('Canons de campagne émis');};   // test : force un canon de chaque camp
+  const ub=document.getElementById('unlimBtn');ub.onclick=()=>{unlimitedBuild=!unlimitedBuild;ub.classList.toggle('on',unlimitedBuild);};
+  const shb=document.getElementById('shieldBtn');shb.onclick=()=>{shieldEnabled=!shieldEnabled;shb.classList.toggle('on',shieldEnabled);showMsg(shieldEnabled?'Bouclier activé':'Bouclier désactivé');};
+  document.getElementById('shellBtn').onclick=testShell;
+  const shSeg=document.getElementById('shStyleSeg');   // sélecteur de style (override manuel) construit depuis le registre SHIELDS
+  function syncStyleSeg(){ shSeg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.s===shieldStyle)); }
+  function previewShield(){ if(!(I.shieldT>0)){I.shieldT=C.shieldDur;I.shieldHit=0.6;} }   // aperçu immédiat sans coût de PV
+  for(const [id,sty] of Object.entries(SHIELDS)){ const b=document.createElement('button');b.textContent=sty.label;b.dataset.s=id;if(id===shieldStyle)b.classList.add('on');
+    b.onclick=()=>{shieldStyle=id;syncStyleSeg();previewShield();showMsg('Style : '+sty.label);};shSeg.appendChild(b); }
+  const biomeSeg=document.getElementById('biomeSeg');   // le style découle de bm.intendantShield (donnée), aucune conditionnelle sur le nom
+  for(const bm of BIOMES_LAB){
+    const b=document.createElement('button');b.textContent=bm.name;b.dataset.b=bm.id;if(bm.id===biome.id)b.classList.add('on');
+    b.onclick=()=>{biome=bm;biomeSeg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.b===bm.id));shieldStyle=bm.intendantShield;syncStyleSeg();previewShield();showMsg('Biome : '+bm.name+' → '+SHIELDS[shieldStyle].label);};biomeSeg.appendChild(b); }
+  cv.addEventListener('click',e=>{if(!craterTool)return;const r=cv.getBoundingClientRect();carveCrater((e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H);});
+  const exp=document.getElementById('exp');
+  document.getElementById('exportBtn').onclick=()=>{const txt=JSON.stringify({seed,params:C,spawnMode,weapon:I.weapon},null,2);exp.style.display='block';exp.value=txt;exp.select();try{navigator.clipboard.writeText(txt);}catch(e){}};
+  function applyConfig(o){ try{ const d=typeof o==='string'?JSON.parse(o):o; if(d.params)for(const k in d.params){if(inputs[k]){inputs[k].value=d.params[k];updaters[k]();}else C[k]=d.params[k];}
+    if(d.spawnMode)setSpawn(d.spawnMode); if(d.weapon)setWeapon(d.weapon);
+    if(d.seed!=null){reseed(d.seed);seedIn.value=seed;} resetAll(); showMsg('✓ Config importée'); }catch(e){showMsg('✗ JSON invalide');} }
+  document.getElementById('importBtn').onclick=()=>{ exp.style.display='block'; if(exp.value.trim())applyConfig(exp.value); else{exp.focus();showMsg('Colle ton JSON puis re-clique Importer');} };
+
+  const parcoursBtn=document.getElementById('parcoursBtn'),cardInt=document.getElementById('cardInt');   // les options vivent dans l'onglet Parcours (toujours visibles)
+  function setParcours(on){ parcoursMode=on; parcoursBtn.classList.toggle('on',on);
+    cardInt.style.opacity=on?0.35:1; cardInt.style.pointerEvents=on?'none':'';   // colonne Intendant estompée + inerte en parcours
+    resetAll(); showMsg(on?'Mode parcours — 1 camp, aucun combat, sans Intendant':'Mode normal'); }
+  parcoursBtn.onclick=()=>setParcours(!parcoursMode);
+  const playBtn=document.getElementById('playBtn');
+  function spawnPC(){ const o=parcoursOwner,xd=doorX(towers[o]),k=forcedKind||'sword',hp=k==='cata'?8:k==='engineer'?3:k==='bow'?C.arHp:C.sHp;
+    soldiers=[{id:nextId++,owner:o,x:xd,y:platY,dir:o===0?1:-1,kind:k,hp,ft:0,stuck:0,deserter:false,st:'march',t:0,age:10,fall:false,pc:true,jseed:(rnd()*0x100000000)>>>0}]; }
+  function setPlay(on){ playSoldier=on; playBtn.classList.toggle('on',on);
+    if(on){ if(!parcoursMode){ parcoursMode=true; parcoursBtn.classList.add('on'); cardInt.style.opacity=0.35; cardInt.style.pointerEvents='none'; } resetAll(); spawnPC(); showMsg('🎮 Jouer un soldat — bouge ←/→, agis Espace/F'); }
+    else { resetAll(); showMsg('Mode parcours'); } }
+  playBtn.onclick=()=>setPlay(!playSoldier);
+  document.getElementById('holeBtn').onclick=()=>{ const o=parcoursMode?parcoursOwner:0,xd=doorX(towers[o]),dir=o===0?1:-1; carveCrater(xd+dir*24,platY+4,28); showMsg('Trou creusé sous la tour '+(o===0?'gauche (bleu)':'droite (rouge)')+' → le prochain sortant est un ingénieur (pont)'); };   // test : cratère juste devant la porte
+  document.getElementById('wallBtn').onclick=()=>{ const o=parcoursMode?parcoursOwner:0,dir=o===0?1:-1,xw=doorX(towers[o])+dir*70; for(let x=0;x<170;x++){const c=cX(xw+dir*x); if(heights[c]>platY-44)heights[c]=platY-44;} navVer++; markFresh(xw-4,xw+dir*170); showMsg('Ressaut quasi-vertical dressé devant la tour '+(o===0?'gauche (bleu)':'droite (rouge)')+' → le prochain sortant est un ingénieur (échelle)'); };   // test : mur vertical infranchissable → échelle
+  const kindSeg=[...document.querySelectorAll('#kindSeg button')];kindSeg.forEach(b=>b.onclick=()=>{forcedKind=b.dataset.k||null;kindSeg.forEach(x=>x.classList.toggle('on',x===b));});
+  const pownSeg=[...document.querySelectorAll('#pownSeg button')];pownSeg.forEach(b=>b.onclick=()=>{parcoursOwner=+b.dataset.o;pownSeg.forEach(x=>x.classList.toggle('on',x===b));resetAll();});
+
+  function setTab(t){ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+    document.querySelectorAll('.card[data-tab]').forEach(c=>c.classList.toggle('show',c.dataset.tab===t)); }
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab)); setTab('sol');
+  // sous-onglets (Soldats) : un seul .subpanel visible à la fois
+  function setSub(s){ document.querySelectorAll('.subtab').forEach(b=>b.classList.toggle('on',b.dataset.sub===s));
+    document.querySelectorAll('.subpanel').forEach(p=>p.classList.toggle('show',p.id==='grp-sol-'+s)); }
+  document.querySelectorAll('.subtab').forEach(b=>b.onclick=()=>setSub(b.dataset.sub));
+
+  resetAll();requestAnimationFrame(loop);
+})();
+</script>

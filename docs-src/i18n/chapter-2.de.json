@@ -61,5 +61,8 @@
   "footer.suffix": "Kapitel {n}/{total}",
 
   "pager.prev": "← Kapitel 1",
-  "pager.next": "Kapitel 3 · Mehrere Bildschirme →"
+  "pager.next": "Kapitel 3 · Mehrere Bildschirme →",
+
+  "play.lead": "<b>Jetzt richtig spielen!</b> Das ist <b>Etappe 2</b> — die Biome, die modernisierte Grafik und der synthetisierte Klang aus diesem Kapitel — direkt im Browser spielbar, zu zweit an einem Bildschirm.",
+  "play.btn": "Etappe 2 spielen"
 }

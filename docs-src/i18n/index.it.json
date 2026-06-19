@@ -59,12 +59,6 @@
   "s4.cta": "Inizia il capitolo 1 →",
   "s5.h2": "Appendici",
   "s5.p1": "Dei bonus per andare oltre: distribuire il gioco da solo, una deviazione nella matematica e il dietro le quinte del brief di partenza.",
-  "s5.li1.label": "Distribuzione",
-  "s5.li1.desc": " — costruire l'immagine Docker e ospitare il gioco online.",
-  "s5.li2.label": "Matematica veloce",
-  "s5.li2.desc": " — la radice quadrata, il codice <code class=\"inline\">0x5f3759df</code> di Quake III e Pitagora.",
-  "s5.li3.label": "Il brief di partenza",
-  "s5.li3.desc": " — il capitolato che ha avviato tutto, commentato e criticato.",
   "s5.cta": "Vedi tutte le appendici →",
   "footer.suffix": "fatto per menti curiose di tutte le età 🛠️"
 }

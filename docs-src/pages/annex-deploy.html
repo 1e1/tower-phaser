@@ -128,12 +128,14 @@ docker run --rm -p 8088:3000 -e PUBLIC_HOST=192.168.1.20 tower-duel</pre>
         <figure class="code">
           <figcaption>{{s4.code.cap}}</figcaption>
 <pre><span class="c">{{s4.code.c1}}</span>
-npm run package            <span class="c">{{s4.code.c2}}</span>
-<span class="c">{{s4.code.c3}}</span>
-<span class="c">{{s4.code.c4}}</span>
 cd ~/www/towerduel
+<span class="c">{{s4.code.c2}}</span>
+wget https://github.com/1e1/tower-phaser/releases/latest/download/tower-duel-server.zip
+unzip tower-duel-server.zip   <span class="c">{{s4.code.c3}}</span>
+<span class="c">{{s4.code.c4}}</span>
 npm ci --omit=dev          <span class="c">{{s4.code.c5}}</span></pre>
         </figure>
+        <div class="callout tip">{{s4.deploy.tip}}</div>
         <div class="callout warn">{{s4.deploy.warn}}</div>
 
         <h3>{{s4.site.h}}</h3>

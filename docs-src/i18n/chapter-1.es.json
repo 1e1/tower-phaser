@@ -71,5 +71,8 @@
   "pager.next": "Capítulo 2 · Hacer que se vea bonito →",
 
   "sim.hit": "🎯 ¡Acierto!",
-  "sim.miss": "💨 Fallado"
+  "sim.miss": "💨 Fallado",
+
+  "play.lead": "<b>¡Ahora juega de verdad!</b> Esta es la <b>fase 1</b> completa — el pequeño juego que este capítulo acaba de describir — jugable directamente en tu navegador, dos jugadores en una sola pantalla.",
+  "play.btn": "Jugar a la fase 1"
 }
