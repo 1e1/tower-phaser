@@ -71,5 +71,8 @@
   "pager.next": "Capitolo 2 · Renderlo bello →",
 
   "sim.hit": "🎯 Colpito!",
-  "sim.miss": "💨 Mancato"
+  "sim.miss": "💨 Mancato",
+
+  "play.lead": "<b>Ora gioca sul serio!</b> Questo è il <b>lotto 1</b> completo — il piccolo gioco che questo capitolo ha appena descritto — giocabile direttamente nel browser, in due sullo stesso schermo.",
+  "play.btn": "Gioca al lotto 1"
 }

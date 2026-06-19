@@ -1,0 +1,182 @@
+name: Release
+
+# One workflow drives every version tag (v1.2.3). The CHANNEL is read straight
+# from the tag name — no branch detection:
+#   v1.4.0-rc[.N]  -> release candidate -> GitHub PRE-release  (docker: rc, 1.4.0-rc)
+#   v1.4.0         -> stable release     -> GitHub release      (docker: latest, 1.4, 1.4.0)
+# `-rc` is a semver prerelease suffix, so docker/metadata-action keeps `latest`
+# off it automatically.
+#
+# Promotion is explicit and needs no separate workflow: tagging the stable
+# vX.Y.Z both publishes the real release AND wipes its candidate vX.Y.Z-rc*
+# (GitHub release + git tag + GHCR image).
+#
+# Only ONE candidate exists at a time: pushing a new -rc first wipes every other
+# -rc delivery.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create/delete releases and git tags
+  packages: write   # push images on GHCR
+
+jobs:
+  # --- Wipe superseded candidates --------------------------------------------
+  #  - pushing  vX.Y.Z-rc  -> delete every OTHER *-rc* delivery   ("1 rc max")
+  #  - pushing  vX.Y.Z     -> delete this version's vX.Y.Z-rc*    (promotion)
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove superseded candidate deliveries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # GHCR image deletion on a USER account needs a PAT with delete:packages.
+          # Falls back to GITHUB_TOKEN (which usually CAN'T delete user packages)
+          # and is best-effort, so a missing PAT never fails the release.
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT || github.token }}
+          REF: ${{ github.ref_name }}
+          OWNER: ${{ github.repository_owner }}
+          PKG: tower-phaser
+        run: |
+          set -uo pipefail
+          all=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
+                  --json tagName --jq '.[].tagName')
+          targets=""
+          if [[ "$REF" == *-rc* ]]; then
+            # publishing a candidate: keep only this one
+            for t in $all; do
+              [[ "$t" == *-rc* && "$t" != "$REF" ]] && targets="$targets $t"
+            done
+          else
+            # publishing a stable: drop its own candidate(s)
+            for t in $all; do
+              [[ "$t" == "$REF"-rc* ]] && targets="$targets $t"
+            done
+          fi
+          for t in $targets; do
+            echo "Wiping superseded candidate: $t"
+            gh release delete "$t" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+            ver="${t#v}"
+            ids=$(GH_TOKEN="$GHCR_TOKEN" gh api --paginate \
+                    "/users/$OWNER/packages/container/$PKG/versions" \
+                    --jq ".[] | select(.metadata.container.tags[]? == \"$ver\") | .id" \
+                    2>/dev/null || true)
+            for id in $ids; do
+              echo "Deleting GHCR image $PKG:$ver (version $id)"
+              GH_TOKEN="$GHCR_TOKEN" gh api -X DELETE \
+                "/users/$OWNER/packages/container/$PKG/versions/$id" || \
+                echo "::warning::could not delete GHCR image $PKG:$ver (PAT with delete:packages needed?)"
+            done
+          done
+
+  # --- Build & push the image (channel from the tag name) --------------------
+  docker:
+    needs: cleanup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        # Push with the PAT (write:packages), not GITHUB_TOKEN: the GHCR package
+        # is owned by the personal account and doesn't grant this repo's Actions
+        # write access, so GITHUB_TOKEN gets `denied: write_package`. The PAT is
+        # the owner identity and already drives the cleanup job. Falls back to
+        # GITHUB_TOKEN so forks without the secret still attempt the push.
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
+      - name: Docker metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-rc') }}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-rc') }}
+            type=raw,value=rc,enable=${{ contains(github.ref_name, '-rc') }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # --- Build the server bundle and the GitHub (pre-)release ------------------
+  bundle:
+    needs: cleanup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build the copy-paste server bundle (zip + tar.gz)
+        run: npm run package
+      - name: Add fixed-name copies for the /releases/latest/download/ shortcut
+        # STABLE releases only. Beside the versioned archives
+        # (tower-duel-<version>.{zip,tar.gz}) we attach stable-named duplicates.
+        # Because GitHub auto-marks the newest stable release as "Latest", these
+        # give a permanent install URL that always points at the current release
+        # — handy for copy-paste docs:
+        #   https://github.com/${{ github.repository }}/releases/latest/download/tower-duel-server.zip
+        # (The `latest/download/` shortcut only works for uploaded assets with a
+        #  fixed filename, never for the auto-generated source archive.)
+        # Candidates are skipped: `latest` ignores prereleases, so a floating
+        # name on an -rc would never be reachable through it — and the prune job
+        # below keeps this name on the latest stable ONLY.
+        if: ${{ !contains(github.ref_name, '-rc') }}
+        run: |
+          cp release/tower-duel-*.zip    release/tower-duel-server.zip
+          cp release/tower-duel-*.tar.gz release/tower-duel-server.tar.gz
+      - name: Publish the (pre-)release and attach bundles
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
+          make_latest: ${{ !contains(github.ref_name, '-rc') }}
+          files: |
+            release/*.zip
+            release/*.tar.gz
+
+  # --- Keep the floating bundle on the latest release ONLY -------------------
+  #  The fixed-name tower-duel-server.* assets must live on a single release —
+  #  the current "Latest" — so that on any OLDER release the name doesn't lie
+  #  (there it would actually be that old version, not "the server bundle").
+  #  After a STABLE publish, strip those names from every OTHER release; each
+  #  superseded release keeps only its versioned tower-duel-<version>.* archives.
+  #  Runs after `bundle` so the new latest already carries them (no 404 window),
+  #  and never on -rc (an -rc never holds the floating name in the first place).
+  prune-floating-assets:
+    needs: bundle
+    if: ${{ !contains(github.ref_name, '-rc') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove tower-duel-server.* from superseded releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.ref_name }}
+        run: |
+          set -uo pipefail
+          tags=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
+                   --json tagName --jq '.[].tagName')
+          for t in $tags; do
+            [ "$t" = "$REF" ] && continue   # never touch the release we just published
+            for a in tower-duel-server.zip tower-duel-server.tar.gz; do
+              # delete-asset fails when the asset isn't there — fine, ignore it.
+              if gh release delete-asset "$t" "$a" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null; then
+                echo "removed $a from $t"
+              fi
+            done
+          done

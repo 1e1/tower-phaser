@@ -61,5 +61,8 @@
   "footer.suffix": "capitolo {n}/{total}",
 
   "pager.prev": "← Capitolo 1",
-  "pager.next": "Capitolo 3 · Più schermi →"
+  "pager.next": "Capitolo 3 · Più schermi →",
+
+  "play.lead": "<b>Ora gioca sul serio!</b> Questo è il <b>lotto 2</b> — i biomi, la grafica modernizzata e il suono sintetizzato di questo capitolo — giocabile direttamente nel browser, in due sullo stesso schermo.",
+  "play.btn": "Gioca al lotto 2"
 }

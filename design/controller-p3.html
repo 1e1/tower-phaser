@@ -1,0 +1,191 @@
+<title>Controller P3 — Intendant (maquette v4)</title>
+<style>
+  :root{ --bg0:#0c0f1c;--bg1:#1b1830;--ink:#eef0f8;--mut:#9fb0c8;--line:#2b2748;
+    --icol:#b483f0;--blue:#5aa9e6;--red:#e6685a;--gold:#f5c451;--accent:#b483f0;--glass:rgba(255,255,255,.06); }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none} body{margin:0}
+  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#07080f;padding:12px;
+    font:14px/1.3 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+  .ctl{width:100%;max-width:402px;aspect-ratio:9/19.5;max-height:95vh;position:relative;border-radius:24px;overflow:hidden;
+    background:radial-gradient(120% 70% at 50% 0%,#2a2150 0%,var(--bg1) 44%,var(--bg0) 100%);
+    box-shadow:0 20px 60px #000a, inset 0 0 0 1px #ffffff10; display:flex;flex-direction:column;padding:12px 14px}
+
+  /* en-tête : icône (icon.svg) | nom (style boîte) | room  — identique P1/P2 */
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;flex:none;border-radius:9px;overflow:hidden;line-height:0}
+  header input{flex:1;min-width:0;font-size:clamp(18px,5vw,28px);font-weight:bold;color:var(--accent);
+    background:#ffffff0d;border:1px solid #ffffff26;border-radius:10px;padding:8px 11px}
+  header input:focus{outline:none;border-color:var(--accent)}
+  .room{font-size:clamp(13px,3.6vw,18px);color:#cdd6e6;white-space:nowrap}
+
+  /* round + vent — repris EXACTEMENT de P1/P2 */
+  #hudWind{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:320px;margin:10px auto 6px}
+  .hud-round{font-size:clamp(12px,3.4vw,16px);color:var(--mut);min-width:46px;text-align:right}
+  #hudBar{position:relative;flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.12)}
+  #hudFill{position:absolute;top:0;height:8px;width:0;background:var(--gold)}
+  #hudTick{position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:8px;background:#ffffffaa}
+  .hud-pct{font-size:clamp(12px,3.4vw,16px);color:#cdd6e6;min-width:54px}
+
+  /* oscilloscope (validé) */
+  .scope{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#060a12}
+  canvas{display:block;width:100%;height:auto}
+
+  /* ressources + victoires : 2 groupes bordés */
+  .stats{display:flex;align-items:center;justify-content:center;gap:12px;margin:9px 0 3px}
+  .chip{display:inline-flex;align-items:center;gap:8px;background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-weight:800;font-variant-numeric:tabular-nums}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block} .b{background:var(--blue)} .r{background:var(--red)}
+
+  /* bloc d'actions : 2 lignes collées (gratuites / payantes), seuls les 4 coins extrêmes arrondis → un gros bouton décomposé */
+  .actblock{margin:7px 0;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .arow{display:flex}
+  .arow.r1 button{border-bottom:1px solid var(--line)}
+  .actblock button{flex:1;border:none;border-right:1px solid var(--line);background:var(--glass);color:var(--ink);
+    padding:8px 1px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;position:relative}
+  .arow button:last-child{border-right:none}
+  /* arrondir les 4 boutons d'angle eux-mêmes → le liseré de sélection suit la courbe */
+  .arow.r1 button:first-child{border-top-left-radius:13px} .arow.r1 button:last-child{border-top-right-radius:13px}
+  .arow.r2 button:first-child{border-bottom-left-radius:13px} .arow.r2 button:last-child{border-bottom-right-radius:13px}
+  .actblock button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .actblock button span{font-size:10px;font-weight:700}
+  .actblock button.on{background:#ffffff22;color:#fff;box-shadow:inset 0 0 0 2px var(--accent)}
+  .actblock button.out{opacity:.34}
+  .actblock .ct{position:absolute;top:2px;right:3px;display:flex;gap:2px;align-items:center;font-size:10px;font-weight:800;color:#cfd3e6}
+  .actblock .ct .dot{width:6.5px;height:6.5px}
+
+  /* bas : joystick+gonfalon (gauche) | ACTION (droite), zone morte autour */
+  .bottom{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
+  .jwrap,.awrap{padding:16px;display:flex;align-items:flex-end;justify-content:center}
+  .stick{width:138px;height:138px;border-radius:50%;position:relative;touch-action:none;
+    background:radial-gradient(circle at 50% 42%,#ffffff10,#ffffff05 60%,transparent),#0d1226;border:1px solid var(--line)}
+  .stick .ring{position:absolute;inset:8px;border-radius:50%;border:1px dashed #ffffff14}
+  .stick .up{position:absolute;left:50%;bottom:7px;transform:translateX(-50%);color:#ffffff30;font-size:13px}
+  .flag{position:absolute;left:50%;bottom:100%;margin-bottom:-5px;transform:translateX(-50%);pointer-events:none}   /* gonfalon AU-DESSUS : bas du mât posé au sommet-centre du joystick */
+  .knob{position:absolute;width:54px;height:54px;border-radius:50%;left:42px;top:50px;
+    background:radial-gradient(circle at 50% 35%,#cfb6ff,#8f63d0 70%,#6f49b0);box-shadow:0 6px 16px #0008,inset 0 2px 4px #fff6}
+  .action{width:150px;height:118px;border-radius:20px;border:none;cursor:pointer;position:relative;overflow:hidden;
+    background:linear-gradient(180deg,#b78cf3,#8a57d8);box-shadow:0 8px 22px #6f49b066,inset 0 2px 0 #fff7;display:flex;align-items:center;justify-content:center}
+  .action:active{transform:translateY(2px)} .action.out{filter:grayscale(.6) brightness(.72)}
+  .action .eff{position:absolute;left:0;bottom:0;height:100%;width:0;background:#ffffff30}
+  .action svg{width:46px;height:46px;fill:none;stroke:#190d31;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:2}
+</style>
+
+<div class="wrap"><div class="ctl">
+
+  <header>
+    <span class="logo"><svg viewBox="0 0 64 64" width="38" height="38"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3f6e"/><stop offset="1" stop-color="#46679c"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#sky)"/><circle cx="50" cy="14" r="6.5" fill="#f6e7b0" opacity=".9"/><path d="M0 46 C12 40 22 49 34 45 C44 42 54 49 64 44 L64 64 L0 64 Z" fill="#3c6f30"/><path d="M0 52 C14 47 26 55 40 51 C50 48 58 54 64 51 L64 64 L0 64 Z" fill="#2c5422"/><g fill="#4f8fff"><rect x="8" y="36" width="12" height="17" rx="2"/><rect x="6.5" y="32.5" width="15" height="5" rx="1.5"/></g><rect x="18.5" y="31.5" width="12" height="4.2" rx="2.1" fill="#cdd7e6" transform="rotate(-34 18.5 33.6)"/><g fill="#ff6b5e"><rect x="44" y="36" width="12" height="17" rx="2"/><rect x="42.5" y="32.5" width="15" height="5" rx="1.5"/></g><rect x="33.5" y="31.5" width="12" height="4.2" rx="2.1" fill="#ffd0c0" transform="rotate(34 45.5 33.6)"/><path d="M21 30 C30 9 35 9 44 29" fill="none" stroke="#eaf3ff" stroke-width="2" stroke-linecap="round" stroke-dasharray="1.6 4.2"/><circle cx="32.5" cy="12.4" r="3.4" fill="#ffe066" stroke="#e0a92a" stroke-width="1.3"/></svg></span>
+    <input id="name" maxlength="14" value="Intendant" />
+    <span class="room">Room 4F2A</span>
+  </header>
+
+  <div id="hudWind">
+    <span class="hud-round" id="round">2/3</span>
+    <div id="hudBar"><i id="hudFill"></i><b id="hudTick"></b></div>
+    <span class="hud-pct" id="wpct">18% →</span>
+  </div>
+
+  <div class="scope"><canvas id="scope" width="744" height="186"></canvas></div>
+
+  <div class="stats">
+    <span class="chip"><span class="dot b"></span><span id="resB">5</span> &nbsp; <span class="dot r"></span><span id="resR">3</span></span>
+    <span class="chip" id="trophy" style="color:var(--gold);cursor:pointer">🏆 <span id="score">2</span></span>
+  </div>
+
+  <div class="actblock" id="bar">
+    <div class="arow r1">
+      <button class="on" data-t="dig"><svg viewBox="0 0 24 24"><path d="M14 3l4 4-3 3-4-4zM11 8l-7 9 3 3 9-7z"/></svg><span>Dig</span></button>
+      <button data-t="flat"><svg viewBox="0 0 24 24"><path d="M3 15l18-6M4 19h16"/></svg><span>Flatten</span></button>
+      <button data-t="fill"><svg viewBox="0 0 24 24"><path d="M4 19h16M6 19l3-9 3 4 3-7 3 12"/></svg><span>Fill</span></button>
+    </div>
+    <div class="arow r2">
+      <button data-t="stair" data-cost="5"><span class="ct"><span class="dot b"></span>5<span class="dot r"></span>5</span><svg viewBox="0 0 24 24"><path d="M3 20h5v-4h5v-4h5V8"/></svg><span>Stairs</span></button>
+      <button data-t="bridge" data-cost="5"><span class="ct"><span class="dot b"></span>5<span class="dot r"></span>5</span><svg viewBox="0 0 24 24"><path d="M3 9v8M21 9v8M3 11h18M5 17c4-4 10-4 14 0"/></svg><span>Bridge</span></button>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="jwrap"><div class="stick" id="stick"><div class="ring"></div><div class="up">⤒</div><canvas class="flag" id="flag" width="78" height="52"></canvas><div class="knob" id="knob"></div></div></div>
+    <div class="awrap"><button class="action" id="action"><span class="eff" id="eff"></span><span id="aicon"></span></button></div>
+  </div>
+
+</div></div>
+
+<script>
+(()=>{
+  const $=id=>document.getElementById(id);
+  let HP=3,MAXHP=3,resB=5,resR=3,score=2,target=3,inv=-1,wind=0.18,impacts=[]; const MAXW=1;   // inv=-1 → gonfalon NEUTRE (gris) par défaut
+  function hit(){ if(HP>0){ HP--; const i=MAXHP-HP-1; impacts.push({x:744*(0.18+((i*0.37)%0.64)), y:186*(0.22+((i*0.53)%0.56)), i, s:i*1.7+0.6}); } else { HP=MAXHP; impacts=[]; } }   // démo : encaisse un coup (verre brisé) ; à 0 PV → réinitialise
+  const SVG={dig:'<path d="M14 3l4 4-3 3-4-4zM11 8l-7 9 3 3 9-7z"/>',fill:'<path d="M4 19h16M6 19l3-9 3 4 3-7 3 12"/>',flat:'<path d="M3 15l18-6M4 19h16"/>',stair:'<path d="M3 20h5v-4h5v-4h5V8"/>',bridge:'<path d="M3 9v8M21 9v8M3 11h18M5 17c4-4 10-4 14 0"/>'};
+  const COST={stair:5,bridge:5}; let tool='dig';
+  const afford=t=>!COST[t]||(resB>=COST[t]&&resR>=COST[t]);
+  function refresh(){ $('resB').textContent=resB;$('resR').textContent=resR;$('score').textContent=score;$('round').textContent=score+'/'+target;
+    document.querySelectorAll('#bar button').forEach(b=>b.classList.toggle('out',!afford(b.dataset.t)));
+    $('action').classList.toggle('out',!afford(tool)); $('aicon').innerHTML='<svg viewBox="0 0 24 24">'+SVG[tool]+'</svg>'; }
+  document.querySelectorAll('#bar button').forEach(b=>b.addEventListener('pointerdown',()=>{tool=b.dataset.t;document.querySelectorAll('#bar button').forEach(x=>x.classList.toggle('on',x===b));refresh();}));
+
+  // joystick
+  const stick=$('stick'),knob=$('knob');let dir={x:0,y:0},R=42;
+  function setKnob(dx,dy){const m=Math.hypot(dx,dy)||1,c=Math.min(1,m/R);dx=dx/m*R*c;dy=dy/m*R*c;knob.style.transform=`translate(${dx}px,${dy}px)`;dir={x:m>6?dx/R:0,y:m>6?dy/R:0};}
+  function at(e){const r=stick.getBoundingClientRect(),t=e.touches?e.touches[0]:e;setKnob(t.clientX-r.left-69,t.clientY-r.top-77);}
+  let sA=false;stick.addEventListener('pointerdown',e=>{sA=true;at(e);});window.addEventListener('pointermove',e=>{if(sA)at(e);});window.addEventListener('pointerup',()=>{sA=false;setKnob(0,0);});
+
+  // ACTION
+  let acting=false,effT=0;const EFF=0.27;
+  $('action').addEventListener('pointerdown',e=>{e.preventDefault();if(afford(tool))acting=true;});
+  window.addEventListener('pointerup',()=>{acting=false;$('eff').style.width='0';});
+
+  // ---- helpers couleur (façon towerTop) ----
+  const GOLD='#f0c050',GOLD_DK='#b8902e';
+  const allyHex=()=>inv<0?'#9aa0b5':(inv===0?'#e6685a':'#5aa9e6');   // trêve = GRIS neutre (en paix) ; sinon couleur du camp allié
+  function shade(hex,f){const n=parseInt(hex.slice(1),16);let r=(n>>16)*f,g=((n>>8)&255)*f,b=(n&255)*f;const c=v=>Math.max(0,Math.min(255,v|0));return`rgb(${c(r)},${c(g)},${c(b)})`;}
+
+  // ---- gonfalon (bannière du 2e joueur) planté en haut-centre du joystick ----
+  const fc=$('flag'),fg=fc.getContext('2d'),FW=fc.width,FH=fc.height;
+  function gColor(u,v){ let c; if(v<0.12)c=GOLD; else if(u<0.16||u>0.84)c=shade(allyHex(),1.28); else if(Math.abs(v-0.5)<0.07)c=GOLD; else if(v>0.72&&Math.abs(u-0.5)<0.30-(v-0.72))c=GOLD_DK; else c=allyHex(); return c; }
+  function drawFlag(){ fg.clearRect(0,0,FW,FH);
+    const baseX=FW/2, baseY=FH-2, topY=6, W=22, L=FH-12, lean=(wind/MAXW)*W*0.55;
+    fg.strokeStyle='#4a4f58';fg.lineWidth=2.6;fg.beginPath();fg.moveTo(baseX,baseY);fg.lineTo(baseX,topY);fg.stroke();   // hampe plantée sur l'anneau
+    fg.lineWidth=2;fg.beginPath();fg.moveTo(baseX-W/2-3,topY);fg.lineTo(baseX+W/2+3,topY);fg.stroke();                   // traverse
+    fg.fillStyle=GOLD;[-W/2-3,W/2+3].forEach(dx=>{fg.beginPath();fg.arc(baseX+dx,topY,2.4,0,6.28);fg.fill();});
+    const NU=5,NV=8, node=(i,j)=>{const fy=j/NV,sway=Math.sin(T*4+fy*2.2)*2.2*fy,fork=fy>0.7?(fy-0.7)/0.3:0,ci=(i/NU)*(1-fork*0.55)+0.5*(fork*0.55);return{x:baseX-W/2+W*ci+(lean+sway)*fy,y:topY+L*fy};};
+    for(let i=0;i<NU;i++)for(let j=0;j<NV;j++){const u=(i+0.5)/NU,v=(j+0.5)/NV; if(v>0.88&&Math.abs(u-0.5)<0.16)continue; const a=node(i,j),b=node(i+1,j),c=node(i+1,j+1),d=node(i,j+1);
+      fg.fillStyle=gColor(u,v);fg.beginPath();fg.moveTo(a.x,a.y);fg.lineTo(b.x,b.y);fg.lineTo(c.x,c.y);fg.lineTo(d.x,d.y);fg.closePath();fg.fill();} }
+
+  // ---- oscilloscope (validé) : chemins + crête + points radar + fissures=PV ----
+  const cv=$('scope'),g=cv.getContext('2d'),W=cv.width,H=cv.height,CS=1.35; let T=0;
+  const baseY=H-32, hY=x=>baseY-25*Math.sin(x/130+1)-13*Math.sin(x/44)-9*Math.sin(x/205);
+  const sold=[{x:.30,c:'#5aa9e6'},{x:.42,c:'#5aa9e6'},{x:.61,c:'#e6685a'},{x:.70,c:'#e6685a'}];
+  function scope(){ g.fillStyle='#060a12';g.fillRect(0,0,W,H);
+    g.strokeStyle='#12331e';g.lineWidth=1;for(let y=18;y<H;y+=26){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();}
+    g.lineWidth=3;const seg=8;
+    for(let x=8;x<W-8-seg;x+=seg){const y=hY(x),yr=hY(x+seg),yl=hY(x-seg),bOK=(y-yr)/seg<=CS,rOK=(y-yl)/seg<=CS;
+      g.strokeStyle=(bOK&&rOK)?'#b483f0':bOK?'#5aa9e6':rOK?'#e6685a':'#33384b';g.shadowColor=g.strokeStyle;g.shadowBlur=6;g.beginPath();g.moveTo(x,y);g.lineTo(x+seg,yr);g.stroke();}
+    g.shadowBlur=0;
+    for(const s of sold){const x=12+s.x*(W-24);g.fillStyle=s.c;g.beginPath();g.arc(x,hY(x)-4,2.6,0,6.28);g.fill();}
+    for(const tx of [40,W-40]){g.fillStyle='#cdd6e6';g.beginPath();g.arc(tx,hY(tx)-4,5.2,0,6.28);g.fill();}
+    // VERRE BRISÉ = PV : une étoile d'impact (fêlures radiales + ramifications) par dégât subi
+    if(impacts.length){ const danger=1-HP/MAXHP;
+      g.save();
+      for(const im of impacts){ const br=6+im.i*2;
+        for(let b=0;b<br;b++){ const a=b/br*6.28+im.s; let x=im.x,y=im.y; const len=24+((im.i*53+b*37)%46);
+          g.strokeStyle='rgba(206,224,255,.6)';g.lineWidth=1.1;g.beginPath();g.moveTo(x,y);
+          const st=4; for(let s=0;s<st;s++){const sg=len/st,j=Math.sin(im.s+b*2.1+s)*0.5;x+=Math.cos(a+j)*sg;y+=Math.sin(a+j)*sg;g.lineTo(x,y);
+            if(s===1&&b%2===0){const bx=x+Math.cos(a+1.4)*10,by=y+Math.sin(a+1.4)*10;g.moveTo(x,y);g.lineTo(bx,by);g.moveTo(x,y);}}   // ramification
+          g.stroke(); }
+        g.strokeStyle='rgba(235,244,255,.8)';g.lineWidth=1.2;g.beginPath();g.arc(im.x,im.y,3.5,0,6.28);g.stroke();   // anneau d'impact
+        g.fillStyle='rgba(255,255,255,.9)';g.beginPath();g.arc(im.x,im.y,1.6,0,6.28);g.fill(); }
+      if(danger>0){ g.fillStyle='rgba(120,150,210,'+(0.05+danger*0.10)+')';g.fillRect(0,0,W,H); }   // givre qui monte avec les dégâts
+      g.restore(); }
+  }
+
+  function loop(){ T+=1/60;
+    if(acting){effT+=1/60;$('eff').style.width=Math.min(100,(effT/EFF)*100)+'%';if(effT>=EFF){effT=0;if(COST[tool]&&afford(tool)){resB-=5;resR-=5;refresh();}}}
+    wind=0.18+0.12*Math.sin(T*0.6);
+    const ratio=Math.min(Math.abs(wind)/MAXW,1),pct=Math.round(ratio*100),f=$('hudFill');
+    if(ratio<0.005){f.style.width='0';} else if(wind>0){f.style.left='50%';f.style.right='auto';f.style.width=ratio*50+'%';f.style.borderRadius='0 4px 4px 0';} else {f.style.right='50%';f.style.left='auto';f.style.width=ratio*50+'%';f.style.borderRadius='4px 0 0 4px';}
+    $('wpct').textContent=ratio<0.005?'calm':(pct+'% '+(wind>0?'→':'←'));
+    scope(); drawFlag(); requestAnimationFrame(loop);
+  }
+  cv.addEventListener('pointerdown',hit);                                   // tap l'oscilloscope = encaisse un coup (verre brisé)
+  $('trophy').addEventListener('pointerdown',()=>{inv=(inv+2)%3-1;});        // tap le trophée = bascule l'allié (gonfalon)
+  refresh(); requestAnimationFrame(loop);
+})();
+</script>

@@ -66,12 +66,6 @@
 
   "s5.h2": "Annexes",
   "s5.p1": "Des bonus pour aller plus loin : déployer le jeu soi-même, un détour par les maths, et les coulisses du brief de départ.",
-  "s5.li1.label": "Déploiement",
-  "s5.li1.desc": " — construire l'image Docker et héberger le jeu en ligne.",
-  "s5.li2.label": "Maths rapides",
-  "s5.li2.desc": " — la racine carrée, le code <code class=\"inline\">0x5f3759df</code> de Quake III, et Pythagore.",
-  "s5.li3.label": "Le brief de départ",
-  "s5.li3.desc": " — le cahier des charges qui a tout lancé, commenté et critiqué.",
   "s5.cta": "Voir toutes les annexes →",
 
   "footer.suffix": "fait pour les esprits curieux de tous âges 🛠️"

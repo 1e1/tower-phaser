@@ -59,12 +59,6 @@
   "s4.cta": "Empezar el capítulo 1 →",
   "s5.h2": "Anexos",
   "s5.p1": "Bonus para ir más allá: desplegar el juego tú mismo, un rodeo por las mates, y las bambalinas del brief de partida.",
-  "s5.li1.label": "Despliegue",
-  "s5.li1.desc": " — construir la imagen Docker y alojar el juego en línea.",
-  "s5.li2.label": "Mates rápidas",
-  "s5.li2.desc": " — la raíz cuadrada, el código <code class=\"inline\">0x5f3759df</code> de Quake III, y Pitágoras.",
-  "s5.li3.label": "El brief de partida",
-  "s5.li3.desc": " — el pliego de condiciones que lo arrancó todo, comentado y criticado.",
   "s5.cta": "Ver todos los anexos →",
   "footer.suffix": "hecho para mentes curiosas de todas las edades 🛠️"
 }

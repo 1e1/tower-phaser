@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>Tower Duel</title>
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <meta name="theme-color" content="#0b1020" />
@@ -15,6 +18,15 @@
         background: #0b1020;
         overflow: hidden;
         font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+        /* Touch: kill the double-tap-to-zoom (fast taps on the controller read as
+           a zoom gesture) and the rubber-band overscroll. Aim/slider canvases keep
+           their own `touch-action:none` + JS pointer handling, so this never eats a
+           real control — it only suppresses the browser's zoom/scroll gestures. */
+        touch-action: manipulation;
+        overscroll-behavior: none;
+        -webkit-text-size-adjust: 100%;
+        -webkit-user-select: none;
+        user-select: none;
       }
       #game {
         width: 100vw;
@@ -22,14 +34,47 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        /* Anchor for the CRT band layers (snow / scanlines) injected by
+           src/ui/screenFrame.js. The bands themselves stay "void" per the rule. */
+        position: relative;
+        background: #0b1020;
       }
       canvas {
         display: block;
+      }
+      /* Bezel: the 16:9 frame reads as a seated screen — a clean rim in native (at
+         the window edge) and a frame against the bands otherwise. Only OUTSET
+         shadows are kept: inset shadows sit under the opaque canvas bitmap and
+         would never show. */
+      #game canvas {
+        border-radius: 3px;
+        box-shadow:
+          0 0 0 1px rgba(125, 160, 220, 0.22),
+          0 0 0 4px rgba(11, 16, 32, 0.9),
+          0 24px 80px 10px rgba(0, 0, 0, 0.6);
       }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <script>
+      // iOS Safari ignores user-scalable=no: block pinch (gesture*) and the
+      // double-tap zoom (two taps < 300ms) explicitly. This is a game UI — no
+      // legitimate pinch/zoom anywhere — so a blanket guard is safe.
+      ["gesturestart", "gesturechange", "gestureend"].forEach((t) =>
+        document.addEventListener(t, (e) => e.preventDefault(), { passive: false })
+      );
+      let lastTouchEnd = 0;
+      document.addEventListener(
+        "touchend",
+        (e) => {
+          const now = e.timeStamp || performance.now();
+          if (now - lastTouchEnd < 300) e.preventDefault();
+          lastTouchEnd = now;
+        },
+        { passive: false }
+      );
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

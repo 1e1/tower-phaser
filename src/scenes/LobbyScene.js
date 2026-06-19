@@ -2,8 +2,13 @@ import Phaser from 'phaser';
 
 // Build stamp baked in by Vite (see vite.config.js). Shown discreetly so you can
 // confirm a device is actually running the latest deploy (and not a stale PWA).
+// BUILD_ID is the commit hash (drives PWA cache-busting + the `?v=` check);
+// BUILD_LABEL is the human-friendly version shown on screen — the tag name when
+// this commit is a release, else "<last tag> · <hash>".
 // eslint-disable-next-line no-undef
 export const BUILD_ID = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
+// eslint-disable-next-line no-undef
+export const BUILD_LABEL = typeof __BUILD_LABEL__ !== 'undefined' ? __BUILD_LABEL__ : BUILD_ID;
 
 // Project home. The build stamp links here so anyone can jump to the source.
 export const REPO_URL = 'https://github.com/1e1/tower-phaser';
@@ -19,6 +24,7 @@ export default class LobbyScene extends Phaser.Scene {
 
   init(data) {
     this.auto = data?.auto || null; // 'host' (TV) | 'join' (phone) | null (choice)
+    this.session = data?.session || null; // {code, token, name} from a player reload
   }
 
   create() {
@@ -43,8 +49,14 @@ export default class LobbyScene extends Phaser.Scene {
           <button class="link" id="back">Back</button>
           <p id="err"></p>
         </div>
+        <div id="waitInt" hidden>
+          <div style="width:84px;height:84px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:44px;background:linear-gradient(180deg,#2a1c4a,#46679c);box-shadow:0 0 30px #6f5bd055;color:#f2c14e;">⚜</div>
+          <h2 style="margin:0;color:#cfb6ff;font-size:22px;letter-spacing:.5px;">You are the Intendant</h2>
+          <p style="margin:0;color:#9fb0c8;font-size:14px;line-height:1.5;max-width:300px;text-align:center;">You will command the living battlefield. Standing by — your pad opens the moment the duel begins.</p>
+          <p style="margin:2px 0 0;color:#6f7e98;font-size:12px;">waiting for the match to start…</p>
+        </div>
       </div>
-      <p class="tp-build"><a class="tp-build-link" href="${REPO_URL}" target="_blank" rel="noopener noreferrer">build ${BUILD_ID}</a></p>`;
+      <p class="tp-build"><a class="tp-build-link" href="${REPO_URL}" target="_blank" rel="noopener noreferrer">${BUILD_LABEL}</a></p>`;
     this.overlay = overlay;
     document.body.appendChild(overlay);
     injectStyles();
@@ -143,7 +155,28 @@ export default class LobbyScene extends Phaser.Scene {
       focusCode();
     };
 
-    if (this.auto === 'host') {
+    if (this.session && this.session.code && this.session.token) {
+      // A player reloaded the page / relaunched the PWA: reclaim the held seat
+      // with the stored token instead of showing the join form. Within the grace
+      // window the server answers 'rejoined' (→ straight back to our pad); past
+      // it, 'joined' (a fresh seat or spectator); if the room is gone entirely,
+      // 'rejoinFailed' (→ fall back to the normal join form).
+      this.pendingName = this.session.name || loadName() || randomHandle();
+      showJoin();
+      $('back').hidden = true;
+      $('code').value = this.session.code;
+      $('err').style.color = '#9fb0c8';
+      $('err').textContent = 'Reconnecting…';
+      this.client.send('rejoin', { code: this.session.code, token: this.session.token, name: this.pendingName });
+      this.track(this.client.on('rejoinFailed', () => {
+        try { sessionStorage.removeItem('towerduel.session'); } catch { /* ignore */ }
+        this.session = null;
+        $('err').style.color = '';
+        $('err').textContent = 'Your game has ended — join a room';
+        $('code').value = '';
+        focusCode();
+      }));
+    } else if (this.auto === 'host') {
       // TV: host immediately, no choice screen.
       $('choice').hidden = true;
       this.client.send('host');
@@ -159,21 +192,42 @@ export default class LobbyScene extends Phaser.Scene {
         this.scene.start('Tv', { code: m.code, token: m.token, lanIp: m.lanIp, publicHost: m.publicHost }),
       ),
     );
-    this.track(
-      this.client.on('joined', (m) => {
-        if (m.role === 'spectator') {
-          this.scene.start('Tv', { spectator: true, code: m.code, queue: m.queue });
+    // Route into the right pad. Bound to BOTH 'joined' (a fresh join, or the
+    // server's fallback when the grace window lapsed) and 'rejoined' (a held
+    // seat reclaimed by token after a reload) — same destination either way.
+    const enter = (m) => {
+      if (m.role === 'spectator') {
+        this.scene.start('Tv', { spectator: true, code: m.code, queue: m.queue });
+      } else if (m.slot === 2) {
+        // The third seat is the Intendant of the living world — a different pad.
+        const toIntendant = () => this.scene.start('Intendant', { code: m.code, name: this.pendingName, token: m.token });
+        if (m.inMatch) {
+          toIntendant(); // mid-match hot-join → drop in (parachute) right away
         } else {
-          this.scene.start('Controller', {
-            player: m.slot,
-            code: m.code,
-            name: this.pendingName,
-            token: m.token,
-            isConfigOwner: !!m.isConfigOwner,
-          });
+          // Joined while the room is still in the lobby: HOLD here on a dedicated
+          // "Intendant — standing by" card so controllers are handed to everyone
+          // only when the match starts — the owner can still cancel living mode
+          // meanwhile (→ 'demoted', we fall back to spectating). Enter the
+          // Intendant pad on the first snapshot.
+          $('choice').hidden = true;
+          $('joinForm').hidden = true;
+          $('waitInt').hidden = false;
+          let gone = false;
+          this.track(this.client.on('snapshot', () => { if (!gone) { gone = true; toIntendant(); } }));
+          this.track(this.client.on('demoted', () => { if (!gone) { gone = true; this.scene.start('Tv', { spectator: true, code: m.code }); } }));
         }
-      }),
-    );
+      } else {
+        this.scene.start('Controller', {
+          player: m.slot,
+          code: m.code,
+          name: this.pendingName,
+          token: m.token,
+          isConfigOwner: !!m.isConfigOwner,
+        });
+      }
+    };
+    this.track(this.client.on('joined', enter));
+    this.track(this.client.on('rejoined', enter));
     this.track(
       this.client.on('error', (m) => {
         $('err').style.color = ''; // back to the error red (CSS default)
@@ -236,6 +290,11 @@ export function injectStyles() {
   const style = document.createElement('style');
   style.id = 'tp-styles';
   style.textContent = `
+    /* The Intendant "standing by" card. Its flex layout lives here, gated on
+       :not([hidden]), rather than as an inline 'display:flex' — an inline
+       display would override the UA rule [hidden]{display:none} and the card
+       would show through the join form. */
+    #waitInt:not([hidden]){display:flex;flex-direction:column;align-items:center;gap:14px;padding:6px 0 2px;}
     /* Neutral, camp-agnostic connection screen: a slate night backdrop (no camp
        blue). The "two camps" are evoked only as a BALANCED accent — a blue left
        edge and a red right edge in equal measure — so neither side is favoured. */

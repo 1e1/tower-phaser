@@ -4,6 +4,7 @@ import { generateTextures } from '../systems/textures.js';
 import Sfx from '../systems/Sfx.js';
 import Client from '../net/Client.js';
 import { detectRole } from '../net/device.js';
+import ScreenFrame from '../ui/screenFrame.js';
 import { BUILD_ID } from './LobbyScene.js';
 
 // Boot scene. Prepares the shared systems (procedural textures, audio, network
@@ -26,13 +27,22 @@ export default class BootScene extends Phaser.Scene {
   create() {
     this.maybeForceUpdate(); // a stale PWA refreshes itself when scanned from a newer host
     generateTextures(this);
+    // Two audio buses, both unlocked on every gesture below:
+    //   'sfx'    — the TV's bus; the ONLY one that ever plays the ambient music.
+    //   'ctlSfx' — the controllers' bus (P1/P2/P3): proximity SFX only, never the
+    //              music bed. Keeping them separate means a co-located TV can't
+    //              bleed its music into a controller sharing the same registry.
     if (!this.registry.get('sfx')) this.registry.set('sfx', new Sfx());
+    if (!this.registry.get('ctlSfx')) this.registry.set('ctlSfx', new Sfx());
     if (!this.registry.get('client')) {
       const client = new Client();
       client.connect();
       this.registry.set('client', client);
     }
     if (!this.registry.get('quality')) this.registry.set('quality', 'full');
+    // Owns the CRT band dressing (snow / scanlines) shown when the window is not
+    // 16:9 and no match is on screen. Scenes flip its match state as they go.
+    if (!this.registry.get('screenFrame')) this.registry.set('screenFrame', new ScreenFrame());
 
     // Audio can only start after a gesture; the context starts suspended. We keep
     // re-arming rather than unlocking once: phones (the controllers) re-suspend
@@ -42,7 +52,8 @@ export default class BootScene extends Phaser.Scene {
     // resume on every gesture (a cheap no-op once running) and whenever the page
     // returns to the foreground.
     const sfx = this.registry.get('sfx');
-    const wake = () => sfx.unlock();
+    const ctlSfx = this.registry.get('ctlSfx');
+    const wake = () => { sfx.unlock(); ctlSfx.unlock(); };
     window.addEventListener('pointerdown', wake);
     window.addEventListener('keydown', wake);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
@@ -50,7 +61,12 @@ export default class BootScene extends Phaser.Scene {
     const role = detectRole();
     if (role === 'local') { this.scene.start('Local'); return; } // ?local / #local direct entry
     const auto = role === 'tv' ? 'host' : role === 'phone' ? 'join' : null;
-    this.scene.start('Lobby', { auto });
+    // A player who reloaded the page / relaunched the PWA still holds their seat
+    // for the grace window: carry the stored session so the lobby reclaims it
+    // (a token-based rejoin) instead of dumping them back on the join form.
+    let session = null;
+    try { session = JSON.parse(sessionStorage.getItem('towerduel.session') || 'null'); } catch { /* private mode */ }
+    this.scene.start('Lobby', { auto, session });
   }
 
   // The QR/link carries the host's build id (?v=…). If our running bundle differs

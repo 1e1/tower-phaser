@@ -6,6 +6,9 @@
   "hero.kicker": "Appendice",
   "hero.title": "Il brief di partenza",
   "hero.lead": "Prima della prima riga di codice c'è una frase. Ecco il <strong>brief originale</strong> di Tower Duel, strappato e annotato — e ciò che ci insegna per descrivere bene un progetto.",
+  "card.lot": "📝 Dietro le quinte",
+  "card.title": "Il brief di partenza",
+  "card.desc": "Il capitolato che ha avviato tutto — presentato, commentato e criticato: come descrivere bene un progetto.",
 
   "s1.h2": "Il brief, strappato e annotato",
   "s1.lead": "Un progetto non comincia dal codice, ma da un'<b>intenzione</b>. Ecco il brief completo, pezzo per pezzo, con i commenti infilati tra i frammenti.",

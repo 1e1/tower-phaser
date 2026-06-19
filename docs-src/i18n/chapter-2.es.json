@@ -61,5 +61,8 @@
   "footer.suffix": "capítulo {n}/{total}",
 
   "pager.prev": "← Capítulo 1",
-  "pager.next": "Capítulo 3 · Varias pantallas →"
+  "pager.next": "Capítulo 3 · Varias pantallas →",
+
+  "play.lead": "<b>¡Ahora juega de verdad!</b> Esta es la <b>fase 2</b> — los biomas, los gráficos modernizados y el sonido sintetizado de este capítulo — jugable directamente en tu navegador, dos jugadores en una sola pantalla.",
+  "play.btn": "Jugar a la fase 2"
 }

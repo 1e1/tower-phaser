@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" font-family="-apple-system, Segoe UI, Roboto, sans-serif">
+  <rect width="900" height="620" fill="#f5f6f8"/>
+  <text x="40" y="42" font-size="22" font-weight="700" fill="#1f2733">Lot 1 — zoning: single screen, local, keyboard</text>
+  <text x="40" y="66" font-size="13" fill="#65718093" fill-opacity="1" font-style="italic">One Dockerized page. No network. Players share the same screen and take turns.</text>
+
+  <!-- Browser window -->
+  <rect x="40" y="90" width="560" height="470" rx="10" fill="#ffffff" stroke="#cfd6e0" stroke-width="2"/>
+  <rect x="40" y="90" width="560" height="34" rx="10" fill="#e7ebf1"/>
+  <circle cx="62" cy="107" r="5" fill="#f06054"/>
+  <circle cx="80" cy="107" r="5" fill="#f0bf54"/>
+  <circle cx="98" cy="107" r="5" fill="#67c777"/>
+  <rect x="130" y="99" width="440" height="16" rx="8" fill="#ffffff" stroke="#cfd6e0"/>
+  <text x="142" y="111" font-size="10" fill="#8a95a3">localhost:3000</text>
+
+  <!-- Zone 1: HUD / wind -->
+  <rect x="58" y="138" width="524" height="44" rx="6" fill="#eaf2ff" stroke="#5b8def" stroke-dasharray="5 4"/>
+  <text x="70" y="165" font-size="13" font-weight="600" fill="#2c5fb8">Wind  ←→  ·  Round 2/5  ·  scores</text>
+  <circle cx="566" cy="160" r="11" fill="#5b8def"/>
+  <text x="566" y="165" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+
+  <!-- Zone 2: game canvas -->
+  <rect x="58" y="194" width="524" height="248" rx="6" fill="#dff0d8" stroke="#5aa84f" stroke-dasharray="5 4"/>
+  <!-- sky tint -->
+  <rect x="64" y="200" width="512" height="120" rx="4" fill="#cfe8f7" opacity="0.7"/>
+  <!-- terrain -->
+  <path d="M64 410 Q160 330 260 372 T470 360 Q540 348 576 384 L576 436 L64 436 Z" fill="#7cb86e"/>
+  <!-- towers -->
+  <rect x="92" y="330" width="34" height="80" fill="#9b6b43"/>
+  <rect x="86" y="318" width="46" height="16" fill="#7a5333"/>
+  <rect x="510" y="318" width="34" height="92" fill="#9b6b43"/>
+  <rect x="504" y="306" width="46" height="16" fill="#7a5333"/>
+  <!-- trajectory -->
+  <path d="M126 322 Q320 215 524 312" fill="none" stroke="#e0533a" stroke-width="2.5" stroke-dasharray="6 5"/>
+  <circle cx="524" cy="312" r="6" fill="#e0533a"/>
+  <text x="100" y="316" font-size="10" fill="#5b3b22" text-anchor="middle">P1</text>
+  <text x="527" y="304" font-size="10" fill="#5b3b22" text-anchor="middle">P2</text>
+  <circle cx="566" cy="216" r="11" fill="#5aa84f"/>
+  <text x="566" y="221" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+
+  <!-- Zone 3: controls -->
+  <rect x="58" y="454" width="524" height="90" rx="6" fill="#fdeede" stroke="#e09a3a" stroke-dasharray="5 4"/>
+  <text x="70" y="478" font-size="12" font-weight="600" fill="#b06f12">Angle ▏▎▍▌  Power ▏▎▍▌▋  — both players set, then FIRE</text>
+  <rect x="70" y="492" width="150" height="20" rx="4" fill="#fff" stroke="#e09a3a"/>
+  <rect x="234" y="492" width="190" height="20" rx="4" fill="#fff" stroke="#e09a3a"/>
+  <rect x="470" y="488" width="100" height="40" rx="6" fill="#e0533a"/>
+  <text x="520" y="513" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">FIRE</text>
+  <circle cx="566" cy="466" r="11" fill="#e09a3a"/>
+  <text x="566" y="471" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+
+  <!-- Legend -->
+  <text x="650" y="150" font-size="15" font-weight="700" fill="#1f2733">Legend</text>
+  <g font-size="12.5" fill="#39424f">
+    <circle cx="662" cy="180" r="11" fill="#5b8def"/>
+    <text x="662" y="185" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+    <text x="682" y="178" font-weight="700">HUD bar</text>
+    <text x="682" y="196">Wind (force + direction),</text>
+    <text x="682" y="212">round counter, scores.</text>
+
+    <circle cx="662" cy="250" r="11" fill="#5aa84f"/>
+    <text x="662" y="255" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+    <text x="682" y="248" font-weight="700">Game canvas</text>
+    <text x="682" y="266">Procedural sky + terrain,</text>
+    <text x="682" y="282">two towers, the shot's arc.</text>
+
+    <circle cx="662" cy="320" r="11" fill="#e09a3a"/>
+    <text x="662" y="325" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+    <text x="682" y="318" font-weight="700">Control panel</text>
+    <text x="682" y="336">Angle + power for each</text>
+    <text x="682" y="352">player, then the FIRE button.</text>
+  </g>
+
+  <rect x="642" y="392" width="218" height="150" rx="8" fill="#eef1f5" stroke="#cfd6e0"/>
+  <text x="656" y="416" font-size="12.5" font-weight="700" fill="#1f2733">One screen, one machine</text>
+  <text x="656" y="438" font-size="11.5" fill="#56616f">Everything runs in a single</text>
+  <text x="656" y="454" font-size="11.5" fill="#56616f">browser tab. The simulation,</text>
+  <text x="656" y="470" font-size="11.5" fill="#56616f">rendering and input all live</text>
+  <text x="656" y="486" font-size="11.5" fill="#56616f">together — no server, no</text>
+  <text x="656" y="502" font-size="11.5" fill="#56616f">phones. This is the baseline</text>
+  <text x="656" y="518" font-size="11.5" fill="#56616f">the later lots split apart.</text>
+</svg>

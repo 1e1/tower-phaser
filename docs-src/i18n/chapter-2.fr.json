@@ -61,5 +61,8 @@
   "footer.suffix": "chapitre {n}/{total}",
 
   "pager.prev": "← Chapitre 1",
-  "pager.next": "Chapitre 3 · Plusieurs écrans →"
+  "pager.next": "Chapitre 3 · Plusieurs écrans →",
+
+  "play.lead": "<b>À toi de jouer pour de vrai !</b> Voici le <b>lot 2</b> — les biomes, les visuels modernisés et le son synthétisé de ce chapitre — jouable directement dans ton navigateur, à deux sur le même écran.",
+  "play.btn": "Jouer au lot 2"
 }

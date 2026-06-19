@@ -6,6 +6,9 @@
   "hero.kicker": "Annex",
   "hero.title": "The starting brief",
   "hero.lead": "Before the first line of code, there's a sentence. Here is the <strong>original brief</strong> of Tower Duel, torn and annotated — and what it teaches us about describing a project well.",
+  "card.lot": "📝 Behind the scenes",
+  "card.title": "The starting brief",
+  "card.desc": "The spec that started it all — presented, annotated and critiqued: how to describe a project well.",
 
   "s1.h2": "The brief, torn and annotated",
   "s1.lead": "A project doesn't start with code, but with an <b>intention</b>. Here is the starting ticket, piece by piece, with the comments slipped between the scraps.",

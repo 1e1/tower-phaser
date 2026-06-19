@@ -132,6 +132,48 @@ export default class Tower {
     g.fillStyle(0x000000, 0.18);
     g.fillRect(b.x, b.y + b.height - 12, b.width, 12);
 
+    // Sally-port at the foot — now ALWAYS present (was living-battlefield only),
+    // fitted with an animated portcullis (herse) that slowly raises and lowers.
+    {
+      const dw = b.width * 0.34;
+      const dh = Math.min(b.height * 0.4, dw * 1.3);
+      const dx = b.x + (b.width - dw) / 2;
+      const dy = b.y + b.height - dh;
+      const rad = { tl: dw / 2, tr: dw / 2, bl: 0, br: 0 };
+      g.fillStyle(0x120d0a, 0.92);
+      g.fillRoundedRect(dx, dy, dw, dh, rad);
+      // Portcullis: lowered (closed, 0) in classic duel, raised (open, 1) in
+      // living battlefield. Eased toward the mode target so the grille only
+      // ANIMATES when the mode toggles, and is otherwise still.
+      const herseTarget = this.scene.cfgLivingBattlefield ? 1 : 0;
+      if (this.herseOpen == null) this.herseOpen = herseTarget;
+      else this.herseOpen += (herseTarget - this.herseOpen) * 0.12;
+      const open = this.herseOpen;
+      const gh = dh * (1 - open);
+      if (gh > 2) {
+        const inset = dw * 0.14;
+        const gx0 = dx + inset; const gx1 = dx + dw - inset;
+        const gTop = dy + dw * 0.32;            // start just below the arch
+        const gBot = Math.min(dy + dh - 1, gTop + gh);
+        g.lineStyle(Math.max(1, b.width * 0.018), 0x6b7180, 0.9);
+        for (let i = 0; i <= 4; i += 1) { const gx = gx0 + (gx1 - gx0) * (i / 4); g.lineBetween(gx, gTop, gx, gBot); }
+        for (let i = 0; i <= 3; i += 1) { const gy = gTop + (gBot - gTop) * (i / 3); g.lineBetween(gx0, gy, gx1, gy); }
+      }
+      g.lineStyle(Math.max(1.5, b.width * 0.03), mortar, 1);
+      g.strokeRoundedRect(dx, dy, dw, dh, rad);
+    }
+
+    // Arrow-slit (meurtrière): a slim dark loophole on the body, offset toward
+    // the tower's facing — the musketry port from the validated lab tower
+    // (battlefield-lab.html:456, a 4×16 slit on a 56×96 body). Always drawn, like
+    // the merlons; it's part of the tower silhouette, not a living-mode feature.
+    const slitW = Math.max(3, b.width * (4 / 56));
+    const slitH = b.height * (16 / 96);
+    const slitX = b.x + b.width / 2 + this.facing * (b.width * (16 / 56)) - slitW / 2;
+    const slitY = b.y + b.height * (20 / 96);
+    g.fillStyle(0x08060c, 1);
+    g.fillRect(slitX, slitY, slitW, slitH);
+
     // Damage fraction (only meaningful when maxHp > 1).
     const dmg = this.maxHp > 1 ? 1 - this.hp / this.maxHp : 0;
 

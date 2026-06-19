@@ -6,6 +6,9 @@
   "hero.kicker": "Annexe",
   "hero.title": "Le brief de départ",
   "hero.lead": "Avant la première ligne de code, il y a une phrase. Voici le <strong>brief original</strong> de Tower Duel, déchiré et annoté — et ce qu'il nous apprend pour bien décrire un projet.",
+  "card.lot": "📝 Coulisses",
+  "card.title": "Le brief de départ",
+  "card.desc": "Le cahier des charges qui a tout lancé — présenté, commenté et critiqué : comment bien décrire un projet.",
 
   "s1.h2": "Le brief, déchiré et annoté",
   "s1.lead": "Un projet ne commence pas par du code, mais par une <b>intention</b>. Voici le brief complet, morceau par morceau, avec les commentaires glissés entre les bouts.",

@@ -210,7 +210,7 @@ export default class GameScene extends Phaser.Scene {
       this.smokeEmitter.emitParticleAt(m.x, m.y, 2);
       return new Projectile(m.x, m.y, v.x * speed, v.y * speed, i);
     });
-    this.sfx.boom();
+    this.sfx.boomModern();
     this.cameras.main.shake(110, 0.004);
     this.turnHits = [false, false];
     this.state = STATE.FIRING;
@@ -275,7 +275,7 @@ export default class GameScene extends Phaser.Scene {
       this.cameras.main.shake(260, 0.012);
     } else {
       this.sparkEmitter.emitParticleAt(x, y, 8);
-      this.sfx.explosion();
+      this.sfx.explosionModern();
       this.cameras.main.shake(150, 0.006);
     }
   }

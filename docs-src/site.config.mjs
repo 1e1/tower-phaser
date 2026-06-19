@@ -41,6 +41,7 @@ export const pages = [
   { slug: 'annex', kind: 'annex', biome: 'meadow', nav: { prev: 'index.html' } },
   { slug: 'annex-lobby', kind: 'annex', biome: 'meadow' },
   { slug: 'annex-math', kind: 'annex', biome: 'volcano' },
+  { slug: 'annex-pathfinding', kind: 'annex', biome: 'tundra', nav: { prev: 'annex.html' } },
   { slug: 'annex-deploy', kind: 'annex', biome: 'tundra', nav: { prev: 'chapter-4.html' } },
   { slug: 'annex-brief', kind: 'annex', biome: 'desert', nav: { prev: 'annex.html' } },
 ];
@@ -59,7 +60,7 @@ export const TOTAL_CHAPTERS = 5;
 // [href, labelKey] — the label is translated via the _site catalog.
 export const crumbSets = {
   home: [['#chapters', 'nav.chapters'], ['annex.html', 'nav.annex']],
-  chapter: [['index.html', 'nav.home'], ['annex.html', 'nav.annex'], ['annex-math.html', 'nav.math']],
+  chapter: [['index.html', 'nav.home'], ['annex.html', 'nav.annex']],
   annexHub: [['index.html', 'nav.home']],
   annexSub: [['index.html', 'nav.home'], ['annex.html', 'nav.annex']],
 };

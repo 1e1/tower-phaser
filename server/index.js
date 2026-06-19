@@ -72,11 +72,18 @@ const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 // --- heartbeat -------------------------------------------------------------
-// Browsers answer protocol-level pings automatically. Pinging every 30s keeps
+// Browsers answer protocol-level pings automatically. A short interval keeps
 // otherwise-idle lobby connections alive through reverse proxies that drop idle
-// sockets, and lets us terminate connections that have silently died (so a TV
-// whose socket is really gone disposes its room instead of lingering).
-const HEARTBEAT_MS = 30_000;
+// sockets, and — more importantly during a match — detects a silently-dead
+// socket fast. An UNCLEAN drop (phone locked, Wi-Fi lost) sends no close frame,
+// so the seat is only freed once a ping goes unanswered. At 30s the living
+// battlefield kept churning with a "ghost" Intendant for half a minute before
+// the pause ever kicked in (the turn-based duel hides this — it simply waits on
+// the missing player's shot). A few seconds makes the freeze land inside the
+// 10s grace window, so an absent Intendant pauses the match like a missing
+// duelist. Detection takes one-to-two intervals: the socket misses a ping, then
+// is terminated on the next sweep.
+const HEARTBEAT_MS = 5_000;
 const heartbeat = function () {
   this.isAlive = true;
 };
@@ -200,6 +207,10 @@ function handle(socket, msg) {
       if (socket.room) socket.room.exit(socket);
       break;
 
+    case 'stepBack':
+      if (socket.room) socket.room.stepBack(socket);
+      break;
+
     case 'name':
       if (socket.room) socket.room.rename(socket, msg.name);
       break;
@@ -214,6 +225,14 @@ function handle(socket, msg) {
 
     case 'shell':
       if (socket.room) socket.room.handleShell(socket, msg.id);
+      break;
+
+    case 'intendant':
+      if (socket.room) socket.room.handleIntendant(socket, msg);
+      break;
+
+    case 'intendantBuild':
+      if (socket.room) socket.room.handleIntendantBuild(socket, msg.type);
       break;
 
     case 'sync':

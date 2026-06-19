@@ -59,12 +59,6 @@
   "s4.cta": "Start chapter 1 →",
   "s5.h2": "Annexes",
   "s5.p1": "Extras to go further: deploy the game yourself, a detour through the maths, and the behind-the-scenes of the starting brief.",
-  "s5.li1.label": "Deployment",
-  "s5.li1.desc": " — build the Docker image and host the game online.",
-  "s5.li2.label": "Quick maths",
-  "s5.li2.desc": " — the square root, Quake III's <code class=\"inline\">0x5f3759df</code> code, and Pythagoras.",
-  "s5.li3.label": "The starting brief",
-  "s5.li3.desc": " — the spec that started it all, annotated and critiqued.",
   "s5.cta": "See all the annexes →",
   "footer.suffix": "made for curious minds of all ages 🛠️"
 }

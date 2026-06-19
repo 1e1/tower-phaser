@@ -71,5 +71,8 @@
   "pager.next": "Chapitre 2 · Le rendre beau →",
 
   "sim.hit": "🎯 Touché !",
-  "sim.miss": "💨 Raté"
+  "sim.miss": "💨 Raté",
+
+  "play.lead": "<b>À toi de jouer pour de vrai !</b> Voici le <b>lot 1</b> complet — le petit jeu que ce chapitre vient de décrire — jouable directement dans ton navigateur, à deux sur le même écran.",
+  "play.btn": "Jouer au lot 1"
 }

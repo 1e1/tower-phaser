@@ -1,0 +1,66 @@
+name: Backfill image
+
+# Manually publish a Docker image for an EXISTING git ref (usually a tag whose
+# original Release run failed to push, e.g. v2.0.0). Runs entirely on GitHub's
+# runners with the GHCR_PAT — it does NOT move or re-push any git tag, so the
+# history stays intact. Use it to retro-fill GHCR for past versions; the regular
+# release.yml already covers every NEW tag.
+#
+# Trigger: Actions tab -> "Backfill image" -> Run workflow, then fill:
+#   ref         git ref to build (e.g. v2.0.0, v2.0.1-rc, or a SHA)
+#   image_tags  comma-separated GHCR tags to publish (e.g. 2.0.0,2.0,latest)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build (tag or SHA), e.g. v2.0.0'
+        required: true
+      image_tags:
+        description: 'GHCR tags, comma-separated, e.g. 2.0.0,2.0,latest'
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        # PAT (write:packages), same reason as release.yml: the personal-account
+        # GHCR package doesn't grant this repo's GITHUB_TOKEN write access.
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
+      - name: Expand image tags to full GHCR refs
+        id: tags
+        run: |
+          set -euo pipefail
+          img="ghcr.io/${GITHUB_REPOSITORY,,}"
+          out=""
+          IFS=',' read -ra parts <<< "${{ inputs.image_tags }}"
+          for t in "${parts[@]}"; do
+            t="$(echo "$t" | xargs)"   # trim whitespace
+            [ -z "$t" ] && continue
+            out="${out}${img}:${t}"$'\n'
+          done
+          { echo "list<<EOF"; printf '%s' "$out"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          build-args: |
+            BUILD_TAG=${{ inputs.ref }}
+            BUILD_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

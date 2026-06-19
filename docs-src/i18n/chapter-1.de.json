@@ -71,5 +71,8 @@
   "pager.next": "Kapitel 2 · Es schön aussehen lassen →",
 
   "sim.hit": "🎯 Treffer!",
-  "sim.miss": "💨 Daneben"
+  "sim.miss": "💨 Daneben",
+
+  "play.lead": "<b>Jetzt richtig spielen!</b> Das ist die komplette <b>Etappe 1</b> — das kleine Spiel, das dieses Kapitel gerade beschrieben hat — direkt im Browser spielbar, zu zweit an einem Bildschirm.",
+  "play.btn": "Etappe 1 spielen"
 }

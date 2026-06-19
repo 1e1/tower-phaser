@@ -6,6 +6,9 @@
   "hero.kicker": "Anhang",
   "hero.title": "Das Start-Briefing",
   "hero.lead": "Vor der ersten Codezeile steht ein Satz. Hier ist das <strong>ursprüngliche Briefing</strong> von Tower Duel, zerrissen und annotiert — und was es uns darüber lehrt, ein Projekt gut zu beschreiben.",
+  "card.lot": "📝 Hinter den Kulissen",
+  "card.title": "Das Start-Briefing",
+  "card.desc": "Das Lastenheft, mit dem alles begann — vorgestellt, kommentiert und kritisiert: wie man ein Projekt gut beschreibt.",
 
   "s1.h2": "Das Briefing, zerrissen und annotiert",
   "s1.lead": "Ein Projekt beginnt nicht mit Code, sondern mit einer <b>Absicht</b>. Hier ist das Start-Ticket, Stück für Stück, mit den zwischen die Fetzen geschobenen Kommentaren.",

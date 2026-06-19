@@ -8,13 +8,21 @@ export function drawTowerTop(ctx, w, h, o) {
   ctx.clearRect(0, 0, w, h);
 
   const groundY = h * 0.9;
-  ctx.fillStyle = 'rgba(255,255,255,0.06)';
-  ctx.fillRect(0, groundY, w, h - groundY);
-
   const bw = Math.max(54, w * 0.17);
   const bh = h * 0.42;
   const bx = w / 2 - bw / 2;
   const by = groundY - bh;
+
+  // Banner anchor (same as the banner functions): set back from the tower on the
+  // far side. The mountain backdrop raises a SUMMIT exactly here so the banner's
+  // foot sits on the culminating point.
+  const bannerX = w / 2 - o.facing * (bw / 2 + h * 0.14 + 18);
+  // Mountain backdrop first (themed by the biome), behind everything else. It
+  // returns the canvas-y of the summit under the banner.
+  const peakY = drawHills(ctx, w, h, groundY, o.biome, bannerX);
+  o._bannerBase = { x: bannerX, y: peakY };
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(0, groundY, w, h - groundY);
   const bodyCss = intToCss(o.color);
   const pal = towerPalette(o.color);
   const mortarCss = intToCss(pal.mortar);
@@ -215,6 +223,74 @@ export function drawTowerTop(ctx, w, h, o) {
   else drawStandardBanner(ctx, px, by, bw, h, o);
 }
 
+// Mountain backdrop, themed by the biome (terrain palette + sky), with aerial
+// perspective: distant ranges blend toward the sky (paler), the foreground
+// massif uses the biome's dark terrain tone. A single SUMMIT is raised at peakX
+// so the banner's foot lands on the culminating point. Returns the summit's
+// canvas-y.
+function drawHills(ctx, w, h, groundY, biome, peakX) {
+  const pal = (biome && biome.terrain) || { fill: 0x3a5566, edge: 0x6688aa, dark: 0x223344 };
+  const skyHi = (biome && biome.sky && biome.sky[1] != null) ? biome.sky[1] : 0xcfeeff;
+  const mix = (a, b, t) => {
+    const r = Math.round(((a >> 16) & 255) + (((b >> 16) & 255) - ((a >> 16) & 255)) * t);
+    const g = Math.round(((a >> 8) & 255) + (((b >> 8) & 255) - ((a >> 8) & 255)) * t);
+    const bl = Math.round((a & 255) + ((b & 255) - (a & 255)) * t);
+    return (r << 16) | (g << 8) | bl;
+  };
+  const rgba = (hex, al) => `rgba(${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 255},${al})`;
+
+  // Distant ranges (paler with distance via blend toward the sky).
+  const ranges = [
+    { peak: groundY - h * 0.30, amp: h * 0.10, f: 1.6, ph: 0.6, color: rgba(mix(pal.fill, skyHi, 0.6), 0.55) },
+    { peak: groundY - h * 0.18, amp: h * 0.11, f: 2.4, ph: 2.3, color: rgba(mix(pal.fill, skyHi, 0.35), 0.7) },
+  ];
+  for (const L of ranges) {
+    ctx.fillStyle = L.color;
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    for (let x = 0; x <= w; x += 6) {
+      const n = 0.5 + 0.5 * Math.sin((x / w) * Math.PI * L.f + L.ph)
+              + 0.22 * Math.sin((x / w) * Math.PI * L.f * 2.7 + L.ph * 1.9);
+      ctx.lineTo(x, L.peak - L.amp * n);
+    }
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Foreground massif: a broad hump culminating at (peakX, peakY) in the biome's
+  // dark terrain tone, so the banner plants on the summit.
+  const peakY = groundY - h * 0.30;
+  const halfW = w * 0.44;
+  const baseHill = groundY - h * 0.04;
+  ctx.fillStyle = rgba(pal.dark, 0.92);
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  for (let x = 0; x <= w; x += 4) {
+    const d = (x - peakX) / halfW;
+    const env = Math.max(0, 1 - d * d);                       // smooth hump, 1 at the summit
+    const rough = Math.sin(x * 0.06 + 1.3) * h * 0.008;       // light ridge texture
+    const y = groundY - (groundY - peakY) * env + rough * env;
+    ctx.lineTo(x, Math.min(baseHill, y));
+  }
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fill();
+  // A subtle lit edge along the massif's crest (biome edge tone).
+  ctx.strokeStyle = rgba(pal.edge, 0.35);
+  ctx.lineWidth = Math.max(1, h * 0.004);
+  ctx.beginPath();
+  for (let x = 0; x <= w; x += 4) {
+    const d = (x - peakX) / halfW;
+    const env = Math.max(0, 1 - d * d);
+    const y = groundY - (groundY - peakY) * env;
+    const yy = Math.min(baseHill, y);
+    if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+  }
+  ctx.stroke();
+  return peakY;
+}
+
 // --- Camp banners -----------------------------------------------------------
 // Drawn in place of the old windsock, tinted to the side colour (o.color) but
 // not monochrome: gold trim and chevron over the camp field, an éclairci hoist
@@ -244,8 +320,8 @@ function flagPatternColor(u, v, base, light, fold) {
 // calm, near-horizontal in a gale, the tail curling under its own weight.
 function drawStandardBanner(ctx, px, by, bw, h, o) {
   const poleH = Math.max(34, h * 0.20);
-  const baseX = px - o.facing * (bw / 2 + h * 0.14 + 18);
-  const baseY = by + 14;
+  const baseX = o._bannerBase ? o._bannerBase.x : px - o.facing * (bw / 2 + h * 0.14 + 18);
+  const baseY = o._bannerBase ? o._bannerBase.y : by + 14;
   const topX = baseX, topY = baseY - poleH;
 
   ctx.save();
@@ -305,8 +381,8 @@ function drawStandardBanner(ctx, px, by, bw, h, o) {
 // wind, forked at the foot.
 function drawGonfalonBanner(ctx, px, by, bw, h, o) {
   const poleH = Math.max(34, h * 0.20);
-  const baseX = px - o.facing * (bw / 2 + h * 0.14 + 18);
-  const baseY = by + 14;
+  const baseX = o._bannerBase ? o._bannerBase.x : px - o.facing * (bw / 2 + h * 0.14 + 18);
+  const baseY = o._bannerBase ? o._bannerBase.y : by + 14;
   const topY = baseY - poleH;
   const W = poleH * 0.42, L = poleH * 0.80;
 

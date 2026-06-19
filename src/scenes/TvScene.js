@@ -5,11 +5,13 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS, turboBars, SHIELD, WINDSOCK } from '..
 import { BIOMES } from '../config/biomes.js';
 import { generateHeights } from '../sim/terrain.js';
 import { PHASE } from '../sim/Simulation.js';
-import { BUILD_ID, REPO_URL } from './LobbyScene.js';
+import { livingResult } from '../sim/scoring.js';
+import { BUILD_ID, BUILD_LABEL, REPO_URL } from './LobbyScene.js';
 import Background from '../objects/Background.js';
 import Terrain from '../objects/Terrain.js';
 import Tower from '../objects/Tower.js';
 import Hud from '../objects/Hud.js';
+import BattlefieldView, { lerpBattlefield } from '../objects/BattlefieldView.js';
 import { computeWindsock, shade, towerPalette } from '../render/visuals.js';
 import { runBenchmark } from '../systems/benchmark.js';
 
@@ -64,6 +66,10 @@ export default class TvScene extends Phaser.Scene {
   create() {
     this.client = this.registry.get('client');
     this.sfx = this.registry.get('sfx');
+    // Lobby / spectating / waiting = "out of a match" → CRT bands may show on a
+    // non-16:9 screen. enterMatch() flips this on; leaving the scene flips it off.
+    this.registry.get('screenFrame')?.setMatchActive(false);
+    this.events.once('shutdown', () => this.registry.get('screenFrame')?.setMatchActive(false));
     this.input.keyboard.on('keydown-M', () => {
       const on = this.sfx.toggle();
       if (this.hud) this.hud.showBanner(on ? 'Sound on' : 'Sound off', 700);
@@ -78,15 +84,15 @@ export default class TvScene extends Phaser.Scene {
     this.track(this.client.on('roster', (m) => this.onRoster(m)));
     this.track(this.client.on('snapshot', (m) => this.onSnapshot(m)));
     this.track(this.client.on('queue', (m) => this.onQueue(m)));
-    this.track(this.client.on('promote', (m) =>
-      this.scene.start('Controller', {
+    this.track(this.client.on('promote', (m) => (m.player === 2
+      ? this.scene.start('Intendant', { code: this.code, name: m.name, token: m.token })
+      : this.scene.start('Controller', {
         player: m.player,
         code: this.code,
         name: m.name,
         token: m.token,
         isConfigOwner: false,
-      }),
-    ));
+      }))));
 
     // The host TV closes the whole room (all players are sent home); a spectator
     // just leaves. roomClosed also reaches spectators when the host quits.
@@ -166,7 +172,7 @@ export default class TvScene extends Phaser.Scene {
     // Discreet build stamp, so you can confirm the TV and the phones are running
     // the same deploy (and not a cached one).
     // Clickable (no visible affordance): jumps to the project home on GitHub.
-    add(this.text(cx, GAME_HEIGHT - 16, `build ${BUILD_ID}`, 14, '#5a6478')
+    add(this.text(cx, GAME_HEIGHT - 16, BUILD_LABEL, 14, '#5a6478')
       .setInteractive({ useHandCursor: false })
       .on('pointerdown', () => window.open(REPO_URL, '_blank', 'noopener,noreferrer')));
 
@@ -241,6 +247,11 @@ export default class TvScene extends Phaser.Scene {
         : { w: 44, draw: (ex) => this.turnGlyph(g, ex + 22, cy, accent) },
       { w: rounds * 26, draw: (ex) => { g.fillStyle(0xffffff, 1); for (let i = 0; i < rounds; i += 1) g.fillCircle(ex + 13 + i * 26, cy, 8); } },
     ];
+    // Living-battlefield on: a violet Intendant pip so the room reads as "a 3rd
+    // (Intendant) seat is open — scan to join".
+    if (this.cfgLivingBattlefield) {
+      elems.push({ w: 26, draw: (ex) => { g.fillStyle(COLORS.intendant, 1); g.fillCircle(ex + 13, cy, 10); g.fillStyle(0x140a24, 1); g.fillRect(ex + 12, cy - 7, 2, 14); g.fillRect(ex + 8, cy - 2, 10, 2); } });
+    }
     const GAP = 32;
     const total = elems.reduce((s, e) => s + e.w, 0) + GAP * (elems.length - 1);
     let ex = x + (W - total) / 2;
@@ -455,7 +466,9 @@ export default class TvScene extends Phaser.Scene {
       this.cfgHp = m.config.hp || 1;
       this.cfgTurbo = !!m.config.turbo;
       this.cfgCadence = m.config.cadence ?? 0;
+      this.cfgLivingBattlefield = !!m.config.livingBattlefield;
     }
+    this.intendantInfo = m.intendant || null;
     if (this.mode === 'lobby') this.refreshLobby();
     // A player was finally released (grace window lapsed): the room reset to the
     // invitation lobby, so rebuild this scene back to the code + QR screen.
@@ -467,8 +480,11 @@ export default class TvScene extends Phaser.Scene {
     // on the battlefield and shows it is waiting, rather than bailing to the home
     // screen. It only leaves once the seat is released (inMatch flips false above).
     if (this.mode === 'match') {
-      const lost = (m.players || []).some((p) => p && p.reconnecting);
-      this.showOpponentReconnecting(lost);
+      // Any of the three seats held open (duel players OR the Intendant) → the
+      // server has frozen the match; surface the pause banner.
+      const held = (m.players || []).some((p) => p && p.reconnecting)
+        || !!(m.intendant && m.intendant.reconnecting);
+      this.showOpponentReconnecting(held);
     }
   }
 
@@ -481,7 +497,7 @@ export default class TvScene extends Phaser.Scene {
       b.style.cssText =
         'position:fixed;top:0;left:0;right:0;z-index:35;text-align:center;padding:10px;' +
         "background:#c9892b;color:#fff;font-weight:bold;font-size:20px;font-family:'Trebuchet MS',sans-serif;";
-      b.textContent = 'A player disconnected — holding the match…';
+      b.textContent = '⏸ Paused — a player disconnected, holding the match (10s)…';
       this.oppBanner = b;
       document.body.appendChild(b);
     } else if (!on && this.oppBanner) {
@@ -512,6 +528,8 @@ export default class TvScene extends Phaser.Scene {
 
   enterMatch(state) {
     this.mode = 'match';
+    // Battlefield now on screen: clear the CRT bands so nothing overlays the match.
+    this.registry.get('screenFrame')?.setMatchActive(true);
     (this.lobby || []).forEach((o) => o.destroy());
     this.lobby = [];
 
@@ -536,7 +554,10 @@ export default class TvScene extends Phaser.Scene {
     this.loadTerrain(state.seed, this.terrainOpts(state));
 
     this.towers = this.buildTowers(state, 0);
-    this.windsockGfx = this.add.graphics().setDepth(2);
+    // Windsock sits at tower level (below the battlefield entity layer): the
+    // validated z-order (design/battlefield-regles.md §4bis) has soldiers and
+    // the Intendant IN FRONT of the windsock, not behind it.
+    this.windsockGfx = this.add.graphics().setDepth(1);
     this.shieldGfx = this.add.graphics().setDepth(3);
     this.shieldFx = [[], []];     // per-tower LIST of eased render states {x,y,ux,uy,appear,open}
     this.shieldTarget = [[], []]; // per-tower LIST of latest authoritative shields
@@ -556,6 +577,18 @@ export default class TvScene extends Phaser.Scene {
     this.fragments = []; // tumbling brick graphics from the last collapse
     this.cameras.main.setScroll(0, 0);
 
+    // Living-battlefield spectator layer (only renders when the optional 3rd-
+    // player mode is on, i.e. the snapshot carries a `battlefield` block).
+    if (this.bfView) this.bfView.destroy();
+    this.bfView = new BattlefieldView(this);
+    this.bfView.setVisible(false);
+    this.bfSnaps = [];          // recent {time, bf} for smooth interpolation
+    this.lastBfBanner = '';
+
+    // The TV may auto-host with no user gesture, leaving its AudioContext
+    // suspended; resume it here so the music bed actually plays. (Any later TV
+    // gesture also re-arms it via BootScene's listeners.)
+    this.sfx.unlock();
     this.sfx.windStart();
     this.sfx.musicStart(this.biome.id, this.roundNo, this.isDecider(state));
   }
@@ -598,6 +631,33 @@ export default class TvScene extends Phaser.Scene {
   loadTerrain(seed, opts) {
     this.seed = seed;
     this.terrain.setHeights(generateHeights(seed, this.biome.roughness ?? 1, opts));
+  }
+
+  // Rebuild the terrain from the coarse heightfield streamed in living-battlefield
+  // mode (samples every TERRAIN_SAMPLE px). Linearly interpolated back to full
+  // width; the costly texture redraw runs only when the field actually changed.
+  applyBfTerrain(coarse) {
+    const key = coarse.length + ':' + coarse[0] + ':' + coarse[coarse.length - 1] + ':' + coarse[coarse.length >> 1];
+    if (key === this._bfTerrainKey && this._bfTerrainLen === coarse.length) {
+      // Cheap key collisions are possible; confirm with a full compare only then.
+      let same = true;
+      for (let i = 0; i < coarse.length; i += 1) { if (coarse[i] !== this._bfTerrainLast[i]) { same = false; break; } }
+      if (same) return;
+    }
+    const T = 8; // must match battlefield.js TERRAIN_SAMPLE
+    const full = new Float32Array(GAME_WIDTH);
+    const n = coarse.length;
+    for (let x = 0; x < GAME_WIDTH; x += 1) {
+      const f = x / T;
+      const k = Math.floor(f);
+      const a = coarse[Math.min(k, n - 1)];
+      const b = coarse[Math.min(k + 1, n - 1)];
+      full[x] = a + (b - a) * (f - k);
+    }
+    this.terrain.setHeights(full);
+    this._bfTerrainKey = key;
+    this._bfTerrainLen = coarse.length;
+    this._bfTerrainLast = coarse.slice();
   }
 
   createEmitters() {
@@ -666,6 +726,27 @@ export default class TvScene extends Phaser.Scene {
       }
     }
     this.renderProjectiles();
+    this.renderBattlefield();
+  }
+
+  // Render the living-battlefield entities at the same small delay as shells,
+  // interpolating soldier/horde/Intendant positions between the two buffered
+  // snapshots that bracket the render time, so they glide between network ticks.
+  renderBattlefield() {
+    if (!this.bfView) return;
+    const snaps = this.bfSnaps;
+    if (!snaps || !snaps.length) { this.bfView.setVisible(false); return; }
+    const renderTime = this.time.now - PROJ_RENDER_DELAY_MS;
+    if (renderTime <= snaps[0].time) { this.bfView.render(snaps[0].bf); return; }
+    const newest = snaps[snaps.length - 1];
+    if (renderTime >= newest.time) { this.bfView.render(newest.bf); return; }
+    let older = snaps[0]; let newer = newest;
+    for (let i = 0; i < snaps.length - 1; i += 1) {
+      if (snaps[i].time <= renderTime && renderTime <= snaps[i + 1].time) { older = snaps[i]; newer = snaps[i + 1]; break; }
+    }
+    const span = newer.time - older.time || 1;
+    const f = Math.max(0, Math.min(1, (renderTime - older.time) / span));
+    this.bfView.render(lerpBattlefield(older.bf, newer.bf, f));
   }
 
   // Draw projectiles at a point slightly in the past, interpolating between the
@@ -677,9 +758,9 @@ export default class TvScene extends Phaser.Scene {
     if (!snaps || !snaps.length) return;
 
     const renderTime = this.time.now - PROJ_RENDER_DELAY_MS;
-    if (renderTime <= snaps[0].time) { this.drawProjectiles(snaps[0].list); return; }
+    if (renderTime <= snaps[0].time) { this.drawProjectiles(snaps[0].list, renderTime); return; }
     const newest = snaps[snaps.length - 1];
-    if (renderTime >= newest.time) { this.drawProjectiles(newest.list); return; }
+    if (renderTime >= newest.time) { this.drawProjectiles(newest.list, renderTime); return; }
 
     let older = snaps[0];
     let newer = newest;
@@ -702,7 +783,7 @@ export default class TvScene extends Phaser.Scene {
       if (a && b) out.push({ id, owner: b.owner, x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
       else out.push(a || b);
     }
-    this.drawProjectiles(out);
+    this.drawProjectiles(out, renderTime);
   }
 
   // A windsock planted in the middle of the battlefield (#1), driven by the
@@ -806,6 +887,16 @@ export default class TvScene extends Phaser.Scene {
       }
       this.loadTerrain(state.seed, this.terrainOpts(state));
     }
+    // Living-battlefield mode streams the live (terraformed) heightfield coarsely
+    // so the TV terrain mirrors the Intendant's dig/fill/flatten. That heightfield
+    // bakes in the battlefield sim's own carving, but NOT the duel artillery shell
+    // craters (those live only in state.craters), so we always replay the crater
+    // list on top. When applyBfTerrain repaints the base (only when the field
+    // actually changed) it resets the crater counter, so applyCraters re-punches
+    // the full list and the impacts persist instead of being wiped each tick.
+    if (state.battlefield && state.battlefield.terrain && state.battlefield.terrain.length) {
+      this.applyBfTerrain(state.battlefield.terrain);
+    }
     this.terrain.applyCraters(state.craters);
 
     this.towers.forEach((t, i) => {
@@ -827,6 +918,17 @@ export default class TvScene extends Phaser.Scene {
     this.shieldTarget = state.towers.map((t) => t.shields || []); // eased + drawn in update()
     this.windsockState = state.windsock; // authoritative alive + anchor; drawn in update()
 
+    // Living world: buffer the block for interpolated rendering in update(), and
+    // surface its own banner (round resolution / Intendant success) on the HUD.
+    if (state.battlefield) {
+      this.bfSnaps.push({ time: this.time.now, bf: state.battlefield });
+      if (this.bfSnaps.length > 4) this.bfSnaps.shift();
+      const b = state.battlefield.banner;
+      if (b && b !== this.lastBfBanner) { this.hud.showBanner(b); this.lastBfBanner = b; }
+    } else if (this.bfView) {
+      this.bfView.setVisible(false);
+    }
+
     // Projectiles aren't drawn here: their positions are buffered and rendered,
     // interpolated, from update() at the display refresh rate.
     this.projSnaps.push({ time: this.time.now, list: state.projectiles });
@@ -840,7 +942,10 @@ export default class TvScene extends Phaser.Scene {
     }
     for (const p of state.projectiles) {
       const tr = this.projTrails.get(p.id) || [];
-      tr.push({ x: p.x, y: p.y });
+      // Stamp each sample with its snapshot time: the head is rendered ~55 ms in
+      // the past (PROJ_RENDER_DELAY_MS), so drawProjectiles must drop trail points
+      // newer than that, or the afterglow would lead the shell instead of trailing.
+      tr.push({ x: p.x, y: p.y, t: this.time.now });
       if (tr.length > 34) tr.shift();
       this.projTrails.set(p.id, tr);
     }
@@ -888,10 +993,12 @@ export default class TvScene extends Phaser.Scene {
     );
   }
 
-  drawProjectiles(projectiles) {
+  drawProjectiles(projectiles, renderTime) {
     // Trail history is accumulated at the network rate (see renderState); here
     // we only render: the fading afterglow from history plus the interpolated
-    // head passed in.
+    // head passed in. The head sits at renderTime (≈55 ms in the past), so we
+    // keep only the trail samples up to that instant — otherwise the afterglow,
+    // built from newer snapshots, would lead the shell instead of trailing it.
     // Shells must read clearly over any biome: a fading afterglow trail, a dark
     // outline for contrast on light terrain, a saturated body, and a white core
     // for contrast on dark terrain.
@@ -899,7 +1006,8 @@ export default class TvScene extends Phaser.Scene {
     g.clear();
     for (const p of projectiles) {
       const color = p.owner === 0 ? COLORS.projectileP1 : COLORS.projectileP2;
-      const tr = this.projTrails.get(p.id) || [];
+      const full = this.projTrails.get(p.id) || [];
+      const tr = renderTime == null ? full : full.filter((pt) => pt.t <= renderTime);
       tr.forEach((pt, idx) => {
         const f = idx / tr.length;
         g.fillStyle(0x05070d, f * 0.22);
@@ -922,12 +1030,17 @@ export default class TvScene extends Phaser.Scene {
 
   processEvents(events) {
     const lite = this.quality === 'lite';
+    // Living-world SFX are spatialised across the arena (TV listener). A per-emitter
+    // node placed by x → pan + depth; battlefield methods add their own reverb.
+    this.sfx.setListener({ mode: 'tv', width: GAME_WIDTH });
+    const sp = (ev) => this.sfx.spatial({ x: ev.x, y: ev.y });
+    const skinVortex = this.biome && this.biome.intendantShield === 'vortex';
     for (const e of events) {
       if (e.type === 'fire') {
         this.flashEmitter.emitParticleAt(e.x, e.y, 1);
         this.sparkEmitter.emitParticleAt(e.x, e.y, lite ? 3 : 6);
         this.smokeEmitter.emitParticleAt(e.x, e.y, 2);
-        this.sfx.boom();
+        this.sfx.boomModern();
         this.shake(110, 0.004);
       } else if (e.type === 'impact') {
         this.dustExplosion(e.x, e.y);
@@ -956,6 +1069,22 @@ export default class TvScene extends Phaser.Scene {
         this.sparkEmitter.emitParticleAt(e.x, e.y, this.quality === 'lite' ? 5 : 12);
         this.sfx.shieldUp();
         this.shake(140, 0.005);
+      } else if (e.type === 'musket') {
+        this.sfx.playEvent(e, sp(e), { skinVortex });
+        this.sparkEmitter.emitParticleAt(e.x, e.y, lite ? 1 : 2);
+      } else if (e.type === 'grenadeBurst') {
+        this.sfx.playEvent(e, sp(e), { skinVortex });
+        this.dustExplosion(e.x, e.y);
+      } else if (e.type === 'fieldFire') {
+        this.sfx.playEvent(e, sp(e), { skinVortex });
+        this.smokeEmitter.emitParticleAt(e.x, e.y, 2);
+        if (this.bfView) this.bfView.cannonFired(e.x, e.owner);
+      } else if (e.type === 'intFatal') {
+        this.sfx.playEvent(e, sp(e), { skinVortex });
+        this.shake(160, 0.006);
+      } else if (e.type === 'grenadeLob' || e.type === 'melee' || e.type === 'soldierDeath' || e.type === 'intParry' || e.type === 'intBuild' || e.type === 'intDig' || e.type === 'horde'
+        || e.type === 'cannonWreck' || e.type === 'projGround' || e.type === 'projFlesh' || e.type === 'intBow' || e.type === 'intSword' || e.type === 'intHurt' || e.type === 'towerVolley' || e.type === 'apparition' || e.type === 'glide' || e.type === 'engineerBuild') {
+        this.sfx.playEvent(e, sp(e), { skinVortex });
       }
     }
   }
@@ -965,7 +1094,7 @@ export default class TvScene extends Phaser.Scene {
     const lite = this.quality === 'lite';
     this.dustEmitter.emitParticleAt(x, y, lite ? 4 : 9);
     this.gritEmitter.emitParticleAt(x, y, lite ? 4 : 11);
-    this.sfx.explosion();
+    this.sfx.explosionModern();
     this.shake(140, 0.005);
   }
 
@@ -978,11 +1107,11 @@ export default class TvScene extends Phaser.Scene {
     this.debrisEmitter.emitParticleAt(x, y, lite ? 6 : isTowerHit ? 16 : 10);
     if (isTowerHit) {
       this.sparkEmitter.emitParticleAt(x, y, lite ? 8 : 18);
-      this.sfx.rubble(false);
+      this.sfx.rubbleModern({ vol: 0.7 });
       this.shake(260, 0.012);
     } else {
       this.sparkEmitter.emitParticleAt(x, y, lite ? 4 : 8);
-      this.sfx.explosion();
+      this.sfx.explosionModern();
       this.shake(150, 0.006);
     }
   }
@@ -1003,7 +1132,7 @@ export default class TvScene extends Phaser.Scene {
     this.smokeEmitter.emitParticleAt(cx, cy, lite ? 3 : 7);
     this.debrisEmitter.emitParticleAt(cx, cy, lite ? 10 : 26);
     this.sparkEmitter.emitParticleAt(cx, cy, lite ? 8 : 20);
-    this.sfx.rubble(true);
+    this.sfx.rubbleModern();
     this.shake(420, lite ? 0.01 : 0.02);
     this.spawnBrickFragments(t, lite);
     t.hp = 0; // collapse the standing body to a ruin under the flying bricks
@@ -1089,15 +1218,26 @@ export default class TvScene extends Phaser.Scene {
     this.sfx.musicStop();
     const cx = GAME_WIDTH / 2;
     const [s1, s2] = state.scores;
+
     let title;
-    if (s1 > s2) title = `${state.names[0]} wins!`;
+    let scoreline = `${s1} — ${s2}`;
+    if (state.battlefield) {
+      // 3-way: the Intendant (crossings) is ranked against the duelists; tie→P3.
+      const p3 = state.battlefield.score;
+      const intName = this.intendantInfo?.name || 'Intendant';
+      const res = livingResult(s1, s2, p3);
+      if (res.draw) title = "It's a draw!";
+      else if (res.winner === 2) title = `${intName} (Intendant) wins!`;
+      else title = `${state.names[res.winner]} wins!`;
+      scoreline = `${s1} — ${s2}    ⚔ ${p3}`;
+    } else if (s1 > s2) title = `${state.names[0]} wins!`;
     else if (s2 > s1) title = `${state.names[1]} wins!`;
     else title = "It's a draw!";
 
     const loserName = this.roster?.[this.configOwnerSlot]?.name || 'The loser';
     this.endGroup = [
       this.add.text(cx, GAME_HEIGHT * 0.42, title, { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '78px', color: COLORS.hud, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5).setDepth(1001),
-      this.add.text(cx, GAME_HEIGHT * 0.56, `${s1} — ${s2}`, { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '48px', color: COLORS.hud }).setOrigin(0.5).setDepth(1001),
+      this.add.text(cx, GAME_HEIGHT * 0.56, scoreline, { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '48px', color: COLORS.hud }).setOrigin(0.5).setDepth(1001),
       this.add.text(cx, GAME_HEIGHT * 0.7, `${loserName} sets up the rematch…`, { fontFamily: 'Trebuchet MS, sans-serif', fontSize: '26px', color: COLORS.hudDim }).setOrigin(0.5).setDepth(1001),
     ];
   }

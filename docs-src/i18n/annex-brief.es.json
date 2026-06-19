@@ -6,6 +6,9 @@
   "hero.kicker": "Anexo",
   "hero.title": "El brief de partida",
   "hero.lead": "Antes de la primera línea de código, hay una frase. Aquí está el <strong>brief original</strong> de Tower Duel, rasgado y anotado — y lo que nos enseña para describir bien un proyecto.",
+  "card.lot": "📝 Bambalinas",
+  "card.title": "El brief de partida",
+  "card.desc": "El pliego de condiciones que lo arrancó todo — presentado, comentado y criticado: cómo describir bien un proyecto.",
 
   "s1.h2": "El brief, rasgado y anotado",
   "s1.lead": "Un proyecto no empieza por el código, sino por una <b>intención</b>. Aquí está el ticket de partida, pedazo a pedazo, con los comentarios deslizados entre los trozos.",

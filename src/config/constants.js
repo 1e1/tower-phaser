@@ -15,6 +15,9 @@ export const COLORS = {
   // Shown before a side is claimed (and again at every rematch until a camp is
   // picked): a calm slate that belongs to neither player.
   towerNeutral: 0x6f7d96,
+  // The third player (Intendant of the living world): a regal violet that is
+  // neither camp's colour — he belongs to no army.
+  intendant: 0xb483f0,
   barrel: 0xd7dde8,
   projectileP1: 0xbcd4ff,
   projectileP2: 0xffd0c0,
@@ -84,14 +87,14 @@ export const winsLabel = (n) => `First to ${n}`;
 // Hit-point choices per tower (a tower falls when its HP reaches 0).
 export const HP_OPTIONS = [1, 2, 3];
 
-// Game modes chosen at setup. Classic = strict turn-by-turn volleys. Turbo =
+// Game modes chosen at setup. Volley = strict turn-by-turn volleys. Turbo =
 // a shot clock (once one player validates, the other has `cadence` seconds to
 // validate, else it auto-fires) and shells fly continuously, so the next shot
 // can be aimed and validated as soon as the previous one has left the barrel.
 // Ordered from gentlest to fiercest turbo: a longer shot clock is easier, so it
 // lights fewer "intensity" bars on the lobby gauge (8s → 1 bar, 5s → 2, 2s → 3).
 export const GAME_MODES = [
-  { id: 'classic', label: 'Classic', turbo: false, cadence: 0 },
+  { id: 'classic', label: 'Volley', turbo: false, cadence: 0 },
   { id: 'turbo8', label: 'Turbo · 8s', turbo: true, cadence: 8 },
   { id: 'turbo5', label: 'Turbo · 5s', turbo: true, cadence: 5 },
   { id: 'turbo2', label: 'Turbo · 2s', turbo: true, cadence: 2 },

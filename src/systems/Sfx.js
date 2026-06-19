@@ -49,6 +49,23 @@ const MUSIC_LEVEL = 0.30;     // music bus into master — discreet, under the S
 const MUSIC_VOICE = 0.32;     // per-track crossfade-bus target
 const MUSIC_WIND_DUCK = 0.2;  // wind-bed level while music plays (validated in ost-lab)
 
+// Spatialisation defaults (validated — see audio-spatialization-convention):
+// L/R via StereoPanner, front/back via "depth" volume, up/down via a shelf tilt.
+const SPACE = { panMax: 0.85, depthMinVol: 0.40, tiltDb: 6, tiltHiHz: 2500, tiltLoHz: 250 };
+
+// Voice policy (lot E): per-category budgets over a short window; over budget we
+// keep the LOUDEST (post-attenuation) and drop the rest. `floor` = never dropped;
+// `ducks` = briefly dips the SFX bus so the big hit cuts through. `whistle` is
+// managed per-id inside whistles(), so it is not gated here.
+const VOICE = {
+  impact: { budget: 3, ducks: true },
+  smallarm: { budget: 4 },
+  voice: { budget: 2 },
+  shield: { floor: true, ducks: true },
+  meta: { floor: true },
+};
+const VOICE_WINDOW = 0.05; const DUCK_TO = 0.55; const DUCK_MS = 160;
+
 // Procedural sound effects synthesized with the Web Audio API. No binary audio
 // assets are shipped; every effect is generated at runtime from oscillators and
 // filtered noise. A single shared instance lives on the Phaser game registry.
@@ -66,6 +83,8 @@ export default class Sfx {
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.35;
       this.master.connect(this.ctx.destination);
+      this.sfxBus = this.ctx.createGain(); // duckable bus for living-world SFX (lot E)
+      this.sfxBus.connect(this.master);
     }
     return this.ctx;
   }
@@ -94,7 +113,381 @@ export default class Sfx {
     return src;
   }
 
+  // ── Spatialisation (lot A) ──────────────────────────────────────────────────
+  // Per-emitter placement WITHOUT HRTF: left/right via StereoPanner (x),
+  // front/back via a "depth" volume, up/down via a slight high/low shelf tilt.
+  // Two listener modes set by the scene each frame:
+  //   { mode: 'tv', width }            → spatialise across the arena width
+  //   { mode: 'mic', x, y, range }     → a point mic (own tower for P1/P2, the
+  //                                       MOBILE Intendant avatar for P3)
+  // Existing duel SFX still go straight to master; battlefield SFX (lot B/D)
+  // will route through spatial() instead.
+  setListener(l) { this.listener = l; }
+
+  // Shared synthetic reverb send (impulse generated at runtime — no asset). Lazy.
+  reverb() {
+    if (!this._rev) {
+      const ctx = this.ensure();
+      const dur = 1.8, decay = 2.6;
+      const n = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(2, n, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch += 1) {
+        const d = buf.getChannelData(ch);
+        for (let i = 0; i < n; i += 1) d[i] = (Math.random() * 2 - 1) * ((1 - i / n) ** decay);
+      }
+      this._rev = ctx.createConvolver();
+      this._rev.buffer = buf;
+      const out = ctx.createGain(); out.gain.value = 0.9;
+      this._rev.connect(out).connect(this.sfxBus);
+    }
+    return this._rev;
+  }
+
+  // Soft-clip curve for the "modern" heavy hits (lot B uses it for crunch).
+  shaper(k) {
+    const ctx = this.ensure();
+    const ws = ctx.createWaveShaper();
+    const n = 1024; const cv = new Float32Array(n);
+    for (let i = 0; i < n; i += 1) { const x = (i / (n - 1)) * 2 - 1; cv[i] = ((1 + k) * x) / (1 + k * Math.abs(x)); }
+    ws.curve = cv;
+    return ws;
+  }
+
+  // Build a per-emitter spatial input node wired to master (+ optional reverb
+  // send `revAmt`). Connect your voice(s) to the returned GainNode instead of
+  // this.master. pos = { x, y, depth?, yn? }. Returns null when out of a mic
+  // listener's range → caller skips synthesis (free culling).
+  spatial(pos = {}, revAmt = 0) {
+    const ctx = this.ensure();
+    const l = this.listener || { mode: 'tv', width: 960 };
+    let pan = 0, depthVol = 1, tilt = 0;
+    if (l.mode === 'mic') {
+      const range = l.range || 1;
+      const dx = (pos.x ?? l.x) - l.x;
+      const dy = (pos.y ?? l.y) - l.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist >= range) return null; // out of mic range → cull
+      const prox = 1 - dist / range; // 1 at the mic, 0 at the edge
+      depthVol = SPACE.depthMinVol + prox * (1 - SPACE.depthMinVol);
+      pan = Math.max(-1, Math.min(1, dx / range)) * SPACE.panMax;
+      tilt = Math.max(-1, Math.min(1, -dy / range)) * SPACE.tiltDb; // above mic → brighter
+    } else { // 'tv' — no listener POINT, so no distance/éloignement notion: the
+      // TV just prioritises (the gate) and places the source left/right across the
+      // panel for a stereo image. Full volume, no depth attenuation, no tilt.
+      const W = l.width || 960;
+      pan = Math.max(-1, Math.min(1, ((pos.x ?? W / 2) / W) * 2 - 1)) * SPACE.panMax;
+      depthVol = 1;
+      tilt = 0;
+    }
+    const inp = ctx.createGain(); inp.gain.value = depthVol;
+    const hi = ctx.createBiquadFilter(); hi.type = 'highshelf'; hi.frequency.value = SPACE.tiltHiHz; hi.gain.value = tilt;
+    const lo = ctx.createBiquadFilter(); lo.type = 'lowshelf'; lo.frequency.value = SPACE.tiltLoHz; lo.gain.value = -tilt;
+    const sp = ctx.createStereoPanner(); sp.pan.value = pan;
+    inp.connect(hi).connect(lo).connect(sp).connect(this.sfxBus);
+    if (revAmt > 0) { const rs = ctx.createGain(); rs.gain.value = revAmt; sp.connect(rs); rs.connect(this.reverb()); }
+    return inp;
+  }
+
+  // ── Voice policy & ducking (lot E) ───────────────────────────────────────────
+  // Briefly dip the SFX bus so a big hit cuts through (sidechain-lite). Duel SFX
+  // go straight to master and are untouched; only the living-world bus ducks.
+  duck(to = DUCK_TO, ms = DUCK_MS) {
+    if (!this.sfxBus) return;
+    const now = this.ensure().currentTime; const g = this.sfxBus.gain;
+    g.cancelScheduledValues(now); g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(to, now + 0.02);
+    g.linearRampToValueAtTime(1, now + ms / 1000);
+  }
+
+  // Admit or drop a voice in `cat`, ranking by post-attenuation `loudness`. Over
+  // budget within the window, a louder voice evicts the quietest; else it drops.
+  gate(cat, loudness = 1) {
+    const c = VOICE[cat] || { budget: 4 };
+    let admit = true;
+    if (!c.floor) {
+      const now = this.ensure().currentTime;
+      if (!this._vq) this._vq = {};
+      const q = this._vq[cat] || (this._vq[cat] = []);
+      while (q.length && now - q[0].t > VOICE_WINDOW) q.shift();
+      const budget = c.budget || 4;
+      if (q.length < budget) { q.push({ t: now, l: loudness }); }
+      else {
+        let mi = 0; for (let i = 1; i < q.length; i += 1) if (q[i].l < q[mi].l) mi = i;
+        if (loudness > q[mi].l) q[mi] = { t: now, l: loudness }; else admit = false;
+      }
+    }
+    if (admit && c.ducks) this.duck();
+    return admit;
+  }
+
+  // Central living-world event → SFX, applying the voice policy. `out` is the
+  // spatial() node (its gain = post-attenuation loudness) or null when culled.
+  playEvent(e, out, opts = {}) {
+    if (out === null) return; // culled by a mic listener
+    const loud = (out && out.gain) ? out.gain.value : 1;
+    const vx = !!opts.skinVortex;
+    switch (e.type) {
+      case 'musket': if (this.gate('smallarm', loud)) this.musketCrack({}, out); break;
+      case 'grenadeLob': if (this.gate('smallarm', loud)) this.grenadePin({}, out); break;
+      case 'melee': if (this.gate('smallarm', loud)) this.melee({}, out); break;
+      case 'intBuild': if (this.gate('smallarm', loud)) (e.kind === 1 ? this.bridge : this.stairs).call(this, {}, out); break;
+      case 'engineerBuild': if (this.gate('smallarm', loud)) (e.kind === 1 ? this.engineerBridge : this.engineerLadder).call(this, {}, out); break;
+      case 'intDig': if (this.gate('smallarm', loud)) (e.kind === 0 ? this.dig : e.kind === 1 ? this.fill : this.flatten).call(this, {}, out); break;
+      case 'grenadeBurst': if (this.gate('impact', loud)) { this.grenadeBurst({}, out); this.grenadeShrapnel({}, out); } break;
+      case 'fieldFire': if (this.gate('impact', loud)) this.fieldCannon({}, out); break;
+      case 'horde': if (this.gate('impact', loud)) { this.stampede({}, out); this.hordeCry({}, out); } break;
+      case 'soldierDeath': if (this.gate('voice', loud)) this.soldierDeath({}, out); break;
+      case 'cannonWreck': if (this.gate('impact', loud)) this.woodSmash({}, out); break;
+      case 'intParry': if (this.gate('shield', loud)) (vx ? this.shieldParryVortex : this.shieldParryHex).call(this, {}, out); break;
+      case 'intFatal': if (this.gate('shield', loud)) { (vx ? this.shieldFatalVortex : this.shieldFatalHex).call(this, {}, out); this.cry({}, out); } break;
+      // newly wired battlefield timbres (events emitted by sim/battlefield.js)
+      case 'projGround': if (this.gate('impact', loud)) (e.kind === 1 ? this.arrowGround : this.ballGround).call(this, {}, out); break;
+      case 'projFlesh': if (this.gate('smallarm', loud)) (e.kind === 1 ? this.arrowFlesh : this.flesh).call(this, {}, out); break;
+      case 'intBow': if (this.gate('smallarm', loud)) this.bowTwang({}, out); break;
+      case 'intSword': if (this.gate('smallarm', loud)) { this.swordSwing({}, out); this.swordHit({}, out); } break;
+      case 'intHurt': if (this.gate('voice', loud)) this.grunt({}, out); break;
+      case 'towerVolley': if (this.gate('smallarm', loud)) this.towerVolley({ n: e.n || 2 }, out); break;
+      case 'apparition': if (this.gate('impact', loud)) this.apparition({}, out); break;
+      case 'glide': if (this.gate('smallarm', loud)) this.gliderDeploy({}, out); break;
+      default: break;
+    }
+  }
+
+  // ── Battlefield SFX (lot B — ported from design/battlefield-sfx-lab.html) ────
+  // One-shot, event-driven voices with the lab's validated default params. Each
+  // takes an optional `out` node (default master) so lot D can route them through
+  // spatial(). Projectile *whizz* stays on whistles() (sustained), not here.
+  _g(v = 0) { const g = this.ctx.createGain(); g.gain.value = v; return g; }
+  _bq(type, f, q) { const b = this.ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; if (q != null) b.Q.value = q; return b; }
+  _send(node, amt) { if (amt > 0) { const s = this._g(amt); node.connect(s); s.connect(this.reverb()); } }
+
+  // -- modern heavy hits (sub + transient + soft-clip + reverb) --
+  boomModern({ vol = 0.9, sub = 55, rev = 0.3 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(sub, t); o.frequency.exponentialRampToValueAtTime(28, t + 0.6);
+    const og = this._g(vol); og.gain.exponentialRampToValueAtTime(0.001, t + 0.7); o.connect(og).connect(dst); this._send(og, rev); o.start(t); o.stop(t + 0.72);
+    const s = this.noise(0.02), hp = this._bq('highpass', 3000); const g = this._g(vol * 0.8); g.gain.exponentialRampToValueAtTime(0.001, t + 0.02); s.connect(hp).connect(g).connect(dst); s.start(t); s.stop(t + 0.03);
+    const s2 = this.noise(0.28), lp = this._bq('lowpass', 1000), ws = this.shaper(6); const g2 = this._g(vol * 0.7); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.28); s2.connect(lp).connect(ws).connect(g2).connect(dst); this._send(g2, rev); s2.start(t); s2.stop(t + 0.3);
+  }
+  explosionModern({ vol = 1, rev = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(80, t); o.frequency.exponentialRampToValueAtTime(24, t + 0.7);
+    const og = this._g(vol); og.gain.exponentialRampToValueAtTime(0.001, t + 0.8); o.connect(og).connect(dst); this._send(og, rev); o.start(t); o.stop(t + 0.82);
+    const s = this.noise(0.45), lp = this._bq('lowpass', 1500), ws = this.shaper(8); const g = this._g(vol * 0.9); g.gain.exponentialRampToValueAtTime(0.001, t + 0.45); s.connect(lp).connect(ws).connect(g).connect(dst); this._send(g, rev); s.start(t); s.stop(t + 0.47);
+    const s2 = this.noise(0.12), hp = this._bq('highpass', 2200); const g2 = this._g(vol * 0.5); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.12); s2.connect(hp).connect(g2).connect(dst); s2.start(t); s2.stop(t + 0.13);
+  }
+  rubbleModern({ vol = 1, rev = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime; const dur = 0.9;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(75, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+    const og = this._g(vol); og.gain.exponentialRampToValueAtTime(0.001, t + 0.55); o.connect(og).connect(dst); this._send(og, rev); o.start(t); o.stop(t + 0.57);
+    const s = this.noise(dur), lp = this._bq('lowpass', 500); lp.frequency.exponentialRampToValueAtTime(60, t + dur); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(vol * 0.9, t + 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + dur); s.connect(lp).connect(g).connect(dst); this._send(g, rev); s.start(t); s.stop(t + dur);
+    for (let i = 0; i < 10; i += 1) { const tt = t + 0.04 + Math.random() * dur * 0.85; const b = this.noise(0.08), bp = this._bq('bandpass', 900 + Math.random() * 1400, 2); const bg = this._g(0.0001); bg.gain.exponentialRampToValueAtTime(0.28, tt + 0.005); bg.gain.exponentialRampToValueAtTime(0.001, tt + 0.1); b.connect(bp).connect(bg).connect(dst); this._send(bg, rev * 0.6); b.start(tt); b.stop(tt + 0.11); }
+  }
+  fieldCannon({ vol = 0.85, sub = 65, rev = 0.25, wheel = 1 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(sub, t); o.frequency.exponentialRampToValueAtTime(34, t + 0.42);
+    const og = this._g(vol); og.gain.exponentialRampToValueAtTime(0.001, t + 0.5); o.connect(og).connect(dst); this._send(og, rev); o.start(t); o.stop(t + 0.52);
+    const s = this.noise(0.02), hp = this._bq('highpass', 3200); const g = this._g(vol * 0.8); g.gain.exponentialRampToValueAtTime(0.001, t + 0.02); s.connect(hp).connect(g).connect(dst); s.start(t); s.stop(t + 0.03);
+    const s2 = this.noise(0.2), lp = this._bq('lowpass', 1200), ws = this.shaper(5); const g2 = this._g(vol * 0.7); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.2); s2.connect(lp).connect(ws).connect(g2).connect(dst); this._send(g2, rev); s2.start(t); s2.stop(t + 0.22);
+    if (wheel) for (let i = 0; i < 5; i += 1) { const tt = t + 0.02 + Math.random() * 0.22; const b = this.noise(0.05), bp = this._bq('bandpass', 900 + Math.random() * 900, 3); const bg = this._g(0.0001); bg.gain.exponentialRampToValueAtTime(vol * 0.18, tt + 0.004); bg.gain.exponentialRampToValueAtTime(0.001, tt + 0.06); b.connect(bp).connect(bg).connect(dst); b.start(tt); b.stop(tt + 0.07); }
+  }
+
+  // -- flesh & voices --
+  flesh({ thud = 120, dur = 0.16, wet = 320, vol = 0.5 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(dur), lp = this._bq('lowpass', 420, 0.8); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s.connect(lp).connect(g).connect(dst); s.start(t); s.stop(t + dur + 0.02);
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(thud, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, thud * 0.5), t + dur); const og = this._g(vol * 0.9); og.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(og).connect(dst); o.start(t); o.stop(t + dur + 0.02);
+    const s2 = this.noise(0.08), bp = this._bq('bandpass', wet, 3); const g2 = this._g(0.0001); g2.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.004); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.08); s2.connect(bp).connect(g2).connect(dst); s2.start(t); s2.stop(t + 0.1);
+  }
+  voice({ pitch = 180, dur = 0.3, drop = 0.6, vol = 0.4, vib = 0 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(pitch, t); o.frequency.exponentialRampToValueAtTime(Math.max(40, pitch * drop), t + dur);
+    const env = this._g(0.0001); env.connect(dst);
+    [[700, 8], [1100, 10], [2500, 12]].forEach(([f, q]) => { const bp = this._bq('bandpass', f, q); const fg = this._g(0.5); o.connect(bp).connect(fg).connect(env); });
+    env.gain.exponentialRampToValueAtTime(vol, t + 0.02); env.gain.setValueAtTime(vol, t + dur * 0.5); env.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.start(t); o.stop(t + dur + 0.05);
+    if (vib) { const lfo = ctx.createOscillator(); lfo.frequency.value = 6; const lg = this._g(pitch * 0.035); lfo.connect(lg).connect(o.frequency); lfo.start(t); lfo.stop(t + dur); }
+    const br = this.noise(dur), hp = this._bq('highpass', 1200); const bg = this._g(0.0001); bg.gain.exponentialRampToValueAtTime(vol * 0.12, t + 0.03); bg.gain.exponentialRampToValueAtTime(0.0001, t + dur); br.connect(hp).connect(bg).connect(dst); br.start(t); br.stop(t + dur + 0.02);
+  }
+  grunt(p = {}, out) { this.voice({ pitch: 184, dur: 0.18, drop: 0.57, vol: 0.26, ...p }, out); }
+  cry(p = {}, out) { this.voice({ pitch: 230, dur: 0.7, drop: 0.55, vol: 0.5, vib: 1, ...p }, out); }
+  soldierDeath({ pitch = 150, vol = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    this.voice({ pitch, dur: 0.26, drop: 0.5, vol }, out);
+    const s = this.noise(0.18), lp = this._bq('lowpass', 300); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(vol * 0.6, t + 0.18); g.gain.exponentialRampToValueAtTime(0.001, t + 0.28); s.connect(lp).connect(g).connect(dst); s.start(t + 0.1); s.stop(t + 0.3);
+  }
+
+  // -- Intendant melee/ranged --
+  swordSwing({ dur = 0.22, f0 = 280, f1 = 2600, q = 6, vol = 0.5 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(dur), bp = this._bq('bandpass', f0, q); bp.frequency.setValueAtTime(f0, t); bp.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = this._g(0.0001); g.gain.linearRampToValueAtTime(vol, t + dur * 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s.connect(bp).connect(g).connect(dst); s.start(t); s.stop(t + dur + 0.02);
+  }
+  swordHit({ thud = 150, dur = 0.15, clink = 0.25, vol = 0.55 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    this.flesh({ thud, dur, wet: 400, vol }, out);
+    [2200, 3100].forEach((f, i) => { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t); const g = this._g(clink / (i + 1)); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18); o.connect(g).connect(dst); o.start(t); o.stop(t + 0.2); });
+  }
+  bowTwang({ freq = 240, decay = 0.2, drop = 0.85, vol = 0.06 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(freq * drop, t + decay);
+    const lp = this._bq('lowpass', 1800); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + decay); o.connect(lp).connect(g).connect(dst); o.start(t); o.stop(t + decay + 0.02);
+    const s = this.noise(0.02), hp = this._bq('highpass', 3000); const ng = this._g(vol * 0.5); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.02); s.connect(hp).connect(ng).connect(dst); s.start(t); s.stop(t + 0.03);
+  }
+  arrowGround({ vol = 0.4, tick = 0.3 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.1), lp = this._bq('lowpass', 600); const g = this._g(vol); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1); s.connect(lp).connect(g).connect(dst); s.start(t); s.stop(t + 0.11);
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(160, t + 0.08); const og = this._g(tick); og.gain.exponentialRampToValueAtTime(0.001, t + 0.09); o.connect(og).connect(dst); o.start(t); o.stop(t + 0.1);
+  }
+  arrowFlesh(p = {}, out) { this.flesh({ thud: 130, dur: 0.13, wet: 300, vol: 0.28, ...p }, out); }
+
+  // -- soldiers: muskets, grenades, field cannon wreck, melee, volley --
+  musketCrack({ bright = 5000, body = 90, dur = 0.09, vol = 0.6 } = {}, out, at) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = at ?? ctx.currentTime;
+    const s = this.noise(dur), hp = this._bq('highpass', bright); const g = this._g(vol); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s.connect(hp).connect(g).connect(dst); s.start(t); s.stop(t + dur + 0.02);
+    const s2 = this.noise(0.05), bp = this._bq('bandpass', 1500, 1); const g2 = this._g(vol * 0.7); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); s2.connect(bp).connect(g2).connect(dst); s2.start(t); s2.stop(t + 0.06);
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(body, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, body * 0.5), t + 0.06); const og = this._g(vol * 0.6); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.07); o.connect(og).connect(dst); o.start(t); o.stop(t + 0.08);
+  }
+  ballGround({ vol = 0.3, ric = 1400 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.04), hp = this._bq('highpass', 2600); const g = this._g(vol); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04); s.connect(hp).connect(g).connect(dst); s.start(t); s.stop(t + 0.05);
+    if (ric > 50) { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(ric, t); o.frequency.exponentialRampToValueAtTime(ric * 0.5, t + 0.12); const og = this._g(0.12); og.gain.exponentialRampToValueAtTime(0.001, t + 0.14); o.connect(og).connect(dst); o.start(t); o.stop(t + 0.16); }
+  }
+  grenadePin({ scrape = 4200, ping = 2600, vol = 0.45, throw: th = 0.2 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.06), bp = this._bq('bandpass', scrape, 2); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.004); g.gain.exponentialRampToValueAtTime(0.001, t + 0.06); s.connect(bp).connect(g).connect(dst); s.start(t); s.stop(t + 0.07);
+    [ping, ping * 1.32].forEach((f, i) => { const tt = t + i * 0.05; const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f, tt); const og = this._g(vol * 0.6 / (i + 1)); og.gain.exponentialRampToValueAtTime(0.001, tt + 0.22); o.connect(og).connect(dst); o.start(tt); o.stop(tt + 0.24); });
+    if (th > 0) { const tt = t + 0.12; const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(140, tt); o.frequency.exponentialRampToValueAtTime(80, tt + 0.1); const og = this._g(th); og.gain.exponentialRampToValueAtTime(0.001, tt + 0.11); o.connect(og).connect(dst); o.start(tt); o.stop(tt + 0.13); }
+  }
+  grenadeBurst({ vol = 0.55 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.5), lp = this._bq('lowpass', 1200); lp.frequency.exponentialRampToValueAtTime(120, t + 0.45); const g = this._g(Math.max(0.001, vol)); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5); s.connect(lp).connect(g).connect(dst); s.start(t); s.stop(t + 0.5);
+    const s2 = this.noise(0.05), hp = this._bq('highpass', 4000); const g2 = this._g(vol * 0.6); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.05); s2.connect(hp).connect(g2).connect(dst); s2.start(t); s2.stop(t + 0.06);
+  }
+  grenadeShrapnel({ thud = 120, vol = 0.5, tings = 4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    this.flesh({ thud, dur: 0.15, wet: 320, vol }, out);
+    for (let i = 0; i < (tings | 0); i += 1) { const tt = t + Math.random() * 0.12; const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(2600 + Math.random() * 2500, tt); const g = this._g(0.08); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.1); o.connect(g).connect(dst); o.start(tt); o.stop(tt + 0.12); }
+  }
+  woodSmash({ vol = 0.6, n = 6, bright = 1400 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.18); const og = this._g(vol * 0.7); og.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.connect(og).connect(dst); o.start(t); o.stop(t + 0.22);
+    for (let i = 0; i < (n | 0); i += 1) { const tt = t + Math.random() * 0.28; const b = this.noise(0.06), bp = this._bq('bandpass', 600 + Math.random() * bright, 3); const bg = this._g(0.0001); bg.gain.exponentialRampToValueAtTime(vol * (0.3 + Math.random() * 0.4), tt + 0.003); bg.gain.exponentialRampToValueAtTime(0.001, tt + 0.07); b.connect(bp).connect(bg).connect(dst); b.start(tt); b.stop(tt + 0.08); }
+  }
+  _shotgun({ body = 90, bright = 4000, dur = 0.22, vol = 0.55 } = {}, at, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = at ?? ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(body, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, body * 0.4), t + 0.14); const og = this._g(vol * 0.9); og.gain.exponentialRampToValueAtTime(0.001, t + 0.16); o.connect(og).connect(dst); o.start(t); o.stop(t + 0.18);
+    const s = this.noise(dur), lp = this._bq('lowpass', 2200); lp.frequency.exponentialRampToValueAtTime(500, t + dur); const g = this._g(vol); g.gain.exponentialRampToValueAtTime(0.001, t + dur); s.connect(lp).connect(g).connect(dst); s.start(t); s.stop(t + dur + 0.02);
+    const s2 = this.noise(0.04), hp = this._bq('highpass', bright); const g2 = this._g(vol * 0.7); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.04); s2.connect(hp).connect(g2).connect(dst); s2.start(t); s2.stop(t + 0.05);
+  }
+  towerVolley({ n = 2, spread = 0.1, body = 90, bright = 4000, dur = 0.22, vol = 0.55 } = {}, out) {
+    const ctx = this.ensure(); const t0 = ctx.currentTime;
+    for (let i = 0; i < (n | 0); i += 1) this._shotgun({ body, bright, dur, vol }, t0 + i * spread + Math.random() * spread * 0.3, out);
+  }
+  melee({ clink = 2600, wet = 340, vol = 0.5 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    [clink, clink * 1.5, clink * 0.8].forEach((f, i) => { const tt = t + i * 0.02; const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f, tt); o.frequency.exponentialRampToValueAtTime(f * 0.85, tt + 0.12); const g = this._g(vol * 0.5 / (i + 1)); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.14); o.connect(g).connect(dst); o.start(tt); o.stop(tt + 0.16); });
+    const s = this.noise(0.05), bp = this._bq('bandpass', clink * 1.2, 3); const sg = this._g(vol * 0.3); sg.gain.exponentialRampToValueAtTime(0.001, t + 0.05); s.connect(bp).connect(sg).connect(dst); s.start(t); s.stop(t + 0.06);
+    this.flesh({ thud: 120, dur: 0.1, wet, vol: vol * 0.5 }, out);
+  }
+
+  // -- Intendant actions --
+  dig({ vol = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.12), lp = this._bq('lowpass', 700); const g = this._g(vol); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12); s.connect(lp).connect(g).connect(dst); s.start(t); s.stop(t + 0.13);
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.1); const og = this._g(vol * 0.6); og.gain.exponentialRampToValueAtTime(0.001, t + 0.11); o.connect(og).connect(dst); o.start(t); o.stop(t + 0.12);
+  }
+  fill({ vol = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.16), lp = this._bq('lowpass', 500); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(vol * 0.7, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16); s.connect(lp).connect(g).connect(dst); s.start(t); s.stop(t + 0.17);
+    for (let i = 0; i < 6; i += 1) { const tt = t + Math.random() * 0.14; const b = this.noise(0.02), hp = this._bq('highpass', 2000); const bg = this._g(vol * 0.12); bg.gain.exponentialRampToValueAtTime(0.001, tt + 0.02); b.connect(hp).connect(bg).connect(dst); b.start(tt); b.stop(tt + 0.03); }
+  }
+  flatten({ vol = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.25), bp = this._bq('bandpass', 800, 0.8); bp.frequency.setValueAtTime(500, t); bp.frequency.linearRampToValueAtTime(1400, t + 0.12); bp.frequency.linearRampToValueAtTime(400, t + 0.25); const g = this._g(0.0001); g.gain.linearRampToValueAtTime(vol * 0.6, t + 0.08); g.gain.exponentialRampToValueAtTime(0.001, t + 0.25); s.connect(bp).connect(g).connect(dst); s.start(t); s.stop(t + 0.26);
+  }
+  stairs({ vol = 0.45 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    [0, 0.07].forEach((dt, i) => { const tt = t + dt; const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(220 - i * 40, tt); o.frequency.exponentialRampToValueAtTime(90, tt + 0.1); const g = this._g(vol * 0.7); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.12); o.connect(g).connect(dst); o.start(tt); o.stop(tt + 0.13); const s = this.noise(0.03), hp = this._bq('highpass', 1500); const sg = this._g(vol * 0.2); sg.gain.exponentialRampToValueAtTime(0.001, tt + 0.03); s.connect(hp).connect(sg).connect(dst); s.start(tt); s.stop(tt + 0.04); });
+  }
+  bridge({ vol = 0.5 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.18); const g = this._g(vol * 0.8); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.connect(g).connect(dst); o.start(t); o.stop(t + 0.22);
+    const s = this.noise(0.3), bp = this._bq('bandpass', 600, 8); bp.frequency.setValueAtTime(500, t + 0.05); bp.frequency.linearRampToValueAtTime(900, t + 0.3); const sg = this._g(0.0001); sg.gain.exponentialRampToValueAtTime(vol * 0.25, t + 0.08); sg.gain.exponentialRampToValueAtTime(0.001, t + 0.32); s.connect(bp).connect(sg).connect(dst); s.start(t + 0.05); s.stop(t + 0.36);
+  }
+  // Engineer (sapper) works — dry small-wood timbres (little tonal tail → little
+  // resonance). The composite plays the whole sequence on one engineerBuild event
+  // (model A), mirroring the SFX lab. PONT nails planks; ÉCHELLE is pure wood
+  // assembly (no hammer), rising in pitch rung by rung.
+  _woodClack({ tone = 160, vol = 0.5 } = {}, at, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = at == null ? ctx.currentTime : at;
+    const s = this.noise(0.03), bp = this._bq('bandpass', Math.min(8000, tone * 5), 1.1); const g = this._g(vol * 0.5); g.gain.exponentialRampToValueAtTime(0.001, t + 0.03); s.connect(bp).connect(g).connect(dst); s.start(t); s.stop(t + 0.04);
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(tone, t); o.frequency.exponentialRampToValueAtTime(tone * 0.6, t + 0.03); const og = this._g(vol * 0.28); og.gain.exponentialRampToValueAtTime(0.001, t + 0.035); o.connect(og).connect(dst); o.start(t); o.stop(t + 0.045);
+  }
+  _nailTap({ tone = 200, vol = 0.5 } = {}, at, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = at == null ? ctx.currentTime : at;
+    const s = this.noise(0.015), hp = this._bq('highpass', 2800); const g = this._g(vol * 0.5); g.gain.exponentialRampToValueAtTime(0.001, t + 0.018); s.connect(hp).connect(g).connect(dst); s.start(t); s.stop(t + 0.02);
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(tone, t); o.frequency.exponentialRampToValueAtTime(tone * 0.5, t + 0.025); const og = this._g(vol * 0.32); og.gain.exponentialRampToValueAtTime(0.001, t + 0.03); o.connect(og).connect(dst); o.start(t); o.stop(t + 0.035);
+  }
+  engineerBridge({ n = 6, tap = 200, wood = 140, gap = 0.15, vol = 0.5 } = {}, out) {
+    const ctx = this.ensure(); let k = ctx.currentTime;
+    for (let i = 0; i < n; i += 1) { this._nailTap({ tone: tap, vol: vol * 0.7 }, k + Math.random() * 0.01, out); this._woodClack({ tone: wood, vol }, k + 0.05, out); k += gap; }
+  }
+  engineerLadder({ n = 5, wood = 150, rise = 14, gap = 0.13, vol = 0.5 } = {}, out) {
+    const ctx = this.ensure(); let k = ctx.currentTime;
+    for (let i = 0; i < n; i += 1) { const tone = wood + i * rise; this._woodClack({ tone: tone * 1.4, vol: vol * 0.5 }, k + Math.random() * 0.01, out); this._woodClack({ tone, vol: vol * 0.8 }, k + 0.05, out); k += gap; }
+  }
+  gliderDeploy({ vol = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.35), lp = this._bq('lowpass', 900); lp.frequency.setValueAtTime(300, t); lp.frequency.exponentialRampToValueAtTime(1200, t + 0.12); lp.frequency.exponentialRampToValueAtTime(500, t + 0.35); const g = this._g(0.0001); g.gain.linearRampToValueAtTime(vol * 0.6, t + 0.1); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35); s.connect(lp).connect(g).connect(dst); s.start(t); s.stop(t + 0.36);
+    for (let i = 0; i < 2; i += 1) { const tt = t + 0.15 + i * 0.12; const b = this.noise(0.06), bp = this._bq('bandpass', 400, 1); const bg = this._g(vol * 0.3); bg.gain.exponentialRampToValueAtTime(0.001, tt + 0.06); b.connect(bp).connect(bg).connect(dst); b.start(tt); b.stop(tt + 0.07); }
+  }
+  apparition({ vol = 0.5, rev = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    [523, 659, 784, 1046].forEach((f, i) => { const tt = t + i * 0.05; const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, tt); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(vol * 0.3 / (i * 0.5 + 1), tt + 0.02); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.5); o.connect(g).connect(dst); this._send(g, rev); o.start(tt); o.stop(tt + 0.52); });
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(120, t + 0.35); o2.frequency.exponentialRampToValueAtTime(60, t + 0.5); const g2 = this._g(vol * 0.5); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.52); o2.connect(g2).connect(dst); o2.start(t + 0.35); o2.stop(t + 0.54);
+  }
+
+  // -- end of round --
+  stampede({ dur = 1.4, bpm = 300, vol = 0.6 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(dur), lp = this._bq('lowpass', 400); const g = this._g(0.0001); g.gain.linearRampToValueAtTime(vol * 0.5, t + 0.15); g.gain.setValueAtTime(vol * 0.5, t + dur - 0.2); g.gain.exponentialRampToValueAtTime(0.001, t + dur); s.connect(lp).connect(g).connect(dst); s.start(t); s.stop(t + dur + 0.02);
+    const step = 60 / bpm / 2; for (let tt = t; tt < t + dur; tt += step * (0.85 + Math.random() * 0.3)) { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(90, tt); o.frequency.exponentialRampToValueAtTime(45, tt + 0.08); const og = this._g(vol * 0.4); og.gain.exponentialRampToValueAtTime(0.001, tt + 0.09); o.connect(og).connect(dst); o.start(tt); o.stop(tt + 0.1); const b = this.noise(0.03), hp = this._bq('highpass', 3000); const bg = this._g(vol * 0.1); bg.gain.exponentialRampToValueAtTime(0.001, tt + 0.03); b.connect(hp).connect(bg).connect(dst); b.start(tt); b.stop(tt + 0.04); }
+  }
+  hordeCry({ pitch = 170, dur = 0.9, vol = 0.7, rev = 0.3 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    for (let v = 0; v < 5; v += 1) { const o = ctx.createOscillator(); o.type = 'sawtooth'; const base = pitch * (0.92 + v * 0.04); o.frequency.setValueAtTime(base, t); o.frequency.linearRampToValueAtTime(base * 1.12, t + 0.4); const env = this._g(0.0001); env.connect(dst); this._send(env, rev); [[650, 7], [1080, 9]].forEach(([f, q]) => { const bp = this._bq('bandpass', f, q); const fg = this._g(0.4); o.connect(bp).connect(fg).connect(env); }); env.gain.linearRampToValueAtTime(vol * 0.22, t + 0.25); env.gain.setValueAtTime(vol * 0.22, t + dur * 0.6); env.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.start(t); o.stop(t + dur + 0.05); }
+  }
+  flag({ vol = 0.25 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.18), bp = this._bq('bandpass', 700, 1); bp.frequency.setValueAtTime(500, t); bp.frequency.linearRampToValueAtTime(1100, t + 0.08); bp.frequency.linearRampToValueAtTime(600, t + 0.18); const g = this._g(0.0001); g.gain.linearRampToValueAtTime(vol * 0.5, t + 0.05); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18); s.connect(bp).connect(g).connect(dst); s.start(t); s.stop(t + 0.19);
+  }
+
+  // -- Intendant magic shield (égide / vortex), parry + fatal --
+  shieldParryHex({ vol = 0.8, shimmer = 1200, rev = 0.35 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const s = this.noise(0.3), lp = this._bq('lowpass', 1300); lp.frequency.exponentialRampToValueAtTime(200, t + 0.28); const g = this._g(vol * 0.7); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); s.connect(lp).connect(g).connect(dst); this._send(g, rev); s.start(t); s.stop(t + 0.31);
+    [1, 1.5, 2.02, 2.67].forEach((m, i) => { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(shimmer * m, t); o.frequency.linearRampToValueAtTime(shimmer * m * 1.5, t + 0.4); const og = this._g(0.0001); og.gain.exponentialRampToValueAtTime(vol * 0.3 / (i + 1), t + 0.02); og.gain.exponentialRampToValueAtTime(0.001, t + 0.5); const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 14 + i * 3; const lg = this._g(vol * 0.1 / (i + 1)); lfo.connect(lg).connect(og.gain); lfo.start(t); lfo.stop(t + 0.5); o.connect(og).connect(dst); this._send(og, rev); o.start(t); o.stop(t + 0.52); });
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(110, t); o2.frequency.exponentialRampToValueAtTime(55, t + 0.2); const g2 = this._g(vol * 0.5); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.22); o2.connect(g2).connect(dst); o2.start(t); o2.stop(t + 0.24);
+  }
+  shieldParryVortex({ vol = 0.8, swirl = 1400, spin = 7, drone = 90, rev = 0.4 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const pan = ctx.createStereoPanner(); const panOut = this._g(1); pan.connect(panOut).connect(dst); this._send(panOut, rev);
+    const plfo = ctx.createOscillator(); plfo.type = 'sine'; plfo.frequency.value = spin; const pg = this._g(0.9); plfo.connect(pg).connect(pan.pan); plfo.start(t); plfo.stop(t + 0.7);
+    const s = this.noise(0.6), bp = this._bq('bandpass', swirl, 6); const flfo = ctx.createOscillator(); flfo.type = 'sine'; flfo.frequency.value = spin * 1.5; const fg = this._g(swirl * 0.6); flfo.connect(fg).connect(bp.frequency); flfo.start(t); flfo.stop(t + 0.6); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(vol * 0.6, t + 0.05); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6); s.connect(bp).connect(g).connect(pan); s.start(t); s.stop(t + 0.62);
+    const s2 = this.noise(0.4), bp2 = this._bq('bandpass', 400, 1.2); bp2.frequency.setValueAtTime(300, t); bp2.frequency.exponentialRampToValueAtTime(3500, t + 0.4); const g2 = this._g(0.0001); g2.gain.exponentialRampToValueAtTime(vol * 0.4, t + 0.1); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.4); s2.connect(bp2).connect(g2).connect(pan); s2.start(t); s2.stop(t + 0.42);
+    const s3 = this.noise(0.28), lp = this._bq('lowpass', 1100); const g3 = this._g(0.0001); g3.gain.linearRampToValueAtTime(vol * 0.5, t + 0.16); g3.gain.exponentialRampToValueAtTime(0.001, t + 0.26); s3.connect(lp).connect(g3).connect(pan); s3.start(t); s3.stop(t + 0.28);
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(drone, t); const olfo = ctx.createOscillator(); olfo.type = 'sine'; olfo.frequency.value = spin; const od = this._g(drone * 0.06); olfo.connect(od).connect(o.frequency); olfo.start(t); olfo.stop(t + 0.6); const lp2 = this._bq('lowpass', 600); const og = this._g(0.0001); og.gain.exponentialRampToValueAtTime(vol * 0.3, t + 0.05); og.gain.exponentialRampToValueAtTime(0.001, t + 0.6); o.connect(lp2).connect(og).connect(pan); o.start(t); o.stop(t + 0.62);
+  }
+  shieldFatalHex({ vol = 0.9, pitch = 210, rev = 0.45 } = {}, out) { this.explosionModern({ vol, rev }, out); this.voice({ pitch, dur: 0.6, drop: 0.55, vol: 0.5, vib: 1 }, out); }
+  shieldFatalVortex({ vol = 0.9, spin = 9, pitch = 210, rev = 0.45 } = {}, out) {
+    const ctx = this.ensure(); const dst = out || this.master; const t = ctx.currentTime;
+    const pan = ctx.createStereoPanner(); const panOut = this._g(1); pan.connect(panOut).connect(dst); this._send(panOut, rev);
+    const s = this.noise(0.4), bp = this._bq('bandpass', 2600, 5); bp.frequency.setValueAtTime(2600, t); bp.frequency.exponentialRampToValueAtTime(280, t + 0.35); const plfo = ctx.createOscillator(); plfo.type = 'sine'; plfo.frequency.setValueAtTime(spin * 1.6, t); plfo.frequency.exponentialRampToValueAtTime(1, t + 0.35); const pg = this._g(0.9); plfo.connect(pg).connect(pan.pan); plfo.start(t); plfo.stop(t + 0.4); const g = this._g(0.0001); g.gain.exponentialRampToValueAtTime(vol * 0.55, t + 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + 0.37); s.connect(bp).connect(g).connect(pan); s.start(t); s.stop(t + 0.39);
+    setTimeout(() => { this.explosionModern({ vol, rev }, out); this.voice({ pitch, dur: 0.6, drop: 0.5, vol: 0.5, vib: 1 }, out); }, 170);
+  }
+
   // Cannon shot: short filtered noise crack plus a descending low thump.
+  // DEPRECATED (§3bis): superseded by boomModern at all call sites; kept for reference.
   boom() {
     if (!this.enabled) return;
     const ctx = this.ensure();
@@ -125,6 +518,8 @@ export default class Sfx {
   }
 
   // Impact explosion: louder, longer rumble. vol scales it (distance falloff).
+  // DEPRECATED (§3bis) for the obus-impact event (→ explosionModern), but still
+  // the base layer of the RETAINED hit() (metallic tower-touch), so kept.
   explosion(vol = 1) {
     if (!this.enabled || vol <= 0) return;
     const ctx = this.ensure();
@@ -167,6 +562,8 @@ export default class Sfx {
 
   // Tower struck: a single rubble/collapse — a low rumble, a deep thud and a
   // scatter of debris clatter. The fatal blow (big) runs a little longer.
+  // DEPRECATED (§3bis): superseded by rubbleModern; the big/small distinction is
+  // now carried at the call site via vol (collapse vol 1, a hit vol 0.7). Unused.
   rubble(big = false) {
     if (!this.enabled) return;
     const ctx = this.ensure();
