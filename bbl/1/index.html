@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1024">
+  <title>Coding with an agentic AI — the making-of a game</title>
+  <link rel="stylesheet" href="lib/fonts.css">
+  <style>
+    /* ============================================================
+       THEME — reuses the game/docs identity: Fredoka + Nunito + JetBrains Mono,
+       one BIOME per chapter (meadow/desert/tundra/volcano/storm), light "sheet"
+       cards on a biome sky. Built for legibility + performance (no blur/filter).
+       ============================================================ */
+    /* registered custom props animate as colours → the sky cross-fades smoothly */
+    @property --sky1 { syntax:'<color>'; inherits:true; initial-value:#6fb7ff }
+    @property --sky2 { syntax:'<color>'; inherits:true; initial-value:#cfeeff }
+    @property --cbody { syntax:'<color>'; inherits:true; initial-value:#fff3b0 }
+    @property --cglow { syntax:'<color>'; inherits:true; initial-value:#ffe066 }
+
+    :root{
+      --display:'Fredoka', system-ui, sans-serif;
+      --body:'Nunito', 'Segoe UI', system-ui, sans-serif;
+      --mono:'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+      --ink:#2b2535; --ink-soft:#5b5470;
+      --paper:#fbf7ef; --card-line:rgba(43,37,53,.12);
+      --tech:#3a6df0;
+      /* default biome = meadow (overridden by [data-biome]) */
+      --sky1:#6fb7ff; --sky2:#cfeeff; --accent:#3f8f2f; --accent2:#7ed957; --terrain:#4a9b3a;
+      --cbody:#fff3b0; --cglow:#ffe066; --stars:0; --mtn1:#9fc6e8; --mtn2:#7fb0dd;
+    }
+    [data-biome="meadow"]{--sky1:#6fb7ff;--sky2:#cfeeff;--accent:#3f8f2f;--accent2:#7ed957;--terrain:#4a9b3a;--cbody:#fff3b0;--cglow:#ffe066;--stars:0;--mtn1:#9fc6e8;--mtn2:#7fb0dd}
+    [data-biome="desert"]{--sky1:#f6b66b;--sky2:#fde9c8;--accent:#c07d22;--accent2:#f0cd7a;--terrain:#d9a441;--cbody:#fff0c0;--cglow:#ffd27a;--stars:0;--mtn1:#d8a566;--mtn2:#c28a4a}
+    [data-biome="tundra"]{--sky1:#9fb8d6;--sky2:#eaf2fb;--accent:#5b7da6;--accent2:#aecbe8;--terrain:#cfe0f2;--cbody:#fdfdff;--cglow:#dbe7ff;--stars:0;--mtn1:#c7d6e8;--mtn2:#aebfd6}
+    [data-biome="volcano"]{--sky1:#2a1430;--sky2:#6e2535;--accent:#d8552f;--accent2:#ff8c42;--terrain:#3a2f3a;--cbody:#fff0c0;--cglow:#ff8c42;--stars:.4;--mtn1:#46303f;--mtn2:#32222f}
+    [data-biome="storm"]{--sky1:#0d1322;--sky2:#243352;--accent:#4f6fb0;--accent2:#7da6ff;--terrain:#1c2236;--cbody:#cdd8f5;--cglow:#6f86c0;--stars:.55;--mtn1:#36415e;--mtn2:#222a40}
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      font-family:var(--body); color:var(--ink); background:#0c1118;
+      /* --amb is set per-move (JS) to impress's REAL transition length incl. its half-delay.
+         The SKY is now two cross-fading layers (#sky-a/#sky-b, GPU opacity) instead of a per-frame
+         full-screen gradient repaint — only the small celestial vars still interpolate here. */
+      transition:--cbody var(--amb,1s) ease-in-out, --cglow var(--amb,1s) ease-in-out;
+    }
+    /* two stacked sky gradients; biome change cross-fades them by opacity (compositor-only) */
+    #sky-a,#sky-b{position:fixed;inset:0;z-index:0;pointer-events:none;will-change:opacity;
+      transition:opacity var(--amb,1s) ease-in-out}
+    #sky-a{opacity:1;background:linear-gradient(180deg,#6fb7ff 0%,#cfeeff 100%)}
+    #sky-b{opacity:0}
+
+    /* ---- parallax sky: a sun/moon that arcs across the talk (progress gauge) + stars ---- */
+    #stars{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:var(--stars);transition:opacity var(--amb,1s) ease-in-out;
+      background-image:
+        radial-gradient(1.5px 1.5px at 18% 24%, #fff 50%, transparent 51%),
+        radial-gradient(1.2px 1.2px at 67% 18%, #cfe 50%, transparent 51%),
+        radial-gradient(1.7px 1.7px at 41% 62%, #fff 50%, transparent 51%),
+        radial-gradient(1.1px 1.1px at 83% 54%, #fde 50%, transparent 51%),
+        radial-gradient(1.3px 1.3px at 52% 38%, #fff 50%, transparent 51%),
+        radial-gradient(1.1px 1.1px at 11% 72%, #cff 50%, transparent 51%),
+        radial-gradient(1.6px 1.6px at 91% 30%, #fff 50%, transparent 51%),
+        radial-gradient(1.2px 1.2px at 31% 12%, #fff 50%, transparent 51%),
+        radial-gradient(1.3px 1.3px at 74% 78%, #fff 50%, transparent 51%);}
+    /* intro: deep-space backdrop that fades to the meadow sky as the camera descends to earth */
+    #space{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;
+      transition:opacity var(--amb,1s) ease-in-out;
+      background:radial-gradient(circle at 50% 24%, #18244e 0%, #0b1336 44%, #04060f 78%, #02030a 100%);}
+    /* the "road" wink: a starfield that streaks horizontally across the long 5→6 pan */
+    #warp{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;will-change:opacity,transform;
+      background-repeat:repeat;background-size:360px 360px;
+      background-image:
+        radial-gradient(1.7px 1.7px at 20% 30%, #fff 50%, transparent 51%),
+        radial-gradient(1.3px 1.3px at 70% 65%, #cfe 50%, transparent 51%),
+        radial-gradient(1.9px 1.9px at 45% 80%, #fff 50%, transparent 51%),
+        radial-gradient(1.2px 1.2px at 85% 18%, #fde 50%, transparent 51%),
+        radial-gradient(1.5px 1.5px at 12% 60%, #fff 50%, transparent 51%),
+        radial-gradient(1.4px 1.4px at 58% 38%, #fff 50%, transparent 51%);}
+    #warp.run{animation:warpRoad var(--warpdur,1500ms) linear var(--warpdelay,0ms) 1 both;}
+    /* opacity vs. distance along the road (peaks at mid-pan) — exactly as specified */
+    @keyframes warpRoad{
+      0%  {opacity:0;   transform:translateX(0) scaleX(1)}
+      10% {opacity:0}
+      20% {opacity:.2}
+      50% {opacity:1;   transform:translateX(calc(var(--wdx,-700px) * .5)) scaleX(1.7)}
+      80% {opacity:.2}
+      90% {opacity:0}
+      100%{opacity:0;   transform:translateX(var(--wdx,-700px)) scaleX(1)}
+    }
+    /* positioned ENTIRELY via transform (vw/vh) so its big blurred glow composites on the GPU
+       instead of repainting every frame while it moves — much smoother than animating left/top */
+    #celestial{position:fixed;z-index:0;left:0;top:0;width:140px;height:140px;border-radius:50%;
+      transform:translate(9vw,60vh) translate(-50%,-50%);pointer-events:none;opacity:.95;
+      will-change:transform,opacity;
+      display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(circle at 38% 36%, var(--cbody), var(--cglow) 68%, transparent 71%);
+      box-shadow:0 0 80px 30px var(--cglow);
+      transition:transform var(--amb,1s) ease-in-out, opacity var(--amb,1s) ease-in-out}
+    /* step number in the card's bottom-right corner — relief + a touch of contrast vs the surface */
+    .step .stepnum{position:absolute;right:24px;bottom:16px;
+      font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.02em;
+      color:color-mix(in srgb, var(--paper) 84%, #2b2535 16%);   /* light card → slightly darker */
+      text-shadow:0 1px 0 rgba(255,255,255,.85), 0 -1px 1px rgba(0,0,0,.28);
+      opacity:.95;pointer-events:none}
+    .tv .stepnum{color:color-mix(in srgb, #0e1320 74%, #fff 26%);  /* dark card → slightly lighter */
+      text-shadow:0 1px 0 rgba(255,255,255,.14), 0 -1px 1px rgba(0,0,0,.5)}
+
+    /* parallax mountain range (silhouette only — no ground/crest), per-biome colour */
+    .mtn{position:fixed;left:-25%;right:-25%;bottom:0;z-index:0;pointer-events:none;
+      transform-origin:50% 100%;
+      -webkit-mask-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1400 200' preserveAspectRatio='none'><path d='M0 200L0 150C90 150 135 72 230 72C325 72 370 150 470 150C575 150 625 50 730 50C835 50 880 150 985 150C1085 150 1135 86 1235 86C1325 86 1360 150 1400 150L1400 200Z' fill='black'/></svg>");
+      mask-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1400 200' preserveAspectRatio='none'><path d='M0 200L0 150C90 150 135 72 230 72C325 72 370 150 470 150C575 150 625 50 730 50C835 50 880 150 985 150C1085 150 1135 86 1235 86C1325 86 1360 150 1400 150L1400 200Z' fill='black'/></svg>");
+      -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
+      -webkit-mask-position:0 bottom;mask-position:0 bottom;will-change:transform,opacity;
+      /* horizontal parallax now rides inside `transform` (GPU-composited) instead of animating
+         mask-position (a per-frame repaint) — the prime culprit for the jerky pans */
+      transition:background-color var(--amb,1s) ease-in-out, transform var(--amb,1s) ease-in-out, opacity var(--amb,1s) ease-in-out;}
+    #mtn-far{height:40vh;background-color:var(--mtn1);opacity:.5;
+      -webkit-mask-size:1700px 100%;mask-size:1700px 100%}
+    #mtn-near{height:30vh;background-color:var(--mtn2);opacity:.72;
+      -webkit-mask-size:1150px 100%;mask-size:1150px 100%}
+
+    .fallback{display:none;max-width:680px;margin:12vh auto;padding:2rem;line-height:1.5}
+    .impress-not-supported .fallback{display:block}
+    .impress-not-supported #impress{display:none}
+
+    #impress{position:relative;z-index:1}
+    /* impress animates the root (scale) and its inner canvas (translate+rotate) on every move —
+       hint both onto their own GPU layers so the long pans/zooms stay smooth */
+    #impress,#impress>div{will-change:transform}
+
+    /* ---- the "sheet" card (docs identity) ---- */
+    .step{
+      width:980px;padding:44px 50px;
+      color:var(--ink);
+      /* paper-grain texture (subtle fractal noise) over the paper colour — light cards only;
+         .tv/.overview reset `background`, so they keep no grain */
+      background-color:var(--paper);
+      background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.085'/></feComponentTransfer></filter><rect width='200' height='200' filter='url(%23g)'/></svg>");
+      background-size:200px 200px;
+      border-radius:20px;
+      border-top:7px solid var(--accent);     /* biome marker — also colour-codes the overview ribbon */
+      /* inactive cards are fully hidden (no ghost bleed) — the faint slide-trail is revealed ONLY
+         on step 42 (#impress.trail) for its vanishing line, and on the overview (#impress.reveal) */
+      opacity:0; transition:opacity .5s ease;
+    }
+    .step.active{opacity:1;box-shadow:0 26px 64px rgba(20,15,35,.4)}
+    .step:not(.active){box-shadow:none}
+    #impress.trail .step:not(.active){opacity:.16}
+    .step .notes{display:none}   /* speaker notes: hidden on the slide, read by the P-console */
+    /* slide 42 sits in FRONT (its +z does the real stacking in the 3D scene; z-index is the 2D fallback)
+       so the receding slide-trail reads as a clean vanishing line behind it */
+    .step.fuite{z-index:40}
+    /* the skip plugin only reroutes navigation — it leaves skipped steps rendered, so in Lightning
+       mode the hidden 'deep' slides bled through the 3D scene as faint colour-edged bars. Hide them. */
+    .step.skip{visibility:hidden}
+    #impress.reveal .step{opacity:.95;transition:opacity .9s ease}
+    /* uniform chapter cards: same width + height, content vertically centered.
+       Full-bleed steps (openers, hammers, overview) are excluded — they aren't cards. */
+    .step:not(.opener):not(.hammer):not(.overview):not(.finale){
+      width:1040px;min-height:586px;
+      display:flex;flex-direction:column;justify-content:center;
+    }
+
+    h1,h2{font-family:var(--display);font-weight:600;line-height:1.08;margin:0 0 16px;color:var(--ink)}
+    h1{font-size:62px;letter-spacing:-.01em}
+    h2{font-size:46px}
+    .kicker{font-family:var(--display);font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+      color:var(--accent);font-size:16px;margin:0 0 14px}
+    .lead{font-size:27px;line-height:1.3;color:var(--ink);margin:0 0 12px;font-weight:700}
+    .sub{font-size:22px;line-height:1.5;color:var(--ink-soft);margin:0}
+    .meta{margin-top:20px;font-size:16px;color:var(--ink-soft)}
+    .url{color:var(--accent);font-weight:800}
+    em{font-style:normal;font-weight:800;color:var(--accent)}
+    .cyan{color:var(--tech);font-weight:800}
+    .pill{display:inline-block;font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.03em;
+      background:var(--accent);color:#fff;padding:6px 15px;border-radius:999px;margin:0 0 16px}
+    ul{margin:16px 0 0;padding:0;list-style:none}
+    li{font-size:22px;line-height:1.5;padding-left:32px;position:relative;color:var(--ink);margin:7px 0}
+    li::before{content:"›";position:absolute;left:6px;color:var(--accent);font-weight:900}
+
+    /* ---- prompt = dark code panel (docs <pre> identity) ---- */
+    .prompt{margin-top:16px;text-align:left;background:#1d2233;color:#e7ecff;border-radius:12px;
+      border-left:4px solid var(--accent2);padding:14px 18px;font-family:var(--mono);font-size:16px;line-height:1.5}
+    .prompt .tag{display:inline-block;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--accent2);font-weight:700;margin-bottom:8px}
+    .prompt p{margin:0;font-size:18.5px;line-height:1.55}
+    .prompt.sm p{font-size:17px;line-height:1.5}
+    .prompt b{color:var(--accent2);font-weight:700}
+    .prompt .cyanb{color:#7da6ff;font-weight:700}
+
+    .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;justify-content:center}
+    .chips span{font-family:var(--display);font-weight:600;font-size:14px;color:var(--ink);
+      background:#fff;border:1.5px solid var(--accent);border-radius:10px;padding:6px 12px}
+
+    /* annotated brief — anatomy of an ideal prompt */
+    .anat{margin-top:18px;text-align:left;display:grid;gap:9px}
+    .anat .aline{display:flex;gap:16px;align-items:flex-start;background:#1d2233;border-radius:10px;padding:11px 16px;border-left:4px solid var(--accent2)}
+    .anat .alabel{flex:none;width:150px;font-family:var(--display);font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--accent2);padding-top:3px}
+    .anat .atext{font-family:var(--mono);font-size:15.5px;line-height:1.45;color:#dde5ff;margin:0}
+    .anat .atext b{color:#fff}
+
+    /* flip card: prompt → generated result (clickable to the live page) */
+    .flip{perspective:1500px;margin-top:16px}
+    .flip-in{position:relative;width:100%;height:250px;transform-style:preserve-3d;transition:transform .9s ease}
+    .step.flipped .flip-in{transform:rotateY(180deg)}
+    .flip-f,.flip-b{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
+    .flip-f{background:#1d2233;border-left:4px solid var(--accent2);padding:16px 20px;text-align:left;font-family:var(--mono)}
+    .flip-f .tag{display:inline-block;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);font-weight:700;margin-bottom:8px}
+    .flip-f p{margin:0;font-size:16.5px;line-height:1.5;color:#dde5ff}
+    .flip-f b{color:var(--accent2)} .flip-f .cyanb{color:#7da6ff}
+    .flip-b{transform:rotateY(180deg);box-shadow:0 10px 28px rgba(0,0,0,.45);cursor:pointer}
+    .flip-b img{width:100%;height:100%;object-fit:cover;display:block}
+    .flip-b::after{content:"↗";position:absolute;top:8px;right:10px;width:26px;height:26px;border-radius:50%;
+      background:rgba(13,16,38,.8);color:#fff;font-weight:700;font-size:15px;text-align:center;line-height:26px}
+    /* flip is driven by the next-key hook (.flipped), not an auto animation */
+
+    /* artefact gallery — clickable screenshots */
+    .artgrid{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .artgrid figure{margin:0}
+    .shot{position:relative;display:block;border-radius:10px;overflow:hidden;border:1px solid var(--card-line)}
+    .shot img{width:100%;height:152px;object-fit:cover;display:block}
+    .shot::after{content:"↗";position:absolute;top:7px;right:9px;width:24px;height:24px;border-radius:50%;
+      background:rgba(13,16,38,.78);color:#fff;font-weight:700;font-size:14px;text-align:center;line-height:24px}
+    .artgrid figcaption{font-family:var(--display);font-weight:600;font-size:13.5px;color:var(--ink-soft);margin-top:7px;text-align:center}
+
+    /* ---- stats dashboard ---- */
+    .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 20px;margin-top:22px;text-align:left}
+    .stat-grid>div{padding:15px 17px;border:1.5px solid var(--card-line);border-radius:14px;background:#fff}
+    .stat-grid b{display:block;font-family:var(--display);font-weight:600;font-size:33px;line-height:1.05;color:var(--accent)}
+    .stat-grid span{display:block;font-size:14px;color:var(--ink-soft);margin-top:5px;line-height:1.35}
+
+    /* per-slide illustrations — simple inline SVG, biome accent via currentColor */
+    .fig{margin-top:22px;display:flex;justify-content:center;align-items:flex-end;gap:22px;color:var(--accent)}
+    .fig svg{height:84px;width:auto;max-width:100%;overflow:visible;display:block}
+    .scar .fig{color:#d8552f}
+    .fig text{font-family:var(--display);font-weight:600;fill:#6a6480}
+    .fig .accentfill{fill:currentColor}
+
+    /* slide 5: the 4 batches listed with their icons */
+    .batchlist{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px 34px;text-align:left}
+    .batchlist .bi{display:flex;align-items:center;gap:14px}
+    .batchlist .bi svg{width:46px;height:34px;flex:none;color:var(--accent)}
+    .batchlist .bi .t{font-size:20px;font-weight:700;color:var(--ink)}
+    .batchlist .bi .t b{color:var(--accent);font-family:var(--display);margin-right:7px}
+
+    /* lots (slides 7-10): text on the left, icon repositioned to the right */
+    .lotrow{display:flex;gap:34px;align-items:center;text-align:left}
+    .lotmain{flex:2.3;min-width:0}
+    .lotfig{flex:1;display:flex;justify-content:center;align-items:center;color:var(--accent)}
+    .lotfig svg{height:112px;width:auto;max-width:100%;overflow:visible}
+    .lotfig .accentfill{fill:currentColor}
+
+    /* ---- wide cards (economy / machinery) ---- */
+    .wide{width:1040px}
+    .cols{display:flex;gap:40px;margin-top:16px;text-align:left}
+    .cols>div{flex:1}
+    .ch{font-family:var(--display);font-weight:600;font-size:21px;color:var(--accent);margin:0 0 8px}
+    .cb{font-size:18px;line-height:1.45;color:var(--ink-soft);margin:0}
+    .cb em{color:var(--ink)}
+    .grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 20px;margin-top:20px;text-align:left}
+    .grid6>div{padding:13px 15px;border:1.5px solid var(--card-line);border-radius:12px;background:#fff}
+    .grid6 b{display:block;font-family:var(--display);font-weight:600;font-size:19px;color:var(--ink);margin-bottom:3px}
+    .grid6 span{font-size:13.5px;line-height:1.35;color:var(--ink-soft)}
+    ul.two{display:grid;grid-template-columns:1fr 1fr;gap:5px 28px;text-align:left}
+    ul.two li{font-size:18px;margin:5px 0}
+
+    /* ---- QR inset ---- */
+    .qr{display:inline-block;margin-top:20px;background:#fff;border-radius:14px;
+      padding:11px 11px 7px;box-shadow:0 8px 22px rgba(20,15,35,.25);border:1px solid var(--card-line)}
+    .qr svg{display:block;width:120px;height:120px;shape-rendering:crispEdges}
+    .qr .qr-code{position:relative;display:inline-block;line-height:0}
+    .qr .qr-icon{position:absolute;inset:0;margin:auto;width:34px;height:34px;border-radius:9px;
+      background:#fff;box-shadow:0 0 0 2px #fff;display:flex;align-items:center;justify-content:center}
+    .qr .qr-icon svg{width:26px;height:26px;shape-rendering:auto}
+    .qr .cap{display:block;text-align:center;font-family:var(--display);font-weight:600;font-size:11px;
+      letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin-top:6px}
+    /* wide gap so two QRs don't interfere when scanned from a distance */
+    .qr-row{display:flex;gap:120px;justify-content:center;align-items:flex-start;margin-top:18px}
+    .qr-row .qr{margin-top:0}
+
+    /* ---- accents per slide type ---- */
+    .title{text-align:center;width:1060px}
+    .lot .pill, .tech .pill{background:var(--accent)}
+    .idea{border-top-width:0;outline:3px solid var(--accent);outline-offset:-3px}
+    .idea h2{font-size:54px}
+    .scar{border-top-color:#d8552f}
+    .scar .pill{background:#d8552f}
+
+    /* ---- TV boot screen (intro) ---- */
+    .tv{background:#0e1320;color:#e8eef7;border-top:7px solid var(--accent2);width:1060px;text-align:center}
+    .tv .tvk{font-family:var(--mono);color:#7da6ff;letter-spacing:.12em;text-transform:uppercase;font-size:15px;margin:0 0 18px}
+    .tv h1{color:#fff;font-size:68px;margin:0 0 8px}
+    .tv .tvsub{font-size:24px;color:#9fb0c8;margin:0 0 8px}
+    .tv .credit{font-size:17px;color:#7e8aa6;margin:14px 0 0}
+    .tv .credit b{color:#bcd4ff}
+    .tv .roomline{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:18px}
+    .tv .roomcode{font-family:var(--mono);font-size:20px;color:#e8eef7;border:1px solid #2a3654;border-radius:12px;padding:8px 16px}
+    .tv .roomcode b{color:#f2c14e;letter-spacing:.14em}
+
+    /* ---- lobby (intro) ---- */
+    .lobby{text-align:center;width:1060px}
+    .lobbybtns{display:flex;gap:20px;margin:22px 0 8px}
+    .lb{flex:1;background:#fff;border:1px solid var(--card-line);border-radius:16px;padding:22px 24px;text-align:left;
+      font-family:var(--display);font-weight:600;font-size:27px;color:var(--ink);line-height:1.1}
+    .lb .role{display:block;font-family:var(--body);font-weight:700;font-size:16px;color:var(--ink-soft);margin-top:6px}
+    .lb.p1{border-left:7px solid #4f8fff}
+    .lb.p2{border-left:7px solid #ff6b5e}
+
+    /* ---- demo ---- */
+    .demo{text-align:center;width:880px}
+    .demo .big{font-size:104px;line-height:1;margin:0 0 6px}
+
+    /* ---- overview (world map ribbon) ---- */
+    /* keynote chapter openers + hammers — full-bleed bold statements (no card) */
+    .opener,.hammer{background:transparent;border:none;border-top:none;box-shadow:none !important;
+      width:1140px;text-align:center;color:var(--ink)}
+    .opener[data-biome="volcano"],.opener[data-biome="storm"],
+    .hammer[data-biome="volcano"],.hammer[data-biome="storm"]{color:#fff}
+    .opener h2,.hammer h2{color:inherit;text-shadow:0 2px 22px rgba(0,0,0,.28)}
+    .opener .ck{font-family:var(--display);font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+      font-size:20px;color:var(--accent);margin:0 0 16px}
+    .opener h2{font-size:58px;margin:0 0 26px}
+    .hammer h2{font-size:60px;line-height:1.12;margin:0}
+    .opener .prev{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-family:var(--display);font-weight:600;font-size:20px}
+    .opener .prev span{border:1.6px solid currentColor;border-radius:999px;padding:7px 18px;opacity:.82}
+
+    .overview{background:transparent;border:none;border-top:none;box-shadow:none !important;width:1100px;text-align:center;
+      transform:translateY(-120px)}
+    .overview .ovtxt{font-family:var(--display);font-weight:600;font-size:84px;line-height:1;color:#fff;
+      text-shadow:0 4px 24px rgba(0,0,0,.6)}
+    .overview .ovsub{font-size:26px;color:#cdd6e6;margin-top:8px}
+
+    /* ---- finale ---- */
+    /* the thanks/finale stays fully invisible until you land on it (a clean reveal) */
+    .finale{text-align:center;width:1060px;position:relative}
+    .finale:not(.active){opacity:0 !important}
+    .finale h1{font-size:88px;color:var(--accent)}
+    .finale .qa{font-size:30px;color:var(--ink);margin-top:6px;font-weight:700}
+    .finale .play{font-size:20px;color:var(--ink-soft);margin-top:18px}
+    .fw{position:absolute;inset:-180px;pointer-events:none;overflow:visible}
+    .burst{position:absolute;width:9px;height:9px;border-radius:50%;opacity:0}
+    .step.active .burst{animation:boom 2.6s ease-out infinite}
+    @keyframes boom{
+      0%{transform:translate(0,0) scale(.4);opacity:0}
+      8%{opacity:1} 60%{opacity:.9}
+      100%{transform:translate(var(--dx),var(--dy)) scale(1.1);opacity:0}
+    }
+
+    .progress-hint{position:fixed;bottom:16px;left:0;right:0;text-align:center;
+      color:rgba(255,255,255,.85);font-size:14px;z-index:5;letter-spacing:.1em;
+      font-family:var(--display);font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+    @media print{.progress-hint{display:none}}
+
+    /* ---- mode switch (the "simulator", on the dark TV screen) ---- */
+    .modeswitch{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;
+      margin-top:30px;padding:14px 20px;border:1px solid #2a3654;border-radius:16px;
+      background:rgba(255,255,255,.04);font-family:var(--display);font-size:18px;font-weight:600}
+    .modeswitch .ms-opt{color:#7e8aa6;transition:color .25s}
+    .modeswitch .ms-opt.on{color:#fff}
+    .modeswitch .ms-opt[data-for="lightning"].on{color:#f2c14e}
+    .modeswitch .ms-opt[data-for="deep"].on{color:#7ee0c0}
+    .modeswitch .ms-hint{flex-basis:100%;text-align:center;font-size:12px;font-weight:500;
+      letter-spacing:.12em;text-transform:uppercase;color:#7e8aa6}
+    .sw{position:relative;display:inline-block;cursor:pointer}
+    .sw input{position:absolute;opacity:0;width:0;height:0}
+    .sw .track{display:block;width:62px;height:32px;border-radius:999px;
+      background:linear-gradient(120deg,#f2c14e,#e08a2b);transition:background .3s;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+    .sw input:checked + .track{background:linear-gradient(120deg,#7ee0c0,#4f9fd0)}
+    .sw .knob{position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;
+      background:#0e1320;transition:transform .3s;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+    .sw input:checked + .track .knob{transform:translateX(30px)}
+
+    /* ===== TEMP: live tuning panels (slide 42 + overview 43) — remove once dialed in ===== */
+    .tunepanel{position:fixed;bottom:52px;z-index:9999;display:none;width:312px;
+      background:rgba(10,14,22,.93);border:1px solid #2a3550;border-radius:10px;padding:12px 14px;
+      font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;color:#cfe;box-shadow:0 12px 34px rgba(0,0,0,.55)}
+    #tune42{left:14px} #tune43{right:14px}
+    .tunepanel.show{display:block}
+    .tunepanel h4{margin:0 0 9px;font-size:12px;color:#7ee0c0;letter-spacing:.06em;font-weight:700}
+    .tunepanel .row{display:grid;grid-template-columns:48px 1fr 66px;gap:9px;align-items:center;margin:5px 0}
+    .tunepanel .row label{color:#9fb0c8}
+    .tunepanel input[type=range]{width:100%;accent-color:#7ee0c0}
+    .tunepanel input[type=number]{width:62px;background:#0c1119;border:1px solid #2a3550;color:#cfe;
+      border-radius:5px;padding:2px 5px;font:inherit}
+    .tunepanel .readout{margin-top:9px;padding:7px 8px;background:#0c1119;border:1px solid #2a3550;border-radius:6px;
+      color:#9fe0c8;white-space:pre-wrap;word-break:break-all;user-select:all;cursor:text}
+    .tunepanel .hint{margin-top:7px;color:#6b7a92;font-size:11px}
+  </style>
+</head>
+<body data-biome="meadow">
+
+  <div id="sky-a"></div>
+  <div id="sky-b"></div>
+  <div id="space"></div>
+  <div id="stars"></div>
+  <div id="warp"></div>
+  <div id="celestial"></div>
+  <div id="mtn-far" class="mtn"></div>
+  <div id="mtn-near" class="mtn"></div>
+
+  <div class="fallback">
+    <h1>impress.js presentation</h1>
+    <p>Open this file in a recent browser (Chrome / Firefox / Safari) on a wide screen.
+       Navigation: <b>Space</b> or <b>→</b> to advance, <b>←</b> to go back.</p>
+  </div>
+
+  <div id="impress" data-transition-duration="1000" data-width="1140" data-height="712"
+       data-perspective="1800" data-max-scale="30" data-min-scale="0" data-console-autolaunch="false">
+
+    <!-- ============ CHAPTER 1 · MEADOW — OPENING ============ -->
+
+    <!-- 1 · TV boot screen -->
+    <div class="step tv title">
+      <p class="tvk">📺 Tower Duel — booting · brown bag</p>
+      <h1>Coding with an agentic AI</h1>
+      <p class="tvsub">the making-of a game — from the first line to the fireworks</p>
+      <div class="roomline">
+        <span class="roomcode">room <b>BAG·2026</b></span>
+      </div>
+      <p class="credit">host: <b>Aymeric Gerlier</b></p>
+      <div class="modeswitch" id="modeswitch">
+        <span class="ms-opt" data-for="lightning">⚡ Lightning · 22 min</span>
+        <label class="sw" title="Rebuild the talk">
+          <input type="checkbox" id="modeToggle">
+          <span class="track"><span class="knob"></span></span>
+        </label>
+        <span class="ms-opt" data-for="deep">🔬 Deep dive · 40 min</span>
+        <span class="ms-hint">↻ rebuilds the deck live</span>
+      </div>
+    </div>
+
+    <!-- 2 · lobby — the two players -->
+    <div class="step lobby">
+      <p class="kicker">the lobby · 2 players</p>
+      <h2>Who's in this match?</h2>
+      <div class="lobbybtns">
+        <div class="lb p1">🧑 Me<span class="role">the conductor — decide, frame, validate</span></div>
+        <div class="lb p2">🤖 The AI<span class="role">the executor — reads, writes, tests, runs</span></div>
+      </div>
+      <p class="sub">One drives, one builds. Let's start the match.</p>
+    </div>
+
+    <!-- 3 · spark -->
+    <div class="step">
+      <p class="kicker">The spark</p>
+      <h2>At first: not a game.<br>A <em>training ground</em>.</h2>
+      <p class="sub">The real goal: learning <span class="cyan">agentic AI</span> on a real project, with real constraints.</p>
+      <p class="meta">…and I ended up with an actual game, playable with others.</p>
+      <div class="fig"><svg viewBox="0 0 170 120" role="img" aria-label="aiming at a target">
+        <circle cx="66" cy="62" r="46" fill="none" stroke="currentColor" stroke-width="3"/>
+        <circle cx="66" cy="62" r="29" fill="none" stroke="#9a93ab" stroke-width="3"/>
+        <circle cx="66" cy="62" r="12" class="accentfill"/>
+        <line x1="152" y1="12" x2="72" y2="56" stroke="#9a93ab" stroke-width="3"/>
+        <path d="M152 12l-16 3 8 11z" fill="#9a93ab"/>
+      </svg></div>
+    </div>
+
+    <!-- 4 · demo -->
+    <div class="step demo">
+      <p class="big">🎮</p>
+      <h2 style="margin:0">DEMO</h2>
+      <p class="sub" style="margin-top:12px">Tower&nbsp;Duel — 2&nbsp;players, aim at the same time, fire together.</p>
+      <p class="meta">▶ Play now on your phone — <span class="url">1e1.alwaysdata.net</span></p>
+      <div class="qr" data-qr="https://1e1.alwaysdata.net" data-qr-cap="scan to play" data-qr-icon="play"></div>
+    </div>
+
+    <!-- ============ CHAPTER 2 · DESERT — THE BRIEF & THE 4 LOTS ============ -->
+    <div class="step opener">
+      <p class="ck">Chapter 1 · the brief</p>
+      <h2>Framing beats prompting.</h2>
+      <div class="prev"><span>📝 the real brief</span><span>🧱 the 4 lots</span></div>
+    </div>
+
+    <!-- 5 · founding decision -->
+    <div class="step">
+      <p class="pill">The founding decision</p>
+      <h2>Before writing a line:<br><em>split it into 4 batches.</em></h2>
+      <p class="sub">The best prompt isn't code. <span class="cyan">It's a plan.</span> Four batches, smallest-playable first:</p>
+      <div class="batchlist">
+        <div class="bi"><svg viewBox="0 0 48 34"><rect x="4" y="4" width="40" height="26" rx="4" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M4 12h40" stroke="currentColor" stroke-width="2.5"/><path d="M20 17l11 5-11 5z" fill="currentColor"/></svg><span class="t"><b>1</b>Playable duel</span></div>
+        <div class="bi"><svg viewBox="0 0 48 34"><rect x="3" y="9" width="9" height="16" rx="2" fill="#7ed957"/><rect x="14" y="9" width="9" height="16" rx="2" fill="#f0cd7a"/><rect x="25" y="9" width="9" height="16" rx="2" fill="#aecbe8"/><rect x="36" y="9" width="9" height="16" rx="2" fill="#d8552f"/></svg><span class="t"><b>2</b>Biomes &amp; atmosphere</span></div>
+        <div class="bi"><svg viewBox="0 0 48 34"><rect x="9" y="4" width="30" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/><rect x="20" y="24" width="8" height="3" fill="currentColor"/><rect x="1" y="17" width="9" height="15" rx="2" fill="none" stroke="#9a93ab" stroke-width="2.5"/></svg><span class="t"><b>3</b>TV + controllers</span></div>
+        <div class="bi"><svg viewBox="0 0 48 34"><path d="M2 24 L16 24 C20 24 21 32 26 32 C32 32 33 22 38 22 L46 22 L46 34 L2 34Z" fill="currentColor"/></svg><span class="t"><b>4</b>Destructible terrain</span></div>
+      </div>
+    </div>
+
+    <!-- 6 · the real brief -->
+    <div class="step wide">
+      <p class="kicker">Anatomy of the founding prompt <span style="opacity:.6">— the real brief, in 5 parts</span></p>
+      <div class="anat">
+        <div class="aline"><span class="alabel">&lt;task&gt;</span><p class="atext">“Old-school <b>artillery</b> duel in Phaser — 2 players, tower + cannon, set power &amp; angle, wind per volley. <b>Both aim at the same time, then fire together.</b>” <span style="opacity:.65">← role + the twist</span></p></div>
+        <div class="aline"><span class="alabel">&lt;context&gt;</span><p class="atext">“Glossary: tower · cannon · volley · round · wind · biome — <b>one word, one meaning</b>. Code in English, talk in French.” <span style="opacity:.65">← static → system prompt (cache)</span></p></div>
+        <div class="aline"><span class="alabel">&lt;instructions&gt;</span><p class="atext">“Build in <b>4 batches, smallest-playable first</b>: 1) docker · 2) biomes+FX · 3) TV + phone controllers · 4) destructible terrain.” <span style="opacity:.65">← order matters</span></p></div>
+        <div class="aline"><span class="alabel">&lt;output&gt;</span><p class="atext">“Sim <b>pure &amp; separate</b> from rendering. <b>Done =</b> a full round via <span class="cyanb">docker compose up</span>.” <span style="opacity:.65">← acceptance criteria</span></p></div>
+        <div class="aline"><span class="alabel">&lt;reminders&gt;</span><p class="atext">“<b>One commit per batch</b>, validated before the next. Don't break local play.” <span style="opacity:.65">← restate key rules at the end</span></p></div>
+      </div>
+      <p class="meta">Five parts — task · context · instructions · examples · reminders — wrapped in <b>XML tags</b>. (Few-shot examples came later, per lot.)</p>
+    </div>
+
+    <div class="step lot trim">
+      <div class="lotrow">
+        <div class="lotmain">
+          <p class="pill">Batch 1</p>
+          <h2>The playable duel</h2>
+          <p class="sub">A minimal but <em>complete</em> core, containerized from day one — playable right away.</p>
+          <div class="prompt sm"><span class="tag">👤 me · lot 1</span><p>“Bootstrap Tower Duel: Phaser (<b>pin the version</b>), one HTML page, dockerized. <b>Core loop only</b> — 2 towers + a cannon each, set angle &amp; power, wind shifts each volley, both lock then fire together, show score. Keep the <b>sim pure &amp; separate from rendering</b>. <b>Done =</b> a full round playable via <span class="cyanb">docker compose up</span>.”</p></div>
+        </div>
+        <div class="lotfig"><svg viewBox="0 0 170 120" role="img" aria-label="containerized, playable">
+          <rect x="22" y="26" width="126" height="80" rx="10" fill="none" stroke="currentColor" stroke-width="3"/>
+          <path d="M22 46h126" stroke="currentColor" stroke-width="3"/>
+          <circle cx="36" cy="36" r="3.5" fill="#9a93ab"/><circle cx="48" cy="36" r="3.5" fill="#9a93ab"/>
+          <path d="M72 60l34 20-34 20z" class="accentfill"/>
+        </svg></div>
+      </div>
+    </div>
+
+    <div class="step lot trim">
+      <div class="lotrow">
+        <div class="lotmain">
+          <p class="pill">Batch 2</p>
+          <h2>Biomes &amp; atmosphere</h2>
+          <p class="sub">Identity: visual themes, parallax, synthesized sound. It stops being a prototype.</p>
+          <div class="prompt sm"><span class="tag">👤 me · lot 2</span><p>“Add biomes, chosen <b>before</b> the match (meadow/desert/tundra/volcano): per-biome sky gradient, parallax mountains, ambient particles. <b>Synthesize every SFX in code</b> (WebAudio) — zero asset files. Keep it <b>data-driven</b>: one config object per biome, so I can add a 5th later without touching logic.”</p></div>
+        </div>
+        <div class="lotfig"><svg viewBox="0 0 210 120" role="img" aria-label="biome palettes and parallax">
+          <circle cx="34" cy="30" r="13" fill="#f0cd7a"/>
+          <rect x="14" y="58" width="26" height="26" rx="5" fill="#7ed957"/>
+          <rect x="46" y="58" width="26" height="26" rx="5" fill="#f0cd7a"/>
+          <rect x="78" y="58" width="26" height="26" rx="5" fill="#aecbe8"/>
+          <rect x="110" y="58" width="26" height="26" rx="5" fill="#d8552f"/>
+          <rect x="142" y="58" width="26" height="26" rx="5" fill="#4f6fb0"/>
+          <path d="M0 108 Q52 72 104 96 T210 86 L210 120 L0 120Z" class="accentfill" opacity=".5"/>
+        </svg></div>
+      </div>
+    </div>
+
+    <div class="step lot trim">
+      <div class="lotrow">
+        <div class="lotmain">
+          <p class="pill">Batch 3</p>
+          <h2>TV + controllers</h2>
+          <p class="sub"><span class="cyan">WebSocket</span> architecture: spectator screen, phone-controllers, reconnection. The technical leap.</p>
+          <div class="prompt sm"><span class="tag">👤 me · lot 3</span><p>“Refactor to a WebSocket app, <b>3 roles</b>: a TV that <b>only spectates</b> (never renders controls), phones = the 2 players' controllers, PC = host or join. Handle <b>reconnection</b> (resume a seat). Fire only once <b>both</b> have locked. <b>Don't break</b> single-machine local play.”</p></div>
+        </div>
+        <div class="lotfig"><svg viewBox="0 0 230 120" role="img" aria-label="TV screen with two phone controllers">
+          <rect x="78" y="10" width="74" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="3"/>
+          <rect x="104" y="58" width="22" height="6" rx="2" fill="currentColor"/>
+          <rect x="16" y="70" width="30" height="46" rx="6" fill="none" stroke="#9a93ab" stroke-width="3"/>
+          <rect x="184" y="70" width="30" height="46" rx="6" fill="none" stroke="#9a93ab" stroke-width="3"/>
+          <path d="M46 84 Q78 64 96 56" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="4 5"/>
+          <path d="M184 84 Q152 64 134 56" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="4 5"/>
+        </svg></div>
+      </div>
+    </div>
+
+    <div class="step lot trim">
+      <div class="lotrow">
+        <div class="lotmain">
+          <p class="pill">Batch 4</p>
+          <h2>Destructible terrain</h2>
+          <p class="sub">Gameplay depth: the scenery crumbles under fire. The initial promise is kept.</p>
+          <div class="prompt sm"><span class="tag">👤 me · lot 4</span><p>“Make terrain destructible, <b>Worms-style</b>: shells <b>carve craters</b>; the relief blocks shots like the scenery. Run it in the <b>authoritative sim</b> (server-reusable), not the renderer. Add a <b>toggle</b> so I can A/B it on/off mid-match.”</p></div>
+        </div>
+        <div class="lotfig"><svg viewBox="0 0 200 120" role="img" aria-label="terrain with a crater">
+          <path d="M0 88 L56 88 C70 88 74 110 90 110 C108 110 110 84 124 84 L200 84 L200 120 L0 120Z" class="accentfill" opacity=".75"/>
+          <circle cx="84" cy="60" r="4" fill="#9a93ab"/><circle cx="100" cy="48" r="5" fill="#9a93ab"/>
+          <circle cx="116" cy="58" r="3.5" fill="#9a93ab"/><circle cx="94" cy="40" r="3" fill="#9a93ab"/>
+        </svg></div>
+      </div>
+    </div>
+
+    <div class="step hammer">
+      <h2>A clear plan up front =<br>an AI that ships, not one that wanders.</h2>
+    </div>
+
+    <!-- ============ CHAPTER 3 · TUNDRA — MOMENTUM & TOOLBOX ============ -->
+    <div class="step opener">
+      <p class="ck">Chapter 2 · the method</p>
+      <h2>How I actually drove it.</h2>
+      <div class="prev"><span>🧰 3 techniques</span><span>🔁 the loop</span><span>🗂️ sessions &amp; agents</span></div>
+    </div>
+
+    <div class="step trim">
+      <p class="kicker">Then iteration</p>
+      <h2>lot 1 → v2.0.0,<br>never restarting.</h2>
+      <p class="sub">Turbo, stackable shields, first-to-N matches, local 2-player mode, a storm round, a living battlefield…</p>
+      <p class="meta">~12,400 lines · 37 files (src) · simulation decoupled from rendering (reused server-side)</p>
+      <div class="fig"><svg viewBox="0 0 330 64" role="img" aria-label="version timeline from lot 1 to v2.0.0" style="height:64px">
+        <line x1="14" y1="30" x2="316" y2="30" stroke="#9a93ab" stroke-width="3"/>
+        <circle cx="24" cy="30" r="5" fill="#9a93ab"/><text x="24" y="54" text-anchor="middle" font-size="13">lot 1</text>
+        <circle cx="120" cy="30" r="5" fill="#9a93ab"/><text x="120" y="54" text-anchor="middle" font-size="13">v1.0</text>
+        <circle cx="216" cy="30" r="5" fill="#9a93ab"/><text x="216" y="54" text-anchor="middle" font-size="13">v1.3.2</text>
+        <circle cx="306" cy="30" r="8" class="accentfill"/><text x="304" y="54" text-anchor="middle" font-size="13" fill="currentColor">v2.0</text>
+      </svg></div>
+    </div>
+
+    <div class="step wide">
+      <p class="kicker">The making-of, by the numbers</p>
+      <h2>What it took</h2>
+      <div class="stat-grid">
+        <div><b>4 lots · ~1h30</b><span>empty repo → destructible terrain (16:23→17:30)</span></div>
+        <div><b>2 evenings</b><span>with commits — 17 &amp; 19 June (repo-creation aside)</span></div>
+        <div><b>12 commits</b><span>11 tagged milestones, up to v2.0.0</span></div>
+        <div><b>~12.4k</b><span>lines of code · 37 files (src)</span></div>
+        <div><b>5 langs</b><span>113 doc pages, auto-translated (DeepL)</span></div>
+        <div><b>0</b><span>full rewrites — lot 1 → v2.0.0</span></div>
+      </div>
+    </div>
+
+    <div class="step tech">
+      <p class="pill">My toolbox</p>
+      <h2>3 techniques<br>I use <em>every day</em>.</h2>
+      <p class="sub">…and then the principles that make them work.</p>
+      <div class="fig"><svg viewBox="0 0 250 110" role="img" aria-label="batches, forks, simulators">
+        <rect x="14" y="40" width="46" height="14" rx="3" class="accentfill" opacity=".55"/>
+        <rect x="14" y="58" width="46" height="14" rx="3" class="accentfill" opacity=".75"/>
+        <rect x="14" y="76" width="46" height="14" rx="3" class="accentfill"/>
+        <path d="M104 86 V60 q0-12 12-12 h10 M104 60 q0-12 -12-12 h-6" fill="none" stroke="currentColor" stroke-width="3"/>
+        <circle cx="104" cy="92" r="5" class="accentfill"/><circle cx="130" cy="46" r="5" class="accentfill"/><circle cx="84" cy="46" r="5" fill="#9a93ab"/>
+        <line x1="176" y1="66" x2="238" y2="66" stroke="#9a93ab" stroke-width="3"/>
+        <circle cx="206" cy="66" r="10" class="accentfill"/>
+      </svg></div>
+    </div>
+
+    <div class="step tech trim">
+      <p class="pill">Technique 1</p>
+      <h2>Split into batches</h2>
+      <p class="sub">Frame the work in big batches <em>before</em> coding. AI is brilliant at sprints, lost in an unmarked marathon.</p>
+      <ul><li>A batch = a playable / testable deliverable</li><li>I keep control of the architecture</li></ul>
+      <div class="fig"><svg viewBox="0 0 250 110" role="img" aria-label="one task split into deliverable batches">
+        <rect x="6" y="40" width="52" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M64 57 h28" stroke="#9a93ab" stroke-width="3"/><path d="M92 57l-10-5v10z" fill="#9a93ab"/>
+        <g class="accentfill">
+          <rect x="112" y="8" width="120" height="26" rx="6" opacity=".55"/>
+          <rect x="112" y="42" width="120" height="26" rx="6" opacity=".75"/>
+          <rect x="112" y="76" width="120" height="26" rx="6"/>
+        </g>
+        <g fill="none" stroke="#fff" stroke-width="3"><path d="M124 21l5 5 9-10"/><path d="M124 55l5 5 9-10"/><path d="M124 89l5 5 9-10"/></g>
+      </svg></div>
+    </div>
+
+    <div class="step tech">
+      <p class="pill">Technique 2</p>
+      <h2>Forks &amp; detours</h2>
+      <p class="sub">Explore an idea in a <em>throwaway branch</em>, keep the good one, discard the rest — without polluting the main thread.</p>
+      <div class="prompt sm">
+        <span class="tag">👤 me · fork</span>
+        <p>“<b>Throwaway spike — don't touch main.</b> Replace per-volley wind with a continuous <b>eased gust</b> (~10s period, smoothstep). Wire it <b>just enough</b> to feel in a match — no refactor, no docs, no tests. I'll judge the feel, then we keep it or bin the branch.”</p>
+      </div>
+      <p class="meta">▶ Demo: a fork that went far… and got thrown away, no regrets.</p>
+    </div>
+
+    <div class="step tech hasflip">
+      <p class="pill">Technique 3</p>
+      <h2>Simulators &amp; mockups</h2>
+      <p class="sub">I have the AI generate <em>the tool that lets me decide</em> — I choose from evidence, not blind.</p>
+      <div class="flip">
+        <div class="flip-in">
+          <div class="flip-f">
+            <span class="tag">👤 me · simulator</span>
+            <p><b>&lt;task&gt;</b> generate a <b>standalone</b> <span class="cyanb">ost-lab.html</span> (no deps).<br>
+            <b>&lt;spec&gt;</b> one panel per biome · sliders (tempo, layers, reverb) · <b>playing live</b>.<br>
+            <b>&lt;output&gt;</b> a Copy-preset button → JSON — I tune by ear, paste, commit.</p>
+          </div>
+          <a class="flip-b" href="https://1e1.github.io/tower-phaser/assets/ost-lab.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+            <img src="img/ost-lab.png" alt="the generated soundtrack lab">
+          </a>
+        </div>
+      </div>
+      <p class="meta">▶ press <b>→</b> to reveal the lab it produced · <span class="cyan">click it to open live</span></p>
+    </div>
+
+    <div class="step wide trim">
+      <p class="kicker">The artefact constellation</p>
+      <h2>I had it build the tools, not just the game.</h2>
+      <div class="artgrid">
+        <figure><a class="shot" href="https://1e1.github.io/tower-phaser/assets/pathfinding-lab.html" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="img/pathfinding-lab.png" alt="pathfinding lab"></a><figcaption>pathfinding lab</figcaption></figure>
+        <figure><a class="shot" href="https://htmlpreview.github.io/?https://github.com/1e1/tower-phaser/blob/main/design/battlefield-lab.html" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="img/battlefield-lab.png" alt="battlefield sandbox"></a><figcaption>battlefield sandbox</figcaption></figure>
+        <figure><a class="shot" href="https://1e1.github.io/tower-phaser/fr/" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="img/docs-fr.png" alt="multilingual tutorial"></a><figcaption>tutorial · 5 languages</figcaption></figure>
+      </div>
+      <p class="meta">Decision labs, design sandboxes, a multilingual tutorial — even a “fast-maths” annex (the Quake √ trick). <span class="cyan">Its lesson: the best optimization is the one you don't compute.</span></p>
+    </div>
+
+    <div class="step wide">
+      <p class="pill">My build loop · Lean</p>
+      <h2>Test the main bet — fast.</h2>
+      <div class="cols">
+        <div>
+          <p class="ch">One hypothesis per lot</p>
+          <p class="cb">Prioritization picks the <em>single</em> main bet of each lot/iteration. I build the fastest possible test of it — usually a throwaway simulator.</p>
+        </div>
+        <div>
+          <p class="ch">Realign from the imprint</p>
+          <p class="cb">The implementation leaves an <em>imprint in the code</em>. I re-aim the AI's instructions from it → stay on-spec, pilot the coding agent tighter.</p>
+        </div>
+      </div>
+      <p class="meta">Structured — not chat-patching every passing idea. Prompting is an <em>iterative empirical science</em>: test, find the failure, encode the fix, repeat.</p>
+      <div class="fig"><svg viewBox="0 0 132 116" role="img" aria-label="a repeating loop" style="height:96px">
+        <path d="M66 16 A46 46 0 1 1 28 36" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+        <path d="M28 36l-3-16 17 6z" class="accentfill"/>
+        <circle cx="66" cy="16" r="5" class="accentfill"/><circle cx="112" cy="62" r="5" class="accentfill"/><circle cx="66" cy="108" r="5" class="accentfill"/>
+      </svg></div>
+    </div>
+
+    <div class="step">
+      <p class="kicker">How I drove it</p>
+      <h2>Many sessions, one repo</h2>
+      <ul>
+        <li><em>Tabs</em> = parallel sessions — isolated contexts, same code (one track per lot, + throwaway forks)</li>
+        <li><em>Sub-agents</em> = scoped jobs run out-of-context (explore, review)</li>
+        <li><em>Background</em> = long, independent tasks running while I steer elsewhere</li>
+      </ul>
+      <div class="prompt sm">
+        <span class="tag">👤 me · background</span>
+        <p>“Run the full build + test suite in the <b>background</b>; ping me <b>only on failure</b> (failing test name + output). I'll keep working on the lobby flow meanwhile.”</p>
+      </div>
+    </div>
+
+    <div class="step hammer">
+      <h2>Test the main bet fast —<br>let the code's imprint steer the AI.</h2>
+    </div>
+
+    <!-- ============ CHAPTER 4 · VOLCANO — PRINCIPLES & POSTURE ============ -->
+    <div class="step opener">
+      <p class="ck">Chapter 3 · why it works</p>
+      <h2>It's not the tool. It's the posture.</h2>
+      <div class="prev"><span>🎯 context is everything</span><span>🛠️ tools &gt; instructions</span><span>🎼 conductor</span></div>
+    </div>
+
+    <div class="step idea" id="apex">
+      <p class="pill">The one idea everything hangs on</p>
+      <h2>Context is <em>everything</em>.</h2>
+      <p class="sub">Customizing an AI = <span class="cyan">deciding what to give it</span>. There's almost no other knob.</p>
+      <div class="prompt sm">
+        <span class="tag">📖 the glossary I handed it (verbatim)</span>
+        <p>tower · cannon · volley · round · wind · biome — <b>one word, one meaning.</b> So code, screens &amp; chat finally speak the same language.</p>
+      </div>
+      <p class="meta">Context = intent · how to verify · constraints · room to move · speed · how much you collaborate</p>
+    </div>
+
+    <div class="step">
+      <p class="kicker">Principle</p>
+      <h2>Tools &gt; instructions</h2>
+      <p class="sub">Give it a <em>linter</em>, not formatting rules. Give it a way to <span class="cyan">check its own work</span>: tests, types, build.</p>
+      <div class="prompt sm">
+        <span class="tag">👤 me</span>
+        <p><b>&lt;task&gt;</b> self-check after every change.<br>
+        <b>&lt;steps&gt;</b> run <span class="cyanb">npm run lint · tsc · npm test</span> → fix → re-run until all three are green.<br>
+        <b>&lt;reminder&gt;</b> if a test looks wrong, propose a fix — don't delete it to pass. Paste the final output.</p>
+      </div>
+      <p class="meta">A self-correcting agent beats one you fix by hand.</p>
+    </div>
+
+    <div class="step deep">
+      <p class="kicker">Principle</p>
+      <h2>Feedback is the lever</h2>
+      <p class="sub">More frequent, sharper, <em>argued</em> — just like with a teammate. Formalize your standards.</p>
+      <div class="prompt sm">
+        <span class="tag">👤 me · feedback</span>
+        <p>“This factory + 2 subclasses has a <b>single caller</b> — speculative generality. Collapse to one class, inline it, delete the factory. <b>Rule for next time:</b> no abstraction before the 3rd real duplication.”</p>
+      </div>
+      <p class="meta">Lean: set the standard, then hunt anomalies — it can even reverse-engineer your past reviews into rules you validate.</p>
+    </div>
+
+    <div class="step wide deep">
+      <p class="kicker">The economy</p>
+      <h2>Mind the context window</h2>
+      <div class="cols">
+        <div>
+          <p class="ch">It's a budget</p>
+          <p class="cb">Context <em>and</em> the task share one window. More context = less room to work. Limits create performance — like fitting a whole game in a few KB.</p>
+        </div>
+        <div>
+          <p class="ch">Cache it</p>
+          <p class="cb">What you give first is cached — <span class="cyan">10× cheaper</span>. Stable first (CLAUDE.md, tools), volatile last. Breaks on: model switch · MCP change · compact · update.</p>
+        </div>
+      </div>
+      <div class="fig"><svg viewBox="0 0 300 96" role="img" aria-label="context window budget" style="height:88px">
+        <rect x="4" y="18" width="292" height="28" rx="7" fill="none" stroke="#9a93ab" stroke-width="2.5"/>
+        <rect x="7" y="21" width="176" height="22" rx="4" class="accentfill" opacity=".4"/>
+        <rect x="185" y="21" width="108" height="22" rx="4" class="accentfill"/>
+        <text x="95" y="64" text-anchor="middle" font-size="14">context</text>
+        <text x="239" y="64" text-anchor="middle" font-size="14">task</text>
+        <text x="150" y="88" text-anchor="middle" font-size="13" fill="currentColor">prefix cached → 10× cheaper</text>
+      </svg></div>
+    </div>
+
+    <div class="step">
+      <p class="kicker">The real shift</p>
+      <h2>From coder to<br><em>conductor</em>.</h2>
+      <p class="sub">I decide, I frame, I validate, I <span class="cyan">refuse</span>. The AI executes. The bottleneck moves: from the keyboard to judgment.</p>
+      <div class="fig"><svg viewBox="0 0 250 104" role="img" aria-label="bottleneck moves from keyboard to judgment">
+        <rect x="8" y="34" width="84" height="40" rx="6" fill="none" stroke="#9a93ab" stroke-width="3"/>
+        <g fill="#9a93ab"><rect x="18" y="44" width="10" height="8" rx="2"/><rect x="34" y="44" width="10" height="8" rx="2"/><rect x="50" y="44" width="10" height="8" rx="2"/><rect x="66" y="44" width="10" height="8" rx="2"/><rect x="26" y="58" width="42" height="8" rx="2"/></g>
+        <path d="M100 54 h32" stroke="#9a93ab" stroke-width="3"/><path d="M132 54l-11-6v12z" fill="#9a93ab"/>
+        <path d="M190 24l34 30-34 30-34-30z" class="accentfill"/>
+        <path d="M176 54l9 9 16-18" fill="none" stroke="#fff" stroke-width="3.5"/>
+        <text x="50" y="96" text-anchor="middle" font-size="13">keyboard</text>
+        <text x="190" y="96" text-anchor="middle" font-size="13" fill="currentColor">judgment</text>
+      </svg></div>
+    </div>
+
+    <div class="step trim">
+      <p class="kicker">Holding the course</p>
+      <h2>Memory + continuous refactoring</h2>
+      <p class="sub">Persistent conventions so I don't re-explain everything — and regular reminders: <em>simplify, capitalize.</em></p>
+      <p class="meta">Without it: debt + losing control of your own codebase.</p>
+      <div class="fig"><svg viewBox="0 0 230 104" role="img" aria-label="persistent memory plus continuous refactoring">
+        <ellipse cx="50" cy="26" rx="32" ry="11" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M18 26 V72 a32 11 0 0 0 64 0 V26" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M18 49 a32 11 0 0 0 64 0" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="50" y="98" text-anchor="middle" font-size="13" fill="currentColor">memory</text>
+        <path d="M178 78 A30 30 0 1 1 184 44" fill="none" stroke="#9a93ab" stroke-width="3" stroke-linecap="round"/>
+        <path d="M184 44l3-15 12 10z" fill="#9a93ab"/>
+        <text x="176" y="98" text-anchor="middle" font-size="13">refactor</text>
+      </svg></div>
+    </div>
+
+    <div class="step hammer">
+      <h2>The bottleneck moved —<br>from the keyboard to judgment.</h2>
+    </div>
+
+    <!-- ============ CHAPTER 5 · STORM — MACHINERY & SCARS ============ -->
+    <div class="step opener">
+      <p class="ck">Chapter 4 · the honest part</p>
+      <h2>The scars — and what the data says.</h2>
+      <div class="prev"><span>🔧 the machinery</span><span>🩹 the scars</span><span>📊 the data</span></div>
+    </div>
+
+    <div class="step wide deep">
+      <p class="kicker">The machinery</p>
+      <h2>The building blocks</h2>
+      <div class="grid6">
+        <div><b>CLAUDE.md</b><span>always loaded — universal rules only</span></div>
+        <div><b>Skills</b><span>loaded on demand — cheap on tokens</span></div>
+        <div><b>Hooks</b><span>0 tokens — deterministic, on your machine</span></div>
+        <div><b>Subagents</b><span>out of context — a role + its tools</span></div>
+        <div><b>MCP</b><span>generic, shared tools</span></div>
+        <div><b>Memory</b><span>model-managed — audit with /memory</span></div>
+      </div>
+    </div>
+
+    <div class="step wide deep">
+      <p class="kicker">Going further</p>
+      <h2>Accelerators</h2>
+      <ul class="two">
+        <li><em>Explore → Plan → Code</em> — validate the plan first</li>
+        <li><em>Self-check</em> — tests / types / build in the loop</li>
+        <li><em>Worktrees</em> — parallel sessions, one per branch</li>
+        <li><em>Auto mode</em> — a classifier guards your machine</li>
+        <li><em>/loop · agents dashboard · remote control</em></li>
+        <li><em>Session hygiene</em> — /clear · /compact · /rewind</li>
+      </ul>
+      <p class="meta">After Daisy Hollman — “Beyond the basics with Claude Code”</p>
+      <div class="fig"><svg viewBox="0 0 64 64" role="img" aria-label="speed" style="height:62px">
+        <path d="M36 4 L14 38 H30 L26 60 L50 24 H34 Z" class="accentfill"/>
+      </svg></div>
+    </div>
+
+    <div class="step scar">
+      <p class="pill">Scar 1</p>
+      <h2>Loops &amp; regressions</h2>
+      <p class="sub">The AI breaks what worked, goes in circles, reintroduces a bug it already fixed. <span class="cyan">Tests and version control are not optional.</span></p>
+      <div class="fig"><svg viewBox="0 0 120 104" role="img" aria-label="a broken loop / regression">
+        <path d="M60 14 A40 40 0 1 1 26 32" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+        <path d="M26 32l-3-15 16 6z" class="accentfill"/>
+        <path d="M48 44l24 24M72 44l-24 24" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+      </svg></div>
+    </div>
+
+    <div class="step scar">
+      <p class="pill">Scar 2</p>
+      <h2>Debt &amp; over-engineering</h2>
+      <p class="sub">By default it generates <em>too much</em>: needless abstractions, duplicated code. Simplicity has to be <span class="cyan">demanded</span>.</p>
+      <div class="fig"><svg viewBox="0 0 170 104" role="img" aria-label="debt rising">
+        <line x1="12" y1="92" x2="158" y2="92" stroke="#9a93ab" stroke-width="2"/>
+        <rect x="18" y="74" width="22" height="18" rx="3" class="accentfill" opacity=".45"/>
+        <rect x="50" y="60" width="22" height="32" rx="3" class="accentfill" opacity=".6"/>
+        <rect x="82" y="42" width="22" height="50" rx="3" class="accentfill" opacity=".78"/>
+        <rect x="114" y="20" width="22" height="72" rx="3" class="accentfill"/>
+        <path d="M22 64 L132 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="4 4"/>
+        <path d="M132 20l-15 1 6 12z" fill="currentColor"/>
+      </svg></div>
+    </div>
+
+    <div class="step scar">
+      <p class="pill">Scar 3</p>
+      <h2>The cost of steering</h2>
+      <p class="sub">Framing, reviewing, fixing: it takes time. The gain is real, but <em>the illusion of an instant gain</em> is expensive.</p>
+      <div class="fig"><svg viewBox="0 0 92 104" role="img" aria-label="time cost (hourglass)">
+        <rect x="18" y="10" width="56" height="6" rx="2" fill="currentColor"/>
+        <rect x="18" y="88" width="56" height="6" rx="2" fill="currentColor"/>
+        <path d="M28 16 L64 16 L46 52 Z" class="accentfill" opacity=".45"/>
+        <path d="M46 52 L64 88 L28 88 Z" class="accentfill"/>
+        <path d="M28 16 L64 16 L46 52 L64 88 L28 88 L46 52 Z" fill="none" stroke="currentColor" stroke-width="3"/>
+      </svg></div>
+    </div>
+
+    <div class="step scar">
+      <p class="pill">The golden rule</p>
+      <h2>Know when <em>not</em> to trust.</h2>
+      <p class="sub">Verify everything that matters. Trust is earned, line by line, test by test.</p>
+      <div class="fig"><svg viewBox="0 0 110 104" role="img" aria-label="verify before trusting">
+        <circle cx="44" cy="44" r="28" fill="none" stroke="currentColor" stroke-width="5"/>
+        <path d="M32 44l9 9 16-19" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="64" y1="64" x2="92" y2="92" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+      </svg></div>
+    </div>
+
+    <!-- the macro lesson — a study of 100k+ GitHub devs -->
+    <div class="step wide">
+      <p class="pill">Zoom out — what the data says</p>
+      <h2>Writing code ≠ shipping value.</h2>
+      <p class="sub">100k+ GitHub devs, followed <em>past</em> the code — to commits, projects, releases.</p>
+      <div class="stat-grid">
+        <div><b>+180%</b><span>commits — autonomous agents</span></div>
+        <div><b>+50%</b><span>projects</span></div>
+        <div><b>+30%</b><span>releases actually shipped</span></div>
+      </div>
+      <p class="meta">~3× the commit activity → only +30% more shipped software. <span style="opacity:.65">Source: Demirer, Musolff &amp; Yang — NBER WP 35275 (2026).</span></p>
+    </div>
+
+    <div class="step deep">
+      <p class="pill">Why the value evaporates</p>
+      <h2>The bottleneck just<br>moved downstream.</h2>
+      <p class="sub">Code is raw material. Value comes <em>after</em>: review, integrate, test, ship — then sell, distribute, get adopted. <span class="cyan">All still human.</span></p>
+      <p class="meta">Strong complementarity (σ ≈ 0.25, <span style="opacity:.65">same NBER study</span>): even infinite code generation lifts delivered value by ~25% max while the rest stays human. The edge moves to the human links — and AI makes them <em>more</em> valuable, not less.</p>
+      <div class="fig"><svg viewBox="0 0 170 104" role="img" aria-label="lots of code in, little value out">
+        <g fill="currentColor" opacity=".7"><circle cx="22" cy="14" r="3"/><circle cx="42" cy="12" r="3"/><circle cx="62" cy="15" r="3"/><circle cx="84" cy="12" r="3"/><circle cx="106" cy="15" r="3"/><circle cx="128" cy="12" r="3"/><circle cx="148" cy="14" r="3"/><circle cx="32" cy="24" r="3"/><circle cx="74" cy="24" r="3"/><circle cx="116" cy="24" r="3"/><circle cx="138" cy="24" r="3"/></g>
+        <path d="M10 34 L160 34 L100 70 L100 98 L70 98 L70 70 Z" fill="none" stroke="currentColor" stroke-width="3"/>
+        <circle cx="85" cy="92" r="3.5" class="accentfill"/>
+      </svg></div>
+    </div>
+
+    <div class="step hammer">
+      <h2>Value isn't code volume —<br>it's everything humans still do after.</h2>
+    </div>
+
+    <!-- ============ CHAPTER 6 · MEADOW (dawn) — CLOSE ============ -->
+
+    <div class="step fuite">
+      <p class="pill">Takeaways — the impact on your projects</p>
+      <h2>Your turn to fire.</h2>
+      <ul>
+        <li><em>Give the full context</em> — that's the real customization</li>
+        <li><em>Frame in batches</em>, <em>fork</em> to explore risk-free</li>
+        <li><em>Tools &gt; instructions</em> — let it verify itself</li>
+        <li>Mind the <em>context window</em> &amp; the cache</li>
+        <li>Stay the <span class="cyan">conductor</span> — verify, simplify</li>
+        <li><em>Value ≠ code volume</em> — optimize review, product sense &amp; adoption</li>
+      </ul>
+      <div class="fig"><svg viewBox="0 0 130 68" role="img" aria-label="flag on the summit" style="height:62px">
+        <path d="M6 60 L64 16 L122 60 Z" class="accentfill" opacity=".25"/>
+        <line x1="64" y1="16" x2="64" y2="3" stroke="currentColor" stroke-width="3"/>
+        <path d="M64 4 l20 5 -20 6z" class="accentfill"/>
+      </svg></div>
+    </div>
+
+    <!-- world-map zoom-out (fixed) -->
+    <div class="step overview fixed" data-x="9700" data-y="1700" data-z="1900"
+         data-rotate-z="180" data-rotate-y="0" data-rotate-x="0" data-scale="17">
+      <div class="ovtxt">all this.</div>
+      <div class="ovsub">six worlds, one trajectory — steered.</div>
+    </div>
+
+    <!-- finale (fixed) -->
+    <!-- finale sits one stride ABOVE step 1, kept in ch4's 180° sense → the only pivot is the wrap 44→1 -->
+    <div class="step finale fixed" data-x="0" data-y="-1300" data-z="1400"
+         data-rotate-x="10" data-rotate-z="180" data-rotate-y="0" data-scale="1.25" data-biome="meadow">
+      <div class="fw" id="fireworks"></div>
+      <h1>Thanks 🎆</h1>
+      <p class="qa">Questions? And: which of your projects would you frame in batches?</p>
+      <p class="play">Course: <span class="url">1e1.github.io/tower-phaser</span> · Let's connect: <span class="url">linkedin.com/in/agerlier</span></p>
+      <div class="qr-row">
+        <div class="qr" data-qr="https://1e1.github.io/tower-phaser/" data-qr-cap="the course" data-qr-icon="github"></div>
+        <div class="qr" data-qr="https://www.linkedin.com/in/agerlier/" data-qr-cap="connect" data-qr-icon="linkedin"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="progress-hint">Space / → next · ← previous · type « 0 » to restart · <b>f</b> fullscreen · <b>P</b> speaker notes</div>
+
+  <!-- TEMP: live tuning panels (filled by JS, auto-shown on their step, ` to toggle) -->
+  <div id="tune42" class="tunepanel"></div>
+  <div id="tune43" class="tunepanel"></div>
+
+  <script src="lib/qrcode.js"></script>
+  <script src="lib/impress.js"></script>
+  <script>
+    (function () {
+      var STORE = 'towerTalkMode';
+      var root = document.getElementById('impress');
+      var master = Array.prototype.slice.call(root.querySelectorAll('.step'));
+
+      // ---- QR codes (offline). 'H' error-correction lets a centre logo sit on top (branded QR). ----
+      var QR_ICONS = {
+        github: '<svg viewBox="0 0 16 16" fill="#1b1f24"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>',
+        linkedin: '<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#0a66c2"/><text x="12" y="17.5" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="12" fill="#fff">in</text></svg>',
+        play: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#ff6b35"/><path d="M9.5 7.3l8 4.7-8 4.7z" fill="#fff"/></svg>'
+      };
+      (function buildQRs() {
+        if (typeof qrcode !== 'function') return;
+        Array.prototype.forEach.call(document.querySelectorAll('.qr[data-qr]'), function (box) {
+          var qr = qrcode(0, 'H'); qr.addData(box.getAttribute('data-qr')); qr.make();
+          var svg = qr.createSvgTag({ cellSize: 5, margin: 0, scalable: true });
+          var icon = box.getAttribute('data-qr-icon');
+          var iconHTML = (icon && QR_ICONS[icon]) ? '<span class="qr-icon">' + QR_ICONS[icon] + '</span>' : '';
+          box.innerHTML = '<span class="qr-code">' + svg + iconHTML + '</span>';
+          var cap = box.getAttribute('data-qr-cap');
+          if (cap) { var s = document.createElement('span'); s.className = 'cap'; s.textContent = cap; box.appendChild(s); }
+        });
+      })();
+
+      // ---- finale fireworks ----
+      (function buildFireworks() {
+        var fw = document.getElementById('fireworks'); if (!fw) return;
+        var colors = ['#3f8f2f', '#c07d22', '#d8552f', '#4f6fb0', '#7ed957', '#ff8c42'];
+        for (var b = 0; b < 54; b++) {
+          var d = document.createElement('span'); d.className = 'burst';
+          var ang = (b / 54) * Math.PI * 2 + (b % 3), rad = 150 + (b % 5) * 64;
+          d.style.left = (50 + ((b % 4) * 26 - 40) / 6) + '%';
+          d.style.top = (42 + ((b % 3) * 24 - 30) / 6) + '%';
+          d.style.setProperty('--dx', Math.cos(ang) * rad + 'px');
+          d.style.setProperty('--dy', Math.sin(ang) * rad + 'px');
+          d.style.background = colors[b % colors.length];
+          d.style.animationDelay = ((b % 8) * 0.18) + 's';
+          d.style.boxShadow = '0 0 10px ' + colors[b % colors.length];
+          fw.appendChild(d);
+        }
+      })();
+
+      // ---- LAYOUT: a horizontal side-scroller of biome "worlds" ----
+      // Each chapter = one biome; slides pan left→right within it; entering a chapter
+      // swaps the global sky (biome) and yaws the camera a touch (a new world).
+      var CHAPTERS = [
+        { biome: 'meadow',  n: 4 },   // opening (TV, lobby, spark, demo)
+        { biome: 'desert',  n: 8 },   // opener + the brief + 4 lots + hammer
+        { biome: 'tundra',  n: 11 },  // opener + momentum/toolbox/method + artefacts + hammer
+        { biome: 'volcano', n: 8 },   // opener + principles + posture + hammer
+        { biome: 'storm',   n: 10 },  // opener + machinery/scars/data + hammer
+        { biome: 'meadow',  n: 1 }    // close (dawn return)
+      ];
+      // LAYOUT is a folded "serpentine": intro descends vertically, then four chapter
+      // rows snake UPWARD with a real 180° pivot at each seam (even rows are world-flipped),
+      // so the whole trajectory packs into a compact box the overview can frame on one screen.
+      var SX = 1500;     // horizontal stride per slide
+      var SYi = 1300;    // intro vertical stride (descent)
+      var RY = 2000;     // row stride between chapters (snake climbs)
+      var E1 = 13000;    // ch1 entry x — the long "road" gap after the intro (clin d'œil pan)
+      var Yb = 4 * SYi;  // bottom row level (= intro slide 5)
+      function layout(all) {
+        var arc = all.filter(function (s) { return !s.classList.contains('fixed'); });
+        // 1) biome per chapter drives the sky swap (unchanged grouping)
+        var gi = 0;
+        for (var c = 0; c < CHAPTERS.length; c++) {
+          for (var k = 0; k < CHAPTERS[c].n; k++) {
+            var sb = arc[gi]; if (!sb) break;
+            sb.setAttribute('data-biome', CHAPTERS[c].biome);
+            gi++;
+          }
+        }
+        // 2) serpentine geometry by global index (intro 1-5, ch1 6-12, ch2 13-23, ch3 24-31, ch4 32-41, free 42)
+        // PARTS drive the per-part backdrop FX (island parallax + intro space-descent): [name, firstIdx, lastIdx, travelDir]
+        var PARTS = [['intro',0,4,1],['ch1',5,11,1],['ch2',12,22,-1],['ch3',23,30,1],['ch4',31,40,-1],['free',41,41,-1]];
+        arc.forEach(function (s, i) {
+          var x, y, rot = 0, yaw = 0, z = 0, rotX = 0;
+          if (i <= 4)        { x = 0;                   y = i * SYi; }                       // intro: vertical ↓
+          else if (i <= 11)  { x = E1 + (i - 5) * SX;   y = Yb; }                            // ch1: → at slide-5 level
+          else if (i <= 22)  { x = 22000 - (i - 12) * SX; y = Yb - RY;     rot = 180; }      // ch2: ← (world-flipped)
+          else if (i <= 30)  { x = 7000 + (i - 23) * SX;  y = Yb - 2 * RY; }                 // ch3: →
+          else if (i <= 40)  { x = 17500 - (i - 31) * SX; y = Yb - 3 * RY; rot = 180; }      // ch4: ← (world-flipped)
+          else               { x = 7500; y = 1200; z = 3200; yaw = -51; rot = 179; rotX = -1; } // 42: tuned vanishing-line view (in FRONT via +z, yawed so the slide-trail recedes behind)
+          // keynote rhythm: opener pulls the camera back (wide), hammer punches IN
+          var sc = 1.0;
+          if (s.classList.contains('opener')) sc = 1.5;
+          else if (s.classList.contains('hammer')) sc = 0.82;
+          s.setAttribute('data-x', x);
+          s.setAttribute('data-y', y);
+          s.setAttribute('data-z', z);
+          s.setAttribute('data-rotate', rot);
+          s.setAttribute('data-rotate-y', yaw);
+          s.setAttribute('data-rotate-x', rotX);
+          s.setAttribute('data-scale', sc);
+          // stamp part + local progress (0→1 within the part) + travel direction → per-part FX
+          for (var pp = 0; pp < PARTS.length; pp++) {
+            if (i >= PARTS[pp][1] && i <= PARTS[pp][2]) {
+              var a = PARTS[pp][1], b = PARTS[pp][2];
+              s.setAttribute('data-part', PARTS[pp][0]);
+              s.setAttribute('data-lp', b > a ? ((i - a) / (b - a)).toFixed(4) : '0.5');
+              s.setAttribute('data-dir', PARTS[pp][3]);
+              break;
+            }
+          }
+        });
+      }
+
+      // Lightning drops the optional slides: 'deep' (skipped in lightning) + 'trim' (extra cuts for a ~22 min run)
+      var lightSkip = master.filter(function (s) { return s.classList.contains('deep') || s.classList.contains('trim'); });
+      layout(master);
+
+      // stamp the STEP number (sequential) into each card's bottom-right corner (relief)
+      master.forEach(function (s, i) {
+        // full-bleed steps (overview, chapter openers/hammers) have no card surface for the relief number
+        if (s.classList.contains('overview') || s.classList.contains('opener') || s.classList.contains('hammer')) return;
+        var n = document.createElement('span');
+        n.className = 'stepnum';
+        n.textContent = String(i + 1);
+        s.appendChild(n);
+      });
+
+      // ---- speaker notes (idea-level, FR) — read by the P-console; hidden on the slides ----
+      // Aligned 1:1 with the 44 steps (source: script-conference.md). Reduce/refine freely.
+      var NOTES = [
+        `<b>Titre — TV</b><ul><li>Sujet = <b>COMMENT</b> j'ai bâti le jeu en pilotant une IA (pas le jeu).</li><li>Je montre prompts, méthode, et là où je me suis planté.</li><li>Clin d'œil : le switch = 2 longueurs du talk.</li></ul>`,
+        `<b>Lobby — les 2 joueurs</b><ul><li><b>Moi</b> = chef d'orchestre (décide / cadre / valide).</li><li><b>L'IA</b> = exécutant (lit / écrit / teste / exécute).</li><li>Ce partage des rôles = tout le sujet.</li></ul>`,
+        `<b>Le déclic</b><ul><li>Pas un projet de jeu au départ → <b>terrain d'entraînement</b> pour l'IA agentique.</li><li>Vraies contraintes : temps réel, réseau, multi. Fini avec un vrai jeu.</li></ul>`,
+        `<b>🎮 DÉMO LIVE</b><ul><li>Lancer une manche (volontaire ?). Viser <b>en même temps</b>, tirs ensemble, vent, terrain qui s'effrite.</li><li>QR à l'écran → la salle joue. Secours : mode local clavier.</li></ul>`,
+        `<b>🎬 Ouverture ch.1 — Desert</b><ul><li><b>Cadrer &gt; prompter.</b></li><li>On verra : la décision, le vrai brief, les 4 lots.</li></ul>`,
+        `<b>La décision fondatrice</b><ul><li>Avant 1 ligne → découper en <b>4 lots</b>.</li><li>Mon meilleur prompt = un <b>plan</b>, pas du code. Cap clair = IA qui ne s'éparpille pas.</li></ul>`,
+        `<b>Anatomie du brief</b><ul><li>Brief réel = <b>5 parties en XML</b> (tâche · contexte · instructions · format · rappels).</li><li>Dit le <b>QUOI + POURQUOI</b>, jamais le COMMENT.</li><li>🎙️ <em>oral seulement</em> : « Prompting 101 » découvert APRÈS → matche pile.</li><li>⚡ <em>Lightning</em> : résumer les 4 lots en 1 phrase → martèlement.</li></ul>`,
+        `<b>Lot 1 — Duel jouable</b> <em>(⚡ coupé)</em><ul><li>Dockerisé jour 1, minimal mais complet → on itère sur du concret.</li></ul>`,
+        `<b>Lot 2 — Biomes & ambiance</b> <em>(⚡ coupé)</em><ul><li>Identité : thèmes, parallaxe, son <b>synthétisé</b>. Plus un proto.</li></ul>`,
+        `<b>Lot 3 — TV + manettes</b> <em>(⚡ coupé)</em><ul><li>Saut technique : archi <b>WebSocket</b>, TV + téléphones, reconnexion.</li></ul>`,
+        `<b>Lot 4 — Terrain destructible</b> <em>(⚡ coupé)</em><ul><li>La profondeur promise, tenue (façon <em>Worms</em>).</li></ul>`,
+        `<b>🔨 Martèlement</b><ul><li>« Un plan clair = une IA qui <b>livre</b>, pas qui erre. »</li><li><em>(silence)</em></li></ul>`,
+        `<b>🎬 Ouverture ch.2 — Tundra</b><ul><li>Comment j'ai piloté : chiffres, 3 techniques, ma boucle, mes sessions.</li></ul>`,
+        `<b>L'itération</b> <em>(⚡ coupé)</em><ul><li>Lot 1 → v2.0.0 sans repartir de zéro : turbo, boucliers, N manches, 2j local, orage, 3ᵉ joueur.</li></ul>`,
+        `<b>Les chiffres</b><ul><li>4 lots = <b>1h30</b>. <b>2 soirées</b> avec commits. 12 commits, ~12 000 lignes.</li><li><b>Zéro réécriture complète</b> → c'est le cadrage qui paie.</li></ul>`,
+        `<b>Ma boîte à outils</b><ul><li>3 techniques quotidiennes, puis les principes qui les font marcher.</li><li>⚡ <em>Lightning</em> : « La 1ʳᵉ, vous la connaissez déjà (les lots) » → enchaîner sur la 2.</li></ul>`,
+        `<b>Technique 1 — Décomposer en lots</b> <em>(⚡ coupé)</em><ul><li>1 lot = 1 livrable. IA brillante en sprint cadré. Je reste <b>maître de l'archi</b>.</li></ul>`,
+        `<b>Technique 2 — Forks</b><ul><li>J'hésite → <b>branche jetable</b>, je regarde, je jette sans remords.</li><li>Ex : le vent en easing continu → finalement gardé en turbo.</li></ul>`,
+        `<b>Technique 3 — Simulateurs</b> 🔗 <em>flip</em><ul><li>Faire générer <b>l'outil qui aide à décider</b>.</li><li>1ᵉʳ → retourne la carte (prompt → capture). Labo audio réglé à l'oreille. <b>1 sim par lot</b>. Capture cliquable.</li></ul>`,
+        `<b>Constellation d'artefacts</b> <em>(⚡ coupé)</em> 🔗<ul><li>Écosystème : pathfinding, bac à sable, tuto 5 langues. Outils jamais codés à la main. Cliquables.</li></ul>`,
+        `<b>La boucle (Lean)</b><ul><li>1 pari principal/lot → le test le plus rapide (souvent un sim) → l'implémentation laisse une <b>empreinte</b> → je réaligne les consignes.</li><li>Structuré, pas du patch. 🎙️ « science empirique itérative ».</li></ul>`,
+        `<b>Sessions, un seul dépôt</b><ul><li>1 onglet = session // (même code). Sous-agents = jobs cadrés hors contexte. Tâches longues en arrière-plan.</li></ul>`,
+        `<b>🔨 Martèlement</b><ul><li>« Teste vite le pari principal — laisse l'<b>empreinte du code</b> guider l'IA. »</li><li><em>(silence)</em></li></ul>`,
+        `<b>🎬 Ouverture ch.3 — Volcano</b><ul><li>Ce n'est pas l'outil — c'est la <b>posture</b>. Le cœur.</li></ul>`,
+        `<b>⭐ Le contexte est tout</b><ul><li><b>LA</b> chose à retenir. Personnaliser = <b>décider ce qu'on donne</b>.</li><li>Contexte ≠ que le code : intention, vérif, contraintes, liberté, vitesse, collab. Ex : le glossaire.</li></ul>`,
+        `<b>Outils &gt; consignes</b><ul><li>Donner le <b>linter</b> plutôt que les règles. Mieux : de quoi se vérifier (tests/types/build).</li><li>Un agent qui s'auto-corrige &gt; un agent repris à la main.</li></ul>`,
+        `<b>Le feedback est le levier</b> <em>(⚡ coupé)</em><ul><li>+ fréquent / précis / argumenté, comme à un collègue. Formaliser les standards ; reverse-engineer les reviews passées.</li></ul>`,
+        `<b>La fenêtre de contexte</b> <em>(⚡ coupé)</em><ul><li>Un <b>budget</b> partagé (contexte + tâche). Cache : ce qui est donné <b>en 1er</b> = 10× moins cher. Stable d'abord, volatile en dernier.</li></ul>`,
+        `<b>De codeur à chef d'orchestre</b><ul><li>Je décide / cadre / valide / <b>refuse</b>. L'IA exécute.</li><li>Le goulot passe du <b>clavier</b> au <b>jugement</b>.</li></ul>`,
+        `<b>Garder le cap</b> <em>(⚡ coupé)</em><ul><li>Mémoire de conventions + rappels (« simplifie, capitalise »). Sinon : dette + perte de contrôle.</li></ul>`,
+        `<b>🔨 Martèlement</b><ul><li>« Le goulot a changé de place — du <b>clavier</b> au <b>jugement</b>. »</li><li><em>(silence)</em></li></ul>`,
+        `<b>🎬 Ouverture ch.4 — Storm</b><ul><li>Le plus honnête : les <b>cicatrices</b>, et ce que dit la <b>donnée</b>.</li></ul>`,
+        `<b>Les briques</b> <em>(⚡ coupé)</em><ul><li>CLAUDE.md permanent · skills à la demande · hooks 0 token · sous-agents hors contexte · MCP générique · mémoire (modèle).</li></ul>`,
+        `<b>Accélérateurs</b> <em>(⚡ coupé)</em><ul><li>explore→plan→code · auto-vérif · worktrees · mode auto · /loop · remote · hygiène. <em>Crédit : Daisy Hollman.</em></li></ul>`,
+        `<b>Cicatrice 1 — Boucles & régressions</b><ul><li>Recasse, tourne en rond, réintroduit des bugs. <b>Tests + versionnage</b> = pas optionnels.</li></ul>`,
+        `<b>Cicatrice 2 — Dette & sur-ingénierie</b><ul><li>Génère trop, des doublons. La <b>simplicité</b>, il faut la réclamer — souvent.</li></ul>`,
+        `<b>Cicatrice 3 — Le coût du pilotage</b><ul><li>Cadrer / relire / corriger prend du temps. Gain réel, mais l'illusion de l'<b>instantané</b> coûte cher.</li></ul>`,
+        `<b>La règle d'or</b><ul><li>Savoir <b>ne pas</b> faire confiance. Vérifier ce qui compte. Confiance méritée ligne à ligne.</li></ul>`,
+        `<b>Écrire du code ≠ livrer de la valeur</b><ul><li>Étude 100k devs GitHub : <b>+180 %</b> commits… mais <b>+50 %</b> projets, <b>+30 %</b> versions livrées.</li><li>📚 NBER WP n°35275 (2026).</li></ul>`,
+        `<b>Le goulot s'est déplacé en aval</b> <em>(⚡ coupé)</em><ul><li>Le code = <b>matière première</b>. La valeur vient APRÈS (revoir/intégrer/tester/livrer/vendre) = humain.</li><li><em>(méta : cet article, refait à la main.)</em></li></ul>`,
+        `<b>🔨 Martèlement</b><ul><li>« La valeur ≠ <b>volume de code</b> — c'est tout ce que les humains font <b>après</b>. »</li><li><em>(silence)</em></li></ul>`,
+        `<b>À emporter</b><ul><li>1) Tout le contexte · 2) Lots + forks · 3) Outils &gt; consignes · 4) Surveiller la fenêtre · 5) Rester chef d'orchestre.</li></ul>`,
+        `<b>✦ Dézoom — « all this »</b><ul><li>Tout le parcours = <b>une seule trajectoire</b>. <b>Pilotée</b>, pas magique.</li></ul>`,
+        `<b>🎆 Merci</b> 🔗<ul><li>Code sur GitHub, LinkedIn (2 QR).</li><li>Question : <b>lequel de vos projets gagnerait à être cadré en lots dès maintenant ?</b></li><li>Jeu en ligne pendant les Q&A.</li></ul>`
+      ];
+      master.forEach(function (s, i) {
+        if (!NOTES[i]) return;
+        var d = document.createElement('div'); d.className = 'notes'; d.innerHTML = NOTES[i];
+        s.appendChild(d);
+      });
+
+      // dev hook (inert unless localStorage.ovParams is set): tune the overview camera
+      try {
+        var ovp = JSON.parse(localStorage.getItem('ovParams') || 'null');
+        if (ovp) { var ovEl = root.querySelector('.overview');
+          Object.keys(ovp).forEach(function (k) { ovEl.setAttribute('data-' + k, ovp[k]); }); }
+      } catch (e) {}
+
+      // ---- the "simulator" toggle (Lightning hides deep slides via the skip plugin) ----
+      var mode = (localStorage.getItem(STORE) === 'lightning') ? 'lightning' : 'deep';
+      var toggle = document.getElementById('modeToggle');
+      var sw = document.getElementById('modeswitch');
+      var opts = sw ? sw.querySelectorAll('.ms-opt') : [];
+      function applyMode(m) {
+        lightSkip.forEach(function (s) { s.classList.toggle('skip', m === 'lightning'); });
+        if (toggle) toggle.checked = (m === 'deep');
+        Array.prototype.forEach.call(opts, function (o) { o.classList.toggle('on', o.getAttribute('data-for') === m); });
+      }
+      if (sw) sw.addEventListener('click', function (e) { e.stopPropagation(); });
+      if (toggle) toggle.addEventListener('change', function (e) {
+        e.stopPropagation();
+        mode = toggle.checked ? 'deep' : 'lightning';
+        localStorage.setItem(STORE, mode); applyMode(mode); toggle.blur();
+      });
+
+      // ---- per-chapter ambiance + the sun/moon arc (progress gauge) ----
+      // Driven on STEPLEAVE (fires when the transition STARTS, with detail.next = destination),
+      // so the sky fade + sun glide run in lockstep with the camera move — not after it.
+      var celestial = document.getElementById('celestial');
+      var mtnFar = document.getElementById('mtn-far');
+      var mtnNear = document.getElementById('mtn-near');
+      var space = document.getElementById('space');
+      var warp = document.getElementById('warp');
+      var stars = document.getElementById('stars');
+      // per-biome backdrop baseline: ambient star density + sky-light (sun/moon) height & strength
+      var BIOME_FX = {
+        meadow:  { stars: 0,   celTop: 26, celOp: 0.95 },
+        desert:  { stars: 0,   celTop: 18, celOp: 1.00 },
+        tundra:  { stars: 0,   celTop: 30, celOp: 0.80 },
+        volcano: { stars: 0.40, celTop: 40, celOp: 0.90 },
+        storm:   { stars: 0.55, celTop: 50, celOp: 0.15 }
+      };
+      // ---- sky as two cross-fading layers (GPU opacity), keyed off the biome ----
+      var SKY = {
+        meadow: ['#6fb7ff', '#cfeeff'], desert: ['#f6b66b', '#fde9c8'], tundra: ['#9fb8d6', '#eaf2fb'],
+        volcano: ['#2a1430', '#6e2535'], storm: ['#0d1322', '#243352']
+      };
+      var skyLayers = [document.getElementById('sky-a'), document.getElementById('sky-b')];
+      var skyTop = 0, currentSkyBiome = 'meadow';   // sky-a starts visible (meadow)
+      function setSky(biome) {
+        if (biome === currentSkyBiome || !skyLayers[0]) return;
+        var c = SKY[biome] || SKY.meadow, incoming = skyLayers[1 - skyTop], outgoing = skyLayers[skyTop];
+        incoming.style.background = 'linear-gradient(180deg,' + c[0] + ' 0%,' + c[1] + ' 100%)';
+        void incoming.offsetWidth;                  // commit the new gradient before fading in
+        incoming.style.opacity = '1'; outgoing.style.opacity = '0';
+        skyTop = 1 - skyTop; currentSkyBiome = biome;
+      }
+      function applyAmbiance(t) {
+        if (!t) return;
+        var isOverview = t.classList.contains('overview');
+        var isFinale = t.classList.contains('finale');
+        var biome = t.getAttribute('data-biome') || 'meadow';
+        if (isOverview) { document.body.setAttribute('data-biome', 'storm'); root.classList.add('reveal'); }
+        else { document.body.setAttribute('data-biome', biome); root.classList.remove('reveal'); }
+        root.classList.toggle('trail', t.classList.contains('fuite'));   // reveal the vanishing-line trail on step 42 only
+        setSky(isOverview ? 'storm' : biome);
+
+        var part = t.getAttribute('data-part') || '';
+        var lp = parseFloat(t.getAttribute('data-lp')); if (isNaN(lp)) lp = 0.5;
+        var dir = parseFloat(t.getAttribute('data-dir')) || 1;
+        var isIntro = (part === 'intro');
+        var hump = Math.sin(lp * Math.PI);          // 0 at part edges, 1 at centre → island crest
+        var fx = BIOME_FX[biome] || BIOME_FX.meadow;
+
+        // space overlay: full in deep "space" (intro top) → gone once we reach earth
+        if (space) space.style.opacity = (isIntro ? (1 - lp) : 0).toFixed(3);
+
+        // stars: descent fade for the intro, ambient density otherwise (the map keeps a few)
+        if (stars) {
+          var sOp = isOverview ? 0.55 : (isIntro ? (1 - lp) : fx.stars);
+          stars.style.opacity = sOp.toFixed(3);
+        }
+
+        // celestial light: per-part position + drift; rises into view as the intro nears earth
+        if (celestial) {
+          var co, ct, cl;
+          if (isIntro)        { co = lp * 0.9;  ct = 74 - lp * 34; cl = 30 + lp * 30; }
+          else                { co = fx.celOp;  ct = fx.celTop;    cl = 18 + (dir > 0 ? lp : 1 - lp) * 64; }
+          if (isOverview)     { co = 0; }
+          celestial.style.opacity = co.toFixed(3);
+          celestial.style.transform = 'translate(' + cl.toFixed(1) + 'vw,' + ct.toFixed(1) + 'vh) translate(-50%,-50%)';
+        }
+
+        // depth: turn with the chapter (rotateY) + dolly with the establishing zoom
+        var yaw = parseFloat(t.getAttribute('data-rotate-y')) || 0;
+        var scF, scN;
+        if (isOverview) { scF = 0.46; scN = 0.58; }
+        else if (isFinale) { scF = 1.45; scN = 1.85; }
+        else { var sc = Math.min(parseFloat(t.getAttribute('data-scale')) || 1, 1.2); scF = 1.06 - (sc - 1) * 0.5; scN = 1.15 - (sc - 1) * 0.9; }
+
+        // ISLAND parallax: hills sweep across (centred at lp .5, flipped by travel dir),
+        // crest at the part's middle and recede at its edges. Intro instead climbs up from
+        // below as we drop out of space onto the meadow.
+        var swF, swN, riseF, riseN, opF, opN;
+        if (isIntro) {
+          swF = 0; swN = 0;
+          riseF = (1 - lp) * 240; riseN = (1 - lp) * 380;   // hills rise into frame
+          opF = 0.5 * lp; opN = 0.72 * lp;
+        } else {
+          swF = (0.5 - lp) * 300 * dir; swN = (0.5 - lp) * 680 * dir;
+          riseF = (1 - hump) * 70; riseN = (1 - hump) * 120;
+          opF = 0.5 * (0.6 + 0.4 * hump); opN = 0.72 * (0.6 + 0.4 * hump);
+        }
+        if (isOverview || isFinale) { swF = swN = riseF = riseN = 0; opF = 0.5; opN = 0.72; }
+        if (mtnFar) {
+          mtnFar.style.opacity = opF.toFixed(3);
+          mtnFar.style.transform = 'perspective(1400px) translate(' + swF.toFixed(0) + 'px,' + riseF.toFixed(0) + 'px) rotateY(' + (yaw * 0.15).toFixed(2) + 'deg) scale(' + scF.toFixed(3) + ')';
+        }
+        if (mtnNear) {
+          mtnNear.style.opacity = opN.toFixed(3);
+          mtnNear.style.transform = 'perspective(1400px) translate(' + swN.toFixed(0) + 'px,' + riseN.toFixed(0) + 'px) rotateY(' + (yaw * 0.30).toFixed(2) + 'deg) scale(' + scN.toFixed(3) + ')';
+        }
+      }
+      root.addEventListener('impress:stepleave', function (e) {
+        var next = e.detail && e.detail.next;
+        // match impress's REAL transition length: it tacks on a half-duration delay
+        // whenever the scale changes between steps (translate & scale run in two phases),
+        // so the biome crossfade spans the entire camera travel rather than ending early.
+        var dur = (e.detail && e.detail.transitionDuration) || 1000;
+        var curS = parseFloat(e.target.getAttribute('data-scale')) || 1;
+        var nextS = next ? (parseFloat(next.getAttribute('data-scale')) || 1) : curS;
+        document.documentElement.style.setProperty('--amb', (dur + (curS !== nextS ? dur / 2 : 0)) + 'ms');
+        applyAmbiance(next || null);
+
+        // the long "road" between step 5 and step 6 → fire the wink starfield, timed to the
+        // translate phase (delayed half a beat when the move zooms out, like 5→6 does).
+        if (warp && next) {
+          var s5 = master[4], s6 = master[5];
+          if ((e.target === s5 && next === s6) || (e.target === s6 && next === s5)) {
+            var zoomOut = curS > nextS;
+            warp.style.setProperty('--warpdur', dur + 'ms');
+            warp.style.setProperty('--warpdelay', (zoomOut ? dur / 2 : 0) + 'ms');
+            warp.style.setProperty('--wdx', (e.target === s5 ? -760 : 760) + 'px');  // heading right → stars stream left
+            warp.classList.remove('run'); void warp.offsetWidth; warp.classList.add('run');
+          }
+        }
+      });
+
+      // ---- flip slides: branch the "next" action onto the prompt→render flip ----
+      // impress triggers next()/prev() on KEYUP (keydown only preventDefaults). A capture-phase
+      // keyup listener on window runs first, so the first "next" flips the card (and is swallowed);
+      // the second "next" advances normally. Same for prev (unflip first).
+      var NEXT_KEYS = [32, 39, 40, 34];   // space · → · ↓ · PageDown
+      var PREV_KEYS = [37, 38, 33];       // ← · ↑ · PageUp
+      window.addEventListener('keyup', function (e) {
+        var active = root.querySelector('.step.active');
+        if (!active || !active.classList.contains('hasflip')) return;
+        if (NEXT_KEYS.indexOf(e.keyCode) !== -1 && !active.classList.contains('flipped')) {
+          active.classList.add('flipped');
+          e.stopImmediatePropagation(); e.preventDefault();
+        } else if (PREV_KEYS.indexOf(e.keyCode) !== -1 && active.classList.contains('flipped')) {
+          active.classList.remove('flipped');
+          e.stopImmediatePropagation(); e.preventDefault();
+        }
+      }, true);
+      // each time we (re)enter a flip slide, start on the prompt (front)
+      root.addEventListener('impress:stepenter', function (e) {
+        if (e.target.classList.contains('hasflip')) e.target.classList.remove('flipped');
+      });
+
+      // press 'f' to toggle real fullscreen — reliable across Firefox/Chrome/Safari on any OS
+      window.addEventListener('keyup', function (e) {
+        if (e.key !== 'f' && e.key !== 'F') return;
+        var de = document.documentElement;
+        var inFs = document.fullscreenElement || document.webkitFullscreenElement;
+        if (inFs) { (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document); }
+        else { (de.requestFullscreen || de.webkitRequestFullscreen || function () {}).call(de); }
+      });
+
+      applyMode(mode);
+      impress().init();
+      // paint the opening backdrop (impress fires no stepleave for the first step) → start in deep space
+      applyAmbiance(master[0]);
+
+      // ===== TEMP: live tuning panels (slide 42 + overview 43). Remove once dialed in. =====
+      // impress re-reads every step's data-* on each goto(), so we just edit the attributes and re-goto.
+      (function () {
+        var api = impress();
+        function buildTuner(el, panel, storeKey, title, params) {
+          if (!api || !el || !panel) return;
+          try {
+            var saved = JSON.parse(localStorage.getItem(storeKey) || 'null');
+            if (saved) params.forEach(function (p) { if (saved[p.k] != null) el.setAttribute(p.k, saved[p.k]); });
+          } catch (e) {}
+          function curVal(p) { var v = parseFloat(el.getAttribute(p.k)); return isNaN(v) ? p.def : v; }
+          var h = document.createElement('h4'); h.textContent = '⚙ ' + title; panel.appendChild(h);
+          var readout = document.createElement('div'); readout.className = 'readout';
+          function refresh() {
+            readout.textContent = params.map(function (p) { return p.l.replace('°', '') + '=' + curVal(p); }).join('  ');
+            var save = {}; params.forEach(function (p) { save[p.k] = curVal(p); });
+            try { localStorage.setItem(storeKey, JSON.stringify(save)); } catch (e) {}
+          }
+          function apply() { if (root.querySelector('.step.active') === el) api.goto(el, 0); refresh(); }
+          params.forEach(function (p) {
+            var row = document.createElement('div'); row.className = 'row';
+            var lab = document.createElement('label'); lab.textContent = p.l; row.appendChild(lab);
+            var rng = document.createElement('input'); rng.type = 'range'; rng.min = p.min; rng.max = p.max; rng.step = p.step; rng.value = curVal(p);
+            var num = document.createElement('input'); num.type = 'number'; num.min = p.min; num.max = p.max; num.step = p.step; num.value = curVal(p);
+            function set(v) { el.setAttribute(p.k, v); rng.value = v; num.value = v; apply(); }
+            rng.addEventListener('input', function () { set(rng.value); });
+            num.addEventListener('input', function () { set(num.value); });
+            row.appendChild(rng); row.appendChild(num); panel.appendChild(row);
+          });
+          panel.appendChild(readout);
+          var hint = document.createElement('div'); hint.className = 'hint';
+          hint.textContent = 'auto-shown on its step · ` toggles · saved to localStorage';
+          panel.appendChild(hint);
+          refresh();
+          ['keydown', 'keyup', 'keypress'].forEach(function (ev) { panel.addEventListener(ev, function (e) { e.stopPropagation(); }); });
+          function vis(on) { panel.classList.toggle('show', on); }
+          // hidden by default — press ` while on this step to reveal the panel again
+          root.addEventListener('impress:stepenter', function (e) { if (e.target !== el) vis(false); });
+          window.addEventListener('keyup', function (e) { if (e.key === '`' && root.querySelector('.step.active') === el) vis(!panel.classList.contains('show')); });
+        }
+
+        buildTuner(root.querySelector('.fuite'), document.getElementById('tune42'), 'tune42', 'slide 42', [
+          { k: 'data-x',        l: 'x',     min: -20000, max: 40000, step: 100,  def: 0 },
+          { k: 'data-y',        l: 'y',     min: -15000, max: 15000, step: 100,  def: 0 },
+          { k: 'data-z',        l: 'z',     min: -6000,  max: 9000,  step: 100,  def: 0 },
+          { k: 'data-rotate-x', l: 'rotX°', min: -90,    max: 90,    step: 1,    def: 0 },
+          { k: 'data-rotate-y', l: 'rotY°', min: -90,    max: 90,    step: 1,    def: 0 },
+          { k: 'data-rotate',   l: 'rotZ°', min: -180,   max: 180,   step: 1,    def: 0 },
+          { k: 'data-scale',    l: 'scale', min: 0.3,    max: 3,     step: 0.05, def: 1 }
+        ]);
+        buildTuner(root.querySelector('.overview'), document.getElementById('tune43'), 'tune43', 'overview 43', [
+          { k: 'data-x',        l: 'x',     min: -20000, max: 40000, step: 100,  def: 0 },
+          { k: 'data-y',        l: 'y',     min: -15000, max: 15000, step: 100,  def: 0 },
+          { k: 'data-z',        l: 'z',     min: -4000,  max: 14000, step: 100,  def: 0 },
+          { k: 'data-rotate-x', l: 'rotX°', min: -90,    max: 90,    step: 1,    def: 0 },
+          { k: 'data-rotate-y', l: 'rotY°', min: -90,    max: 90,    step: 1,    def: 0 },
+          { k: 'data-rotate-z', l: 'rotZ°', min: -180,   max: 180,   step: 1,    def: 0 },
+          { k: 'data-scale',    l: 'scale', min: 1,      max: 30,    step: 0.5,  def: 13 }
+        ]);
+      })();
+    })();
+  </script>
+</body>
+</html>

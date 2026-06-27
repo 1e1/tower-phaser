@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview — schéma de parcours (44 steps)</title>
+<style>
+  :root{
+    --intro:#4f6fb0; --ch1:#c07d22; --ch2:#3f8f2f; --ch3:#d8552f; --ch4:#8a4fb0;
+    --free:#c9a24a; --over:#e8c34a; --fin:#4f6fb0;
+    --ink:#e9eef5; --dim:#9aa6b6; --turn:#ffd36b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#0c1118;color:var(--ink);
+    font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+  /* the page IS the overview: the SVG always fits the screen (meet) */
+  #map{width:100vw;height:100vh;display:block}
+  .legend{position:fixed;left:18px;bottom:12px;font-size:12px;color:var(--dim);
+    background:rgba(12,17,24,.72);padding:8px 12px;border:1px solid #233;border-radius:8px;
+    display:flex;gap:13px;flex-wrap:wrap;max-width:70vw}
+  .legend b{color:var(--ink);font-weight:600}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .title{position:fixed;left:18px;top:14px;font-size:13px;color:var(--dim)}
+  .title b{color:var(--ink)}
+  .part{font-size:9px;fill:#0c1118;opacity:.6;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+  .num{font-size:18px;fill:#0c1118;font-weight:800}
+  .turn{fill:var(--turn);font-size:12px;font-weight:700}
+  .turn.soft{fill:#9aa6b6;font-size:11px;font-weight:600}
+  .turn.road{fill:#7ed957;font-size:12px;font-weight:700}
+  .turnbox{fill:rgba(255,211,107,.12);stroke:var(--turn);stroke-width:1;stroke-dasharray:3 3}
+  .turnbox.soft{fill:rgba(154,166,182,.08);stroke:#566;stroke-dasharray:2 4}
+  .turnbox.road{fill:rgba(126,217,87,.1);stroke:#7ed957;stroke-dasharray:none}
+  .flow{fill:none;stroke:#5e6b7d;stroke-width:2;marker-end:url(#arrow)}
+  .flow.wrap{stroke:#4f6fb0;stroke-dasharray:6 5;opacity:.9}
+  .flow.road{stroke:#7ed957;stroke-width:3;stroke-dasharray:2 11;stroke-linecap:round;opacity:.85;marker-end:url(#arrowG)}
+  .vanish{stroke:#c9a24a;stroke-width:1;stroke-dasharray:2 6;opacity:.5;fill:none}
+  .ovframe{fill:none;stroke:#e8c34a;stroke-width:1.4;stroke-dasharray:5 7;opacity:.5}
+</style>
+</head>
+<body>
+<div class="title"><b>Tower Duel — talk IA</b> · schéma de parcours impress.js (44 steps) · <span style="color:#7ed957">orientation réelle des slides</span></div>
+<svg id="map" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5e6b7d"/></marker>
+    <marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7ed957"/></marker>
+  </defs>
+</svg>
+<div class="legend" id="legend"></div>
+
+<script>
+const SVG='http://www.w3.org/2000/svg';
+const map=document.getElementById('map');
+const el=(t,a)=>{const e=document.createElementNS(SVG,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+
+// ---- geometry ----
+const SX=88, CW=76, CH=48;
+const INX=92, INTRO_TOP=210, SYi=112;       // intro: vertical column, 1 (top) → 5 (bottom)
+const Yb=INTRO_TOP+4*SYi;                    // 658 — bottom row level (slide 5 + ch1)
+const RY=128;                                // row stride, chapters snake UPWARD
+const E1=930;                                // ch1 entry x → long "road" gap from slide 5
+
+// chapter defs: dir = reading direction, rot = REAL world orientation (180° pivots flip the cards)
+const CHDEF=[
+  {part:'ch1', n:7,  dir:+1, rot:0,   color:'var(--ch1)'},   // 6–12   →
+  {part:'ch2', n:11, dir:-1, rot:180, color:'var(--ch2)'},   // 13–23  ← (retourné)
+  {part:'ch3', n:8,  dir:+1, rot:0,   color:'var(--ch3)'},   // 24–31  →
+  {part:'ch4', n:10, dir:-1, rot:180, color:'var(--ch4)'},   // 32–41  ← (retourné)
+];
+
+// ---- place every slide {n, part, color, x, y, rot} (x,y = top-left) ----
+const slides=[]; let n=1;
+for(let i=0;i<5;i++) slides.push({n:n++, part:'intro', color:'var(--intro)', x:INX, y:INTRO_TOP+i*SYi, rot:0});
+let entryX=E1;
+CHDEF.forEach((ch,ci)=>{
+  const rowY=Yb-ci*RY;
+  for(let k=0;k<ch.n;k++) slides.push({n:n++, part:ch.part, color:ch.color, x:entryX+ch.dir*k*SX, y:rowY, rot:ch.rot});
+  entryX += ch.dir*(ch.n-1)*SX;              // exit becomes next chapter's entry → short pivot connector
+});
+// 42·43·44 stay in CH4's orientation (180°) → no flip along the whole finale stretch;
+// the single remaining pivot is the wrap 44→1.
+const ch4last=slides.find(s=>s.n===41);
+slides.push({n:42, part:'free', color:'var(--free)', x:ch4last.x-150, y:148, rot:180}); // ← (ligne de fuite via vanish lines)
+slides.push({n:43, part:'over', color:'var(--over)', x:660, y:806, rot:180, big:true}); // overview dezoom (←)
+slides.push({n:44, part:'fin',  color:'var(--fin)',  x:INX,  y:INTRO_TOP-SYi, rot:180});// above step 1 (←)
+
+const byN=k=>slides.find(s=>s.n===k);
+const cx=s=>s.x+(s.big?160:CW)/2, cy=s=>s.y+(s.big?40:CH)/2;
+
+// ---- overview bound frame ----
+map.appendChild(el('rect',{class:'ovframe',x:54,y:96,width:1500,height:666,rx:14}));
+
+// ---- 42 vanishing lines (perspective toward a VP) ----
+(function(){const f=byN(42); const VP={x:cx(f), y:cy(f)};
+  [byN(41),byN(32),byN(24)].forEach(s=>{ if(!s)return;
+    map.appendChild(el('line',{class:'vanish',x1:VP.x,y1:VP.y,x2:cx(s),y2:cy(s)})); });
+})();
+
+// ---- connectors ----
+function line(a,b,cls){const A=byN(a),B=byN(b);
+  map.appendChild(el('line',{class:'flow'+(cls?' '+cls:''),x1:cx(A),y1:cy(A),x2:cx(B),y2:cy(B)}));}
+function curve(a,b,cls){const A=byN(a),B=byN(b),mx=(cx(A)+cx(B))/2;
+  map.appendChild(el('path',{class:'flow'+(cls?' '+cls:''),d:`M${cx(A)} ${cy(A)} C ${mx} ${cy(A)}, ${mx} ${cy(B)}, ${cx(B)} ${cy(B)}`}));}
+// internal links inside each part (consecutive, same part)
+for(let k=1;k<=42;k++){const a=byN(k),b=byN(k+1); if(a&&b&&a.part===b.part) line(k,k+1);}
+// 5→6 : the long horizontal "road" (clin d'œil) — same horizontal level
+line(5,6,'road');
+// pivots (short, vertical — entry sits directly above previous exit)
+line(12,13); line(23,24); line(31,32);
+// ch4 → 42 (force / perspective), then to overview, then to finale
+curve(41,42); curve(42,43); curve(43,44);
+// wrap 44 → 1 : 44 is one stride ABOVE step 1, so 44→1 ≡ 1→2 (pure geometry, no custom key)
+map.appendChild(el('line',{class:'flow wrap',x1:cx(byN(44)),y1:byN(44).y+CH,x2:cx(byN(1)),y2:byN(1).y}));
+
+// ---- turn badges ----
+function badge(x,y,txt,cls){const w=Math.max(56,txt.length*7.0);
+  map.appendChild(el('rect',{class:'turnbox'+(cls?' '+cls:''),x:x-w/2,y:y-12,width:w,height:24,rx:7}));
+  const t=el('text',{class:'turn'+(cls?' '+cls:''),x,y:y+4,'text-anchor':'middle'});t.textContent=txt;map.appendChild(t);}
+badge((cx(byN(5))+cx(byN(6)))/2, Yb+CH/2-2, '🛣 route · clin d’œil', 'road');
+badge(cx(byN(12))+2, (cy(byN(12))+cy(byN(13)))/2, '↺ 180°');
+badge(cx(byN(23))+2, (cy(byN(23))+cy(byN(24)))/2, '↺ 180°');
+badge(cx(byN(31))+2, (cy(byN(31))+cy(byN(32)))/2, '↺ 180°');
+badge(cx(byN(42))+96, cy(byN(42))-2, '✦ ligne de fuite (3D)');
+badge(cx(byN(44))+CW+34, cy(byN(44)), '↺ 180° → step 1', 'big');
+
+// ---- cards (on top) ----
+slides.forEach(s=>{
+  const w=s.big?160:CW, h=s.big?40:CH;
+  const g=el('g',{});
+  if(s.rot) g.setAttribute('transform',`rotate(${s.rot} ${cx(s)} ${cy(s)})`);
+  if(s.persp) g.setAttribute('transform',`translate(${s.x} ${s.y}) skewX(-22) scale(.86)`);
+  const rx0=s.persp?0:s.x, ry0=s.persp?0:s.y;
+  g.appendChild(el('rect',{x:rx0,y:ry0,width:w,height:h,rx:9,fill:s.color,
+    stroke:'rgba(255,255,255,.28)','stroke-width':1, opacity:s.persp?.9:1}));
+  if(s.big){
+    const t=el('text',{x:rx0+w/2,y:ry0+26,'text-anchor':'middle',style:'font-size:15px;font-weight:800;fill:#0c1118'});
+    t.textContent='43 · OVERVIEW (dézoom)';g.appendChild(t);
+  }else{
+    const p=el('text',{class:'part',x:rx0+8,y:ry0+15});p.textContent=s.part;g.appendChild(p);
+    const num=el('text',{class:'num',x:rx0+w-8,y:ry0+h-9,'text-anchor':'end'});num.textContent=s.n;g.appendChild(num);
+  }
+  map.appendChild(g);
+});
+
+// ---- legend ----
+const L=[['intro','var(--intro)','1–5 ↓'],['ch1','var(--ch1)','6–12 →'],
+ ['ch2','var(--ch2)','13–23 ← retourné'],['ch3','var(--ch3)','24–31 →'],['ch4','var(--ch4)','32–41 ← retourné'],
+ ['42','var(--free)','← (fuite)'],['43','var(--over)','overview ←'],['44','var(--fin)','finale ←']];
+document.getElementById('legend').innerHTML='<b>parcours :</b> '+
+ L.map(([a,c,d])=>`<span><i style="background:${c}"></i>${a} <span style="color:#6b7686">${d}</span></span>`).join(' ');
+</script>
+</body>
+</html>

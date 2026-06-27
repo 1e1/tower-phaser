@@ -1,0 +1,79 @@
+name: Deploy bbl deck (+ full site) to GitHub Pages
+
+# Publishes the bbl (brown-bag) presentation to GitHub Pages on ANY branch, as
+# soon as ./bbl changes — so the latest deck is always live, even before it is
+# merged to main.
+#
+# IMPORTANT — GitHub Pages allows only ONE site per repo, and every deploy
+# REPLACES the whole site. A workflow that shipped only the deck would wipe the
+# tutorial + the playable game. So this workflow rebuilds the COMPLETE site and
+# then overlays the deck under /bbl/.
+#
+# The site (tutorial + game) is ALWAYS built from `main` — never from the
+# triggering branch — so a deploy from a feature branch can NEVER publish that
+# branch's docs/game. Only /bbl/ comes from the triggering branch:
+#   /              -> the tutorial   (from MAIN's docs-src/)
+#   /play/         -> the local game (from MAIN's Vite build)
+#   /play/lot1/    -> frozen lot-1 build (from MAIN)
+#   /play/lot2/    -> frozen lot-2 build (from MAIN)
+#   /bbl/...       -> the deck (from the TRIGGERING branch's bbl/)
+#
+# Live deck URL:  https://1e1.github.io/tower-phaser/bbl/1/
+#
+# Triggers on a push to ANY branch that touches bbl/ (no branch filter). It
+# shares the single "pages" concurrency group with pages.yml: the two never
+# deploy at once, and the latest run wins. Caveat: a later push to main re-runs
+# pages.yml, which does NOT know about the deck and would drop /bbl/ until this
+# workflow runs again (or the deck lands on main). Re-run this workflow (or push
+# any bbl/ change) to restore it — the latest bbl build always wins.
+
+on:
+  push:
+    paths:
+      - 'bbl/**'
+      - '.github/workflows/bbl-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main                            # site (tutorial + game) ALWAYS from main
+      - name: Overlay bbl/ from the triggering branch
+        run: |                                 # take ONLY the deck from the branch that ran this
+          git fetch --depth=1 origin "$GITHUB_REF_NAME"
+          rm -rf bbl
+          git checkout FETCH_HEAD -- bbl
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:docs -- --strict   # generates docs/ from MAIN's docs-src
+      - run: npm run build                     # builds MAIN's game into dist/
+      - run: cp -r dist docs/play              # served at /play/ (enter with ?local)
+      - run: cp -r docs-src/play-archive/lot1 docs/play/lot1   # frozen lot-1 build → /play/lot1/
+      - run: cp -r docs-src/play-archive/lot2 docs/play/lot2   # frozen lot-2 build → /play/lot2/
+      - run: cp -r bbl docs/bbl                 # the deck (branch's bbl/) → /bbl/1/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4
